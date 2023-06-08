@@ -1,75 +1,51 @@
 ; vi: set ts=2 sw=2 sts=2 et :
 (defvar *settings* '("
-xfun.lisp: LISP code for multi-objective semi-supervised explanations
+fun.lisp: LISP code for multi-objective semi-supervised explanations
 (c) 2023, Tim Menzies"
   (bins "-b" "number of bins"      16)
   (file "-f" "where to read data"  "../data/auto93.csv")
   (go   "-g" "start up action"     help)))
 
 (defmacro of (key)
+  "Access setting value.s"
   `(fourth (assoc ',key (cdr *settings*))))
 
-(defun cli (lst)
-  (dolist (four (cdr lst) lst)
-    (let* ((it (member (second four) (argv) :test #'equal))
-          (str (second it)))
-      (if it
-        (setf (fourth four)
-              (cond ((eql (fourth four) t)   nil)
-                    ((eql (fourth four) nil) t)
-                    (t (let ((n (read-from-string str nil nil))) 
-                         (if (numberp n) n str)))))))))
+(defstruct (data (:constructor %make-data)) rows cols)
+(defstruct (cols (:constructor %make-cols)) names all x y klass)
 
-(defun argv () 
-  "accessing command-line flats"
-  #+clisp ext:*args*  
-  #+sbcl sb-ext:*posix-argv*)
+(defstruct sym 
+  "summarizes a stream of symbols"
+  (at 0) (txt "") (n 0) has (most 0) mode)
 
-(defstruct (num (:constructor %make-num))
-  (n 0) (at 0) (w 0) (txt "") (mid 0) (div 0) (m2 0) (lo 1E32) (hi -1E32))
-
-(defun make-num (at txt rows &aux (it (%make-num :at at :txt txt)))
-  (with-slots (w n most mid div m2) it
-    (setf w (if (lessp txt) -1 1))
-    (do-cells (at x rows it)
-      (let ((d (- x mid)))
-        (incf n)
-        (incf mid (/ d n))
-        (incf m2  (* d (- x mid)))
-        (setf div  (if (< n 2) 0 (sqrt (/ m2 ( - n 1)))))))))
-
-(defstruct (data (:constructor make-data0)) rows (cols (make-cols))
-(defstruct cols names all x y klass)
-
-(defstruct num 
+(defstruct (num  (:constructor %make-num))
   "summarizes a stream of numbers"
   (at 0) (txt "") (n 0) (w 1) ; w=1,-1 means "maximize", "minimize"
   (hi most-negative-fixnum) 
   (lo most-positive-fixnum)
   (mu 0) (m2 0))
 
-(defstruct sym 
-  "summarizes a stream of symbols"
-  (at 0) (txt "") (n 0) (w 1) has (most 0) mode)
+(defun make-num (&key (at 0) (txt "") &aux (self (%make-num :txt txt :at at)))
+  (if (eql #\- (last-char txt))
+    (setf (num-w self)  -1))
+  self)
 
-(defun make-data (rows cols &aux (self (make-data0))
-  (seff (data-cols data) 
-  (add (data-cols self) cols)
-  (dolist (row rows data) data)
-    (mapc #'add (cols-all (data-cols  data)) row)))
-
-
-(defmethod add ((self cols) names)
+(defun make-cols (names &aux (self (%make-cols: names names)))
   (with-slots (all x y klass) self
     (loop :for at :from 0 :and s :in names :do
-       (let ((z    (elt s (1- (length s))))
-             (what (if (uppercase-p (elt s 0)) #'make-num #'make-sym))
-             (col  (funcall what :at at :txt s :w (if (eql z #\-) -1 1))))
-         (push col all) 
-         (unless (eql z  #\X)
-           (if (eql z #\!) (setf klass col))
-           (if (member z '(#\+ #\- #!)) (push col y) (push col x))))))
+          (let ((z    (last-char s))
+                (what (if (upper-case-p (char s 0) #'make-num #'make-sym)))
+                (col  (funcall what :at at :txt s)))
+            (push col all) 
+            (unless (eql z  #\X)
+              (if (eql z #\!) (setf klass col))
+              (if (member z '(#\+ #\- #!)) (push col y) (push col x))))))
   self)
+
+(defun make-data (&keys cols  rows &aux (self (%make-data)))
+  (setf (data-cols self) (make-cols cols)
+        (data-rows self) rows)
+  (dolist (row rows self)
+    (mapc #'add (cols-all (data-cols self)) row)))
 
 (defmethod add ((self sym) x)
   "update frequency counts (in `has`) and `most` and `mode`"
@@ -90,15 +66,31 @@ xfun.lisp: LISP code for multi-objective semi-supervised explanations
         (setf lo (min x lo)
               hi (max x hi))))))
 
-(defun cli (lst flag b4 &aux (it (member flag lst :test #'equal)))
-  "if `flag` in `lst`, then update `b4` from `lst`"
-  (if it
-    (cond ((eql b4 t)   nil)
-          ((eql b4 nil) t)
-          (t            (thing (second it))))
+; ---------------------------------------------------------------
+(defun last-char(s)
+  (if (> (length s) 0) (char s (1- (length s)))))
 
+(defun updates (settings)
+  "Replace setting values, if a command-line flag asks you."
+  (dolist (four (cdr settings) settings)
+    (let* ((it (member (second four) (argv) :test #'equal)))
+      (if it
+        (setf (fourth four)  (update (fourth four) (second it)))))))
 
-  (defvar *auto93*  
+(defun update (current command-line-arg)
+  "For booleans, no need of a command-line-arg,  just flip the value.
+  Else try to read a number, and if that flag, just return as a string"
+  (cond ((eql current  t)   nil)
+        ((eql current  nil) t)
+        (t (let ((n (read-from-string command-line-arg nil nil))) 
+             (if (numberp n) n command-line-arg)))))
+
+(defun argv () 
+  "Accessing command-line flags"
+  #+clisp ext:*args*  
+  #+sbcl sb-ext:*posix-argv*)
+
+(defvar *auto93*  
   (data
     :cols  '("Cyndrs" "Vol" "Hpx" "Lbs-" "Acc+" "Model" "origin" "Mpg+")
     :rows  '((8 304.0 193 4732 18.5 70 1 10)
