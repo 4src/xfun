@@ -1,5 +1,29 @@
-(defvar *the* '((bins . 16) (file . "../data/auto93.csv")
-                            (go . 'nothing)))
+; vi: set ts=2 sw=2 sts=2 et :
+(defvar *settings* '("
+xfun.lisp: LISP code for multi-objective semi-supervised explanations
+(c) 2023, Tim Menzies"
+  (bins "-b" "number of bins"      16)
+  (file "-f" "where to read data"  "../data/auto93.csv")
+  (go   "-g" "start up action"     help)))
+
+(defmacro of (key)
+  `(fourth (assoc ',key (cdr *settings*))))
+
+(defun cli (lst)
+  (dolist (four (cdr lst) lst)
+    (let* ((it (member (second four) (argv) :test #'equal))
+          (str (second it)))
+      (if it
+        (setf (fourth four)
+              (cond ((eql (fourth four) t)   nil)
+                    ((eql (fourth four) nil) t)
+                    (t (let ((n (read-from-string str nil nil))) 
+                         (if (numberp n) n str)))))))))
+
+(defun argv () 
+  "accessing command-line flats"
+  #+clisp ext:*args*  
+  #+sbcl sb-ext:*posix-argv*)
 
 (defstruct (num (:constructor %make-num))
   (n 0) (at 0) (w 0) (txt "") (mid 0) (div 0) (m2 0) (lo 1E32) (hi -1E32))
@@ -65,6 +89,14 @@
         (incf m2 (* d (- x mu)))
         (setf lo (min x lo)
               hi (max x hi))))))
+
+(defun cli (lst flag b4 &aux (it (member flag lst :test #'equal)))
+  "if `flag` in `lst`, then update `b4` from `lst`"
+  (if it
+    (cond ((eql b4 t)   nil)
+          ((eql b4 nil) t)
+          (t            (thing (second it))))
+
 
   (defvar *auto93*  
   (data
