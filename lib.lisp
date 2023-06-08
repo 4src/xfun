@@ -84,7 +84,7 @@
   "for lines like '  -Key Flag ..... Default', return `(KEY . DEFAULT)`"
   (loop 
     :for (flag key . lst) 
-    :in   (split s #\NewLine #'words)
+    :in  (split s #\NewLine #'words)
     :if  (got flag 0 #\-) 
     :collect (cons (intern (string-upcase key)) 
                    (cli args flag (thing (car (last lst)))))))
