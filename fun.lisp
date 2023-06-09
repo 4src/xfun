@@ -5,8 +5,8 @@ fun.lisp: LISP code for multi-objective semi-supervised explanations
   (bins "-b" "number of bins"      16)
   (file "-f" "where to read data"  "../data/auto93.lisp")
   (go   "-g" "start up action"     nothing)
-  (help "-h" "show help"  nil)
-  (seed "-s" "set random seed" 1234567891)
+  (help "-h" "show help"           nil)
+  (seed "-s" "set random seed"     1234567891)
   ))
 
 (defmacro ? (key)
@@ -75,7 +75,7 @@ fun.lisp: LISP code for multi-objective semi-supervised explanations
 
 ; ---------------------------------------------------------------
 (defmethod mid ((self sym) &optional places) (sym-mode self))
-(defmethod mid ((self num) &optional places) (num-mu self))
+(defmethod mid ((self num) &optional places) (rnd (num-mu self) places))
 
 (defmethod div ((self sym) &optional places)
   "diversity (entropy)."
@@ -92,25 +92,45 @@ fun.lisp: LISP code for multi-objective semi-supervised explanations
   (mapcar #'(lambda (col) (cons (slot-value col 'txt) 
                                 (funcall fun col places))) cols))
 
-; ---------------------------------------------------------------
-(defvar *seed* 10013)
-(defun rand (&optional (n 1))
-  "random float 0.. < n"
-  (setf *seed* (mod (* 16807.0d0 *seed*) 2147483647.0d0))
-  (* n (- 1.0d0 (/ *seed* 2147483647.0d0))))
-
+;;;; ---------------------------------------------------------------
+;;; number stuff
 (defun rnd (n &optional places)
   (if places
     (let ((div (expt 10 places)))
       (float (/ (round (* (float n) div)) div)))
     n))
 
-(defun rint (&optional (n 1) &aux (base 10000000000.0))
-  "random int 0..n-1"
-  (floor (* n (/ (rand base) base))))
+;;; symbol stuff
 (defun last-char(s)
   (if (> (length s) 0) (char s (1- (length s)))))
 
+;;; file stuff
+(defun file->data (file)
+  "read data from file"
+  (with-open-file (s file) 
+    (let ((lst  (read s nil nil)))
+      (make-data :cols (pop lst) :rows lst))))
+
+;;; settings stuff
+(defun print-settings ()
+  (format t "~a~%~%OPTIONS:~%~%" (car *settings*))
+  (loop :for (key flag help val) :in (cdr *settings*) :do
+        (format t "  ~3a ~6a ~25a =  ~a ~%" flag 
+                (cond ((eq val t)  "") ((eq val nil) "") (t key)) help val)))
+
+;;; random number stuff
+(defvar *seed* 10013)
+
+(defun rand (&optional (n 1))
+  "random float 0.. < n"
+  (setf *seed* (mod (* 16807.0d0 *seed*) 2147483647.0d0))
+  (* n (- 1.0d0 (/ *seed* 2147483647.0d0))))
+
+(defun rint (&optional (n 1) &aux (base 10000000000.0))
+  "random int 0..n-1"
+  (floor (* n (/ (rand base) base))))
+
+;;; command-line stuff
 (defun updates (settings)
   "Replace setting values, if a command-line flag asks you."
   (dolist (four (cdr settings) settings)
@@ -126,58 +146,56 @@ fun.lisp: LISP code for multi-objective semi-supervised explanations
         (t (let ((n (read-from-string command-line-arg nil nil))) 
              (if (numberp n) n command-line-arg)))))
 
+;;; system specific stuff
 (defun args () 
   "Accessing command-line flags"
   #+clisp ext:*args*  
   #+sbcl sb-ext:*posix-argv*)
 
-(defun print-settings ()
-  (format t "~a~%~%OPTIONS:~%~%" (car *settings*))
-  (loop :for (key flag help val) :in (cdr *settings*) :do
-        (format t "  ~3a ~6a ~25a =  ~a ~%" flag 
-                (cond ((eq val t)  "") ((eq val nil) "") (t key)) help val)))
+(defun bye (status)
+  "Exit, returning status."
+  #+clisp (ext:exit stutus)
+  #+sbcl  (sb-ext:exit :code status))
 
-(defun eval-file (file)
-  "call `fun` for each line in `file`"
-  (with-open-file (s file) 
-    (eval (read s nil nil))))
+;;;; unit test  stuff  ----------------------------------------------------------------
+(defun main (tests)
+  (let ((fails 0)
+        (b4    (copy-tree (setf *settings* (updates *settings*)))))
+    (if  (? help) 
+      (print-settings)
+      (loop :for (key fun) :in tests :do
+        (setf *settings* (copy-tree b4)
+              *seed* (? seed))
+        (when (member (? go) (list "all" key) 
+                      :key #'string-downcase :test #'equalp)
+          (format t "~&~%⚠️  ~a " key) 
+          (cond ((funcall fun) (format t " PASSED ✅~%"))
+                (t             (format t " FAILED ❌~%")
+                               (incf fails))))))
+    fails))
 
-; ----------------------------------------------------------------
-(defun tests ()
-  `(
-    (settings ,(lambda () (print *settings*)))
-    (rnd ,(lambda () (print 1111) (print (rnd 3.14156 2)))) 
-    (num 
-      ,(lambda (&aux (n (make-num)))
-         (dotimes (i 1000) (add n i))
-         (<= 288 (div n) 289)
-         (<= 499 (mid n) 501)  ))
-    (sym 
-      ,(lambda (&aux (s (make-sym)))
-         (dolist (x '(a a a a b b c)) (add s x))
-         (eql #\a (mid s))
-         (<= 1.37 (div s) 1.38)  ))
-     (data 
-      ,(lambda (&aux (d (eval-file (? file))))
-         (eql 398 (length (data-rows d)))
-         (eql 4 (length (cols-x (data-cols d))))   ))
-     (stats 
-      ,(lambda (&aux (d (eval-file (? file))))
-         (print (stats d))   ))
-    ))
-
-(let ((fails 0)
-      (b4    (copy-tree (setf *settings* (updates *settings*)))))
-  (if  (? help) 
-    (print-settings)
-    (loop :for (key fun) :in (tests) :do
-          (setf *settings* (copy-tree b4)
-                *seed* (? seed))
-          (when (member (? go) (list "all" key) 
-                        :key #'string-downcase :test #'equalp)
-            (format t "~&~%⚠️  ~a" key) 
-            (cond ((funcall fun) (format t " PASSED ✅~%"))
-                  (t             (format t " FAILED ❌~%")
-                                 (incf fails))))))
-  #+clisp (ext:exit fails)
-  #+sbcl  (sb-ext:exit :code fails))
+(bye 
+  (main 
+    `(
+      (settings ,(lambda () (print *settings*)))
+      (rnd      ,(lambda () (print 1111) (print (rnd 3.14156 2)))) 
+      (rand1    ,(lambda () (princ (rint 100)) (princ (rint 100))))
+      (rand2    ,(lambda () (princ (rint 100))))
+      (num1      ,(lambda (&aux (n (make-num)))
+                   (dotimes (i 1000) (add n i))
+                     (print (mid n))))
+      (num2      ,(lambda (&aux (n (make-num)))
+                   (dotimes (i 1000) (add n i))
+                   (<= 288 (div n) 289)
+                   (<= 499 (mid n) 501)  ))
+      (sym      ,(lambda (&aux (s (make-sym)))
+                   (dolist (x '(a a a a b b c)) (add s x))
+                   (eql #\a (mid s))
+                   (<= 1.37 (div s) 1.38)  ))
+      (data     ,(lambda (&aux (d (file->data (? file))))
+                   (print (cols-y (data-cols d)))
+                   (eql 398 (length (data-rows d)))
+                   (eql 4 (length (cols-x (data-cols d))))   ))
+      (stats    ,(lambda (&aux (d (file->data (? file))))
+                   (print (stats d))   ))
+      )))
