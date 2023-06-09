@@ -9,118 +9,123 @@ fun.lisp: LISP code for multi-objective semi-supervised explanations
   (seed "-s" "set random seed"     1234567891)
   ))
 
-; (defmacro ? (key)
-;   "Access setting value.s"
-;   `(fourth (assoc ',key (cdr *settings*))))
-;
-; (defmacro freq (x lst &optional (init 0))      
-;   "frequency counts for small group of symbols (say, less than 50)"
-;   `(cdr (or (assoc ,x ,lst :test #'equal) 
-;             (car (setf ,lst (cons (cons ,x ,init) ,lst))))))
-;
-; (defstruct (data (:constructor %make-data)) rows cols)
-; (defstruct (cols (:constructor %make-cols)) names all x y klass)
-;
-; (defstruct sym 
-;   "summarizes a stream of symbols"
-;   (at 0) (txt "") (n 0) has (most 0) mode)
-;
-; (defstruct (num  (:constructor %make-num))
-;   "summarizes a stream of numbers"
-;   (at 0) (txt "") (n 0) (w 1) ; w=1,-1 means "maximize", "minimize"
-;   (hi most-negative-fixnum) 
-;   (lo most-positive-fixnum)
-;   (mu 0) (m2 0))
-;
-; (defun make-num (&key (at 0) (txt "") &aux (self (%make-num :txt txt :at at)))
-;   (if (eql #\- (last-char txt))
-;     (setf (num-w self)  -1))
-;   self)
-;
-; (defun make-cols (names &aux (self (%make-cols :names names)) (at 0))
-;   (with-slots (all x y klass) self
-;     (labels 
-;       ((make-col (name)
-;          (let* ((a     (char name 0))
-;                 (z     (last-char name))
-;                 (maker (if (upper-case-p a) #'make-num #'make-sym))
-;                 (col   (funcall maker :at (incf at) :txt name)))
-;            (unless (eql z  #\X)
-;              (if (eql z #\!) (setf klass col))
-;              (if (member z '(#\+ #\- #\!)) (push col y) (push col x)))
-;            col)))
-;       (setf all (mapcar #'make-col names))))
-;   self)
-;
-;(defun make-data (&key cols rows &aux (self (%make-data :cols (make-cols cols))))
-;  "Make a new data."
-;  (dolist (row rows self) (add self row))
-;
-;(defmethod clone ((d data) &optional rows)
-;  "Copy the structure of a data. Optionally, add some rows."
-;  (make-data :cols (cols-names (data-cols d)) :rows rows))
-;
-;(defmethod add ((d data) row)
-;  "Add a new row, summarizing its contents as we go."
-;  (push (mapc #'add (cols-all (data-cols d)) row) (data-rows d)))
-;
-;(defmethod add ((self sym) x)
-;  "update frequency counts (in `has`) and `most` and `mode`"
-;  (with-slots (has n mode most) self
-;   (unless (eq x '?)
-;     (incf n)
-;     (incf (freq x has))
-;     (if (> (freq x has) most) (setf most (freq x has) mode x)))))
-;
-;(defmethod add ((self num) x ) ;;; Add one thing, updating 'lo,hi'
-;  "updates `lo`, `hi`, `mu`, `sd`"
-;  (with-slots (n lo hi mu m2) self
-;    (unless (eq x '?)
-;      (incf n)
-;      (let ((d (- x mu)))
-;        (incf mu (/ d n))
-;        (incf m2 (* d (- x mu)))
-;        (setf lo (min x lo)
-;              hi (max x hi))))))
-;
-;; ---------------------------------------------------------------
-;(defmethod mid ((self sym) &optional places) (sym-mode self))
-;(defmethod mid ((self num) &optional places) (rnd (num-mu self) places))
-;
-;(defmethod div ((self sym) &optional places)
-;  "diversity (entropy)."
-;  (with-slots (has n) self 
-;    (labels ((fun (p) (if (<= p 0) 0 (* -1 (* p (log p 2))))))
-;      (rnd (loop for (_ . n1) in has sum (fun (/ n1 n))) places))))
-;
-;(defmethod div ((self num) &optional places)
-;  "return standard deviation"
-;  (with-slots (n m2) self 
-;    (rnd (if (<= n 1) 0 (sqrt (/ m2 (- n 1)))) places)))
-;
-;(defmethod stats ((self data) &key (places 2) (fun #'mid) (cols (cols-y (data-cols self))))
-;  (mapcar #'(lambda (col) (cons (slot-value col 'txt) 
-;                                (funcall fun col places))) cols))
-;
-;;;;; ---------------------------------------------------------------
-;;;; number stuff
-;(defun rnd (n &optional places)
-;  (if places
-;    (let ((div (expt 10 places)))
-;      (float (/ (round (* (float n) div)) div)))
-;    n))
-;
-;;;; symbol stuff
-;(defun last-char(s)
-;  (if (> (length s) 0) (char s (1- (length s)))))
-;
-;;;; file stuff
-;; (defun reads (file &aux out)
-;;   "read data from file"
-;;   (with-open-file (s file) 
-;;     (loop (let ((one (reads s nil nil)))
-;;             (if one (push one out) (return-from reads out))))))
-;;
+(defmacro ? (key)
+  "Access setting value.s"
+  `(fourth (assoc ',key (cdr *settings*))))
+
+(defmacro freq (x lst &optional (init 0))      
+  "frequency counts for small group of symbols (say, less than 50)"
+  `(cdr (or (assoc ,x ,lst :test #'equal) 
+            (car (setf ,lst (cons (cons ,x ,init) ,lst))))))
+
+(defmacro aif (test then &optional else)      
+  "used to test on a result that is also needed by `then`"
+  `(let ((it ,test)) (if it ,then ,else)))
+
+(defstruct (data (:constructor %make-data)) rows cols)
+(defstruct (cols (:constructor %make-cols)) names all x y klass)
+
+(defstruct sym 
+  "summarizes a stream of symbols"
+  (at 0) (txt "") (n 0) has (most 0) mode)
+
+(defstruct (num  (:constructor %make-num))
+  "summarizes a stream of numbers"
+  (at 0) (txt "") (n 0) (w 1) ; w=1,-1 means "maximize", "minimize"
+  (hi most-negative-fixnum) 
+  (lo most-positive-fixnum)
+  (mu 0) (m2 0))
+
+(defun make-num (&key (at 0) (txt "") &aux (self (%make-num :txt txt :at at)))
+  (if (eql #\- (last-char txt))
+    (setf (num-w self)  -1))
+  self)
+
+(defun make-cols (names &aux (self (%make-cols :names names)) (at 0))
+  (with-slots (all x y klass) self
+    (labels 
+      ((make-col (name)
+         (let* ((a     (char name 0))
+                (z     (last-char name))
+                (maker (if (upper-case-p a) #'make-num #'make-sym))
+                (col   (funcall maker :at (incf at) :txt name)))
+           (unless (eql z  #\X)
+             (if (eql z #\!) (setf klass col))
+             (if (member z '(#\+ #\- #\!)) (push col y) (push col x)))
+           col)))
+      (setf all (mapcar #'make-col names))))
+  self)
+
+(defun make-data (&key cols rows &aux (self (%make-data :cols (make-cols cols))))
+ "Make a new data."
+ (dolist (row rows self) (add self row)))
+
+(defmethod clone ((d data) &optional rows)
+ "Copy the structure of a data. Optionally, add some rows."
+ (make-data :cols (cols-names (data-cols d)) :rows rows))
+
+(defmethod add ((d data) row)
+ "Add a new row, summarizing its contents as we go."
+ (push (mapc #'add (cols-all (data-cols d)) row) (data-rows d)))
+
+(defmethod add ((self sym) x)
+ "update frequency counts (in `has`) and `most` and `mode`"
+ (with-slots (has n mode most) self
+  (unless (eq x '?)
+    (incf n)
+    (incf (freq x has))
+    (if (> (freq x has) most) (setf most (freq x has) mode x)))))
+
+(defmethod add ((self num) x ) ;;; Add one thing, updating 'lo,hi'
+ "updates `lo`, `hi`, `mu`, `sd`"
+ (with-slots (n lo hi mu m2) self
+   (unless (eq x '?)
+     (incf n)
+     (let ((d (- x mu)))
+       (incf mu (/ d n))
+       (incf m2 (* d (- x mu)))
+       (setf lo (min x lo)
+             hi (max x hi))))))
+
+; ---------------------------------------------------------------
+(defmethod mid ((self sym) &optional places) (sym-mode self))
+(defmethod mid ((self num) &optional places) (rnd (num-mu self) places))
+
+(defmethod div ((self sym) &optional places)
+ "diversity (entropy)."
+ (with-slots (has n) self 
+   (labels ((fun (p) (if (<= p 0) 0 (* -1 (* p (log p 2))))))
+     (rnd (loop for (_ . n1) in has sum (fun (/ n1 n))) places))))
+
+(defmethod div ((self num) &optional places)
+ "return standard deviation"
+ (with-slots (n m2) self 
+   (rnd (if (<= n 1) 0 (sqrt (/ m2 (- n 1)))) places)))
+
+(defmethod stats ((self data) &key (places 2) (fun #'mid) (cols (cols-y (data-cols self))))
+ (mapcar #'(lambda (col) (cons (slot-value col 'txt) 
+                               (funcall fun col places))) cols))
+
+;;;; ---------------------------------------------------------------
+;;; number stuff
+(defun rnd (n &optional places)
+ (if places
+   (let ((div (expt 10 places)))
+     (float (/ (round (* (float n) div)) div)))
+   n))
+
+;;; symbol stuff
+(defun last-char(s)
+ (if (> (length s) 0) (char s (1- (length s)))))
+
+;; file stuff
+(defun reads (file &aux it out)
+  "read data from file"
+  (with-open-file (s file) 
+    (labels ((worker (x)
+               (if x (cons x (worker (read s nil nil))))))
+      (worker (read s nil nil)))))
+
 ;;;; settings stuff
 ;(defun print-settings ()
 ;  (format t "~a~%~%OPTIONS:~%~%" (car *settings*))
