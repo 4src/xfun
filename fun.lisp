@@ -37,16 +37,18 @@ fun.lisp: LISP code for multi-objective semi-supervised explanations
     (setf (num-w self)  -1))
   self)
 
-(defun make-cols (names &aux (self (%make-cols :names names)))
+(defun make-cols (names &aux (at -1) (self (%make-cols :names names)))
   (with-slots (all x y klass) self
-    (loop :for at :from 0 :and s :in names :do
-          (let* ((z    (last-char s))
-                 (what (if (upper-case-p (char s 0)) #'make-num #'make-sym))
-                 (col  (funcall what :at at :txt s)))
-            (push col all) 
-            (unless (eql z  #\X)
-              (if (eql z #\!) (setf klass col))
-              (if (member z '(#\+ #\- #\!)) (push col y) (push col x))))))
+    (labels 
+      ((make-col (name)
+         (let* ((z    (last-char name))
+                (what (if (upper-case-p (char name 0)) #'make-num #'make-sym))
+                (col  (funcall what :at (incf at) :txt name)))
+           (unless (eql z  #\X)
+             (if (eql z #\!) (setf klass col))
+             (if (member z '(#\+ #\- #\!)) (push col y) (push col x)))
+           col)))
+      (setf all (mapcar #'make-col names))))
   self)
 
 (defun make-data (&key cols  rows 
@@ -154,20 +156,20 @@ fun.lisp: LISP code for multi-objective semi-supervised explanations
 
 (defun bye (status)
   "Exit, returning status."
-  #+clisp (ext:exit stutus)
+  #+clisp (ext:exit status)
   #+sbcl  (sb-ext:exit :code status))
 
 ;;;; unit test  stuff  ----------------------------------------------------------------
 (defun main (tests)
+  (setf *settings* (updates *settings*))
   (let ((fails 0)
-        (b4    (copy-tree (setf *settings* (updates *settings*)))))
+        (b4    (copy-tree *settings*)))
     (if  (? help) 
       (print-settings)
       (loop :for (key fun) :in tests :do
         (setf *settings* (copy-tree b4)
-              *seed* (? seed))
-        (when (member (? go) (list "all" key) 
-                      :key #'string-downcase :test #'equalp)
+              *seed*     (? seed))
+        (when (member (? go) (list "all" key) :key #'string-downcase :test #'equalp)
           (format t "~&~%⚠️  ~a " key) 
           (cond ((funcall fun) (format t " PASSED ✅~%"))
                 (t             (format t " FAILED ❌~%")
@@ -181,7 +183,7 @@ fun.lisp: LISP code for multi-objective semi-supervised explanations
       (rnd      ,(lambda () (print 1111) (print (rnd 3.14156 2)))) 
       (rand1    ,(lambda () (princ (rint 100)) (princ (rint 100))))
       (rand2    ,(lambda () (princ (rint 100))))
-      (num1      ,(lambda (&aux (n (make-num)))
+      (num1     ,(lambda (&aux (n (make-num)))
                    (dotimes (i 1000) (add n i))
                      (print (mid n))))
       (num2      ,(lambda (&aux (n (make-num)))
