@@ -18,10 +18,6 @@ fun.lisp: LISP code for multi-objective semi-supervised explanations
   `(cdr (or (assoc ,x ,lst :test #'equal) 
             (car (setf ,lst (cons (cons ,x ,init) ,lst))))))
 
-(defmacro aif (test then &optional else)      
-  "used to test on a result that is also needed by `then`"
-  `(let ((it ,test)) (if it ,then ,else)))
-
 (defstruct (data (:constructor %make-data)) rows cols)
 (defstruct (cols (:constructor %make-cols)) names all x y klass)
 
@@ -63,7 +59,7 @@ fun.lisp: LISP code for multi-objective semi-supervised explanations
 (defmethod clone ((d data) &optional rows)
  "Copy the structure of a data. Optionally, add some rows."
  (make-data :cols (cols-names (data-cols d)) :rows rows))
-
+;;;; ---------------------------------------------------------------
 (defmethod add ((d data) row)
  "Add a new row, summarizing its contents as we go."
  (push (mapc #'add (cols-all (data-cols d)) row) (data-rows d)))
@@ -105,7 +101,6 @@ fun.lisp: LISP code for multi-objective semi-supervised explanations
 (defmethod stats ((self data) &key (places 2) (fun #'mid) (cols (cols-y (data-cols self))))
  (mapcar #'(lambda (col) (cons (slot-value col 'txt) 
                                (funcall fun col places))) cols))
-
 ;;;; ---------------------------------------------------------------
 ;;; number stuff
 (defun rnd (n &optional places)
@@ -119,98 +114,98 @@ fun.lisp: LISP code for multi-objective semi-supervised explanations
  (if (> (length s) 0) (char s (1- (length s)))))
 
 ;; file stuff
-(defun reads (file &aux it out)
-  "read data from file"
-  (with-open-file (s file) 
-    (labels ((worker (x)
-               (if x (cons x (worker (read s nil nil))))))
-      (worker (read s nil nil)))))
+(defun file->data (file &aux (lst (reads file)))
+  (make-data :cols (pop lst) :rows lst))
 
-;;;; settings stuff
-;(defun print-settings ()
-;  (format t "~a~%~%OPTIONS:~%~%" (car *settings*))
-;  (loop :for (key flag help val) :in (cdr *settings*) :do
-;        (format t "  ~3a ~6a ~25a =  ~a ~%" flag 
-;                (cond ((eq val t)  "") ((eq val nil) "") (t key)) help val)))
-;
-;;;; random number stuff
-;(defvar *seed* 10013)
-;
-;(defun rand (&optional (n 1))
-;  "random float 0.. < n"
-;  (setf *seed* (mod (* 16807.0d0 *seed*) 2147483647.0d0))
-;  (* n (- 1.0d0 (/ *seed* 2147483647.0d0))))
-;
-;(defun rint (&optional (n 1) &aux (base 10000000000.0))
-;  "random int 0..n-1"
-;  (floor (* n (/ (rand base) base))))
-;
-;;;; command-line stuff
-;(defun updates (settings)
-;  "Replace setting values, if a command-line flag asks you."
-;  (dolist (four (cdr settings) settings)
-;    (let* ((it (member (second four) (args) :test #'equal)))
-;      (if it
-;        (setf (fourth four)  (update (fourth four) (second it)))))))
-;
-;(defun update (current command-line-arg)
-;  "For booleans, no need of a command-line-arg,  just flip the value.
-;  Else try to read a number, and if that flag, just return as a string"
-;  (cond ((eql current  t)   nil)
-;        ((eql current  nil) t)
-;        (t (let ((n (read-from-string command-line-arg nil nil))) 
-;             (if (numberp n) n command-line-arg)))))
-;
-;;;; system specific stuff
-;(defun args () 
-;  "Accessing command-line flags"
-;  #+clisp ext:*args*  
-;  #+sbcl sb-ext:*posix-argv*)
-;
-;(defun bye (status)
-;  "Exit, returning status."
-;  #+clisp (ext:exit status)
-;  #+sbcl  (sb-ext:exit :code status))
-;
+;; file stuff
+(defun reads (file)
+  "read data from file"
+  (with-open-file (s file) (read s nil nil)))
+
+;;; settings stuff
+(defun print-settings ()
+ (format t "~a~%~%OPTIONS:~%~%" (car *settings*))
+ (loop :for (key flag help val) :in (cdr *settings*) :do
+       (format t "  ~3a ~6a ~25a =  ~a ~%" flag 
+               (cond ((eq val t)  "") ((eq val nil) "") (t key)) help val)))
+
+;;; random number stuff
+(defvar *seed* 10013)
+
+(defun rand (&optional (n 1))
+ "random float 0.. < n"
+ (setf *seed* (mod (* 16807.0d0 *seed*) 2147483647.0d0))
+ (* n (- 1.0d0 (/ *seed* 2147483647.0d0))))
+
+(defun rint (&optional (n 1) &aux (base 10000000000.0))
+ "random int 0..n-1"
+ (floor (* n (/ (rand base) base))))
+
+;;; command-line stuff
+(defun updates (settings)
+ "Replace setting values, if a command-line flag asks you."
+ (dolist (four (cdr settings) settings)
+   (let* ((it (member (second four) (args) :test #'equal)))
+     (if it
+       (setf (fourth four)  (update (fourth four) (second it)))))))
+
+(defun update (current command-line-arg)
+ "For booleans, no need of a command-line-arg,  just flip the value.
+ Else try to read a number, and if that flag, just return as a string"
+ (cond ((eql current  t)   nil)
+       ((eql current  nil) t)
+       (t (let ((n (read-from-string command-line-arg nil nil))) 
+            (if (numberp n) n command-line-arg)))))
+
+;;; system specific stuff
+(defun args () 
+ "Accessing command-line flags"
+ #+clisp ext:*args*  
+ #+sbcl sb-ext:*posix-argv*)
+
+(defun bye (status)
+ "Exit, returning status."
+ #+clisp (ext:exit status)
+ #+sbcl  (sb-ext:exit :code status))
+
 ;;;;; unit test  stuff  ----------------------------------------------------------------
-;(defun main (tests)
-;  (setf *settings* (updates *settings*))
-;  (let ((fails 0)
-;        (b4    (copy-tree *settings*)))
-;    (if  (? help) 
-;      (print-settings)
-;      (loop :for (key fun) :in tests :do
-;        (setf *settings* (copy-tree b4)
-;              *seed*     (? seed))
-;        (when (member (? go) (list "all" key) :key #'string-downcase :test #'equalp)
-;          (format t "~&~%⚠️  ~a " key) 
-;          (cond ((funcall fun) (format t " PASSED ✅~%"))
-;                (t             (format t " FAILED ❌~%")
-;                               (incf fails))))))
-;    fails))
-;
-;(bye 
-;  (main 
-;    `(
-;      (settings ,(lambda () (print *settings*)))
-;      (rnd      ,(lambda () (print 1111) (print (rnd 3.14156 2)))) 
-;      (rand1    ,(lambda () (princ (rint 100)) (princ (rint 100))))
-;      (rand2    ,(lambda () (princ (rint 100))))
-;      (num1     ,(lambda (&aux (n (make-num)))
-;                   (dotimes (i 1000) (add n i))
-;                     (print (mid n))))
-;      (num2      ,(lambda (&aux (n (make-num)))
-;                   (dotimes (i 1000) (add n i))
-;                   (<= 288 (div n) 289)
-;                   (<= 499 (mid n) 501)  ))
-;      (sym      ,(lambda (&aux (s (make-sym)))
-;                   (dolist (x '(a a a a b b c)) (add s x))
-;                   (eql #\a (mid s))
-;                   (<= 1.37 (div s) 1.38)  ))
-;      (data     ,(lambda (&aux (d (file->data (? file))))
-;                   (print (cols-y (data-cols d)))
-;                   (eql 398 (length (data-rows d)))
-;                   (eql 4 (length (cols-x (data-cols d))))   ))
-;      (stats    ,(lambda (&aux (d (file->data (? file))))
-;                   (print (stats d))   ))
-;      )))
+(defun main (tests)
+ (setf *settings* (updates *settings*))
+ (let ((fails 0)
+       (b4    (copy-tree *settings*)))
+   (if  (? help) 
+     (print-settings)
+     (loop :for (key fun) :in tests :do
+       (setf *settings* (copy-tree b4)
+             *seed*     (? seed))
+       (when (member (? go) (list "all" key) :key #'string-downcase :test #'equalp)
+         (format t "~&~%⚠️  ~a " key) 
+         (cond ((funcall fun) (format t " PASSED ✅~%"))
+               (t             (format t " FAILED ❌~%")
+                              (incf fails))))))
+   fails))
+
+(bye (main 
+   `(
+     (settings ,(lambda () (print *settings*)))
+     (rnd      ,(lambda () (print 1111) (print (rnd 3.14156 2)))) 
+     (rand1    ,(lambda () (princ (rint 100)) (princ (rint 100))))
+     (rand2    ,(lambda () (princ (rint 100))))
+     (num1     ,(lambda (&aux (n (make-num)))
+                  (dotimes (i 1000) (add n i))
+                    (print (mid n))))
+     (num2     ,(lambda (&aux (n (make-num)))
+                  (dotimes (i 1000) (add n i))
+                  (<= 288 (div n) 289)
+                  (<= 499 (mid n) 501)  ))
+     (sym      ,(lambda (&aux (s (make-sym)))
+                  (dolist (x '(a a a a b b c)) (add s x))
+                  (eql #\a (mid s))
+                  (<= 1.37 (div s) 1.38)  ))
+     (data     ,(lambda (&aux (d (file->data (? file))))
+                  (print (cols-y (data-cols d)))
+                  (eql 398 (length (data-rows d)))
+                  (eql 4 (length (cols-x (data-cols d))))   ))
+     (stats    ,(lambda (&aux (d (file->data (? file))))
+                  (print (stats d))   ))
+     )))
