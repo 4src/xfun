@@ -6,13 +6,9 @@ fun.lisp: LISP code for multi-objective semi-supervised explanations
   (file "-f" "where to read data"  "../data/auto93.lisp")
   (go   "-g" "start up action"     nothing)
   (help "-h" "show help"           nil)
+  (min  "-m" "min sample size"     .5)
   (seed "-s" "set random seed"     1234567891)
   ))
-
-(defun goodbye (&optional (status 0))
- "Exit, returning status."
- #+clisp (ext:exit status)
- #+sbcl  (sb-ext:exit :code status))
 
 (defmacro ? (key)
   "Access setting value.s"
@@ -28,8 +24,6 @@ fun.lisp: LISP code for multi-objective semi-supervised explanations
   (if (null xs) 
     `(slot-value ,s ',x)
     `(of (slot-value ,s ',x) ,@xs)))
-
-
 ;;;; ---------------------------------------------------------------
 (defstruct (data (:constructor %make-data)) rows cols)
 (defstruct (cols (:constructor %make-cols)) names all x y klass)
@@ -41,6 +35,8 @@ fun.lisp: LISP code for multi-objective semi-supervised explanations
   (hi most-negative-fixnum) 
   (lo most-positive-fixnum)
   (mu 0) (m2 0))
+
+(defstruct row cells klass)
 ;;;; ---------------------------------------------------------------
 (defun make-num (&key (at 0) (txt ""))
   (%make-num :txt txt :at at :w (if (eql #\- (last-char txt)) -1 1)))
@@ -63,17 +59,13 @@ fun.lisp: LISP code for multi-objective semi-supervised explanations
 
 (defun make-data (&key cols rows &aux (self (%make-data :cols (make-cols cols))))
   "([string]+, [list]) -> data"
-  (dolist (row rows self) (add self row)))
+  (dolist (row1 rows self) (add self row1)))
 
 (defun clone (data &optional rows)
   "data -> data"
   (make-data :cols (of data cols names) :rows rows))
 
 ;;;;; ---------------------------------------------------------------
-(defmethod add ((d data) row)
-  "Add a new row, summarizing its contents as we go."
-  (push (mapc #'add (of d cols all) row) (of d rows)))
-
 (defmethod add ((self sym) x)
   "update frequency counts (in `has`) and `most` and `mode`"
   (with-slots (has n mode most) self
@@ -92,7 +84,15 @@ fun.lisp: LISP code for multi-objective semi-supervised explanations
         (incf m2 (* d (- x mu)))
         (setf lo (min x lo)
               hi (max x hi))))))
+
+(defmethod add ((d data) (row1 cons)) (add d (make-row :cells row1)))
+(defmethod add ((d data) (row1 row)) 
+  "Add a new row, summarizing its contents as we go."
+  (mapc #'add (of d cols all) (of row1 cells)) 
+  (push row1 (of d rows)))
 ; ---------------------------------------------------------------
+(defmethod cell ((row1 row) col) (elt (of row1 cells) (of col at)))
+
 (defmethod mid ((self sym) &optional places) (sym-mode self))
 (defmethod mid ((self num) &optional places) (rnd (num-mu self) places))
 
@@ -115,17 +115,45 @@ fun.lisp: LISP code for multi-objective semi-supervised explanations
   (mapcar #'(lambda (col) (cons (slot-value col 'txt) 
                                 (funcall fun col places))) cols))
 
-(defun better (data row1 row2)
-  (let* ((s1   0) 
-         (s2   0) 
-         (cols (of data cols y))
+(defun better (data row1 row2 &aux (s1 0) (s2 0))
+  (let* ((cols (of data cols y))
          (n    (length cols)))
     (dolist (col cols (< (/ s1 n) (/ s2 n)))
-      (with-slots (at w) col
-        (let ((x (norm col (elt row1 at)))
-              (y (norm col (elt row2 at))))
-          (decf s1 (exp (* w (/ (- x y) n))))
-          (decf s2 (exp (* w (/ (- y x) n)))))))))
+      (let ((x (norm col (cell row1 col)))
+            (y (norm col (cell row2 col))))
+        (decf s1 (exp (* (of col w) (/ (- x y) n))))
+        (decf s2 (exp (* (of col w) (/ (- y x) n))))))))
+
+(defmethod best-cut ((d1 data) best-rows other-rows)
+  dolist (row best-rows)  (setf (of row klass) t))
+  (dolist (row other-rows) (setf (of row klass) nil))
+  (let* ((rows2 (append best-rows other-rows))
+         (tiny  (expt (length rows2) (? min)))
+         (d2    (clone d1 rows2))
+         (cuts  (mapcar #'(lambda (col) (cut col (sort-col col rows2) (div col) tiny)) 
+                       (of d2 cols))))
+    (car (sort cuts  #'< :key #'car))))
+
+(defmethod sort-col ((s sym) rows) 
+  (non-missing-rows s rows))
+
+(defmethod sort-col ((n num) rows) 
+  (sort (non-missing-rows rows) #'< :key #'(lambda (row) (cell row n))))
+
+(defun non-missing-rows (col rows)
+  (remove-if #'(lambda (row) (equal "?" (cell row col))) rows))
+
+; (defmethod cut ((s sym) rows eps tiny)
+;   (declare (ignore eps tiny))
+;   (let (has)
+;     (multiple-value-bind  (s existsp)
+;       (gethash x hash nil)
+;       (unless exists
+;          (setf new (make-sym))
+;          (setf (gethash x has) new)))))
+;     (dolist (row rows) (cells s row) (row-klass row)
+;
+
 ;;;; ---------------------------------------------------------------
 ;;; number stuff
 (defun rnd (n &optional places)
@@ -188,6 +216,11 @@ fun.lisp: LISP code for multi-objective semi-supervised explanations
  #+clisp ext:*args*  
  #+sbcl sb-ext:*posix-argv*)
 
+(defun goodbye (&optional (status 0))
+ "Exit, returning status."
+ #+clisp (ext:exit status)
+ #+sbcl  (sb-ext:exit :code status))
+
 ;;;;; unit test  stuff ----------------------------------------------------------------
 (defun main (tests)
  (setf *settings* (updates *settings*))
@@ -199,7 +232,7 @@ fun.lisp: LISP code for multi-objective semi-supervised explanations
        (setf *settings* (copy-tree b4)
              *seed*     (? seed))
        (when (member (? go) (list "all" key) :key #'string-downcase :test #'equalp)
-         (format t "~&~%⚠️  ~a " key) 
+         (format t "~%⚠️  ~a " key) 
          (cond ((funcall fun) (format t " PASSED ✅~%"))
                (t             (format t " FAILED ❌~%")
                               (incf fails))))))
@@ -230,6 +263,9 @@ fun.lisp: LISP code for multi-objective semi-supervised explanations
      (stats    ,(lambda (&aux (d (file->data (? file))))
                   (print (stats d))   ))
      (better   ,(lambda (&aux (d (file->data (? file))))
-                  (sort (of d rows) (lambda(r1 r2) (better d r1 r2)))))
+                  (let ((rows (sort (of d rows) (lambda(r1 r2) (better d r1 r2)))))
+                  (print (stats d))
+                   (print (stats (clone d (subseq rows 0 30))))
+                   (print (stats (clone d (subseq rows (- (length rows) 30))))))))
                  
      )))
