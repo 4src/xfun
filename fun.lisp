@@ -9,7 +9,7 @@ fun.lisp: LISP code for multi-objective semi-supervised explanations
   (seed "-s" "set random seed"     1234567891)
   ))
 
-(defun bye (&optional (status 0))
+(defun goodbye (&optional (status 0))
  "Exit, returning status."
  #+clisp (ext:exit status)
  #+sbcl  (sb-ext:exit :code status))
@@ -23,11 +23,11 @@ fun.lisp: LISP code for multi-objective semi-supervised explanations
   `(cdr (or (assoc ,x ,lst :test #'equal) 
             (car (setf ,lst (cons (cons ,x ,init) ,lst))))))
 
-(defmacro o (s x &rest xs)
+(defmacro of (s x &rest xs)
   "macro for recursive slot-values"
   (if (null xs) 
     `(slot-value ,s ',x)
-    `(o (slot-value ,s ',x) ,@xs)))
+    `(of (slot-value ,s ',x) ,@xs)))
 
 
 ;;;; ---------------------------------------------------------------
@@ -45,7 +45,7 @@ fun.lisp: LISP code for multi-objective semi-supervised explanations
 (defun make-num (&key (at 0) (txt ""))
   (%make-num :txt txt :at at :w (if (eql #\- (last-char txt)) -1 1)))
 
-(defun make-cols (names &aux (self (%make-cols :names names)) (at 0))
+(defun make-cols (names &aux (self (%make-cols :names names)) (at -1))
   "[string]+ -> [col]+"
   (with-slots (all x y klass) self
     (labels 
@@ -67,12 +67,12 @@ fun.lisp: LISP code for multi-objective semi-supervised explanations
 
 (defun clone (data &optional rows)
   "data -> data"
-  (make-data :cols (o data cols names) :rows rows))
+  (make-data :cols (of data cols names) :rows rows))
 
 ;;;;; ---------------------------------------------------------------
 (defmethod add ((d data) row)
   "Add a new row, summarizing its contents as we go."
-  (push (mapc #'add (o d cols all) row) (o d rows)))
+  (push (mapc #'add (of d cols all) row) (of d rows)))
 
 (defmethod add ((self sym) x)
   "update frequency counts (in `has`) and `most` and `mode`"
@@ -108,17 +108,17 @@ fun.lisp: LISP code for multi-objective semi-supervised explanations
    (rnd (if (<= n 1) 0 (sqrt (/ m2 (- n 1)))) places)))
 
 (defun norm (num x)
-  (/ (- x (num-lo num)) 
-     (- (num-hi num) (num-lo num) (/ 1 most-positive-fixnum))))
+  (/ (- x (of num lo))
+     (- (of num hi) (of num lo) (/ 1 most-positive-fixnum))))
 
-(defun stats (data &key (places 2) (fun #'mid) (cols (o data cols y)))
- (mapcar #'(lambda (col) (cons (slot-value col 'txt) 
-                               (funcall fun col places))) cols))
+(defun stats (data &key (places 2) (fun #'mid) (cols (of data cols y)))
+  (mapcar #'(lambda (col) (cons (slot-value col 'txt) 
+                                (funcall fun col places))) cols))
 
-(defmethod better ((d data) row1 row2)
+(defun better (data row1 row2)
   (let* ((s1   0) 
          (s2   0) 
-         (cols (o d cols y))
+         (cols (of data cols y))
          (n    (length cols)))
     (dolist (col cols (< (/ s1 n) (/ s2 n)))
       (with-slots (at w) col
@@ -205,10 +205,9 @@ fun.lisp: LISP code for multi-objective semi-supervised explanations
                               (incf fails))))))
    fails))
 
-
-(bye (main 
+(goodbye (main 
    `(
-     (bad      ,(lambda () nil))
+     ;(bad      ,(lambda () nil))
      (settings ,(lambda () (print *settings*)))
      (rnd      ,(lambda () (print 1111) (print (rnd 3.14156 2)))) 
      (rand1    ,(lambda () (princ (rint 100)) (princ (rint 100))))
@@ -224,10 +223,13 @@ fun.lisp: LISP code for multi-objective semi-supervised explanations
                   (dolist (x '(a a a a b b c)) (add s x))
                   (eql #\a (mid s))
                   (<= 1.37 (div s) 1.38)  ))
-      (data     ,(lambda (&aux (d (file->data (? file))))
-                   (print (o d cols y))
-                   (eql 398 (length (o d rows)))
-                   (eql 4 (length (o d cols x)))   ))
+      (data    ,(lambda (&aux (d (file->data (? file))))
+                  (print (of d cols y))
+                  (eql 398 (length (of d rows)))
+                  (eql 4 (length (of d cols x)))   ))
      (stats    ,(lambda (&aux (d (file->data (? file))))
-                   (print (stats d))   ))
+                  (print (stats d))   ))
+     (better   ,(lambda (&aux (d (file->data (? file))))
+                  (sort (of d rows) (lambda(r1 r2) (better d r1 r2)))))
+                 
      )))
