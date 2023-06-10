@@ -17,6 +17,11 @@ fun.lisp: LISP code for multi-objective semi-supervised explanations
   "frequency counts for small group of symbols (say, less than 50)"
   `(cdr (or (assoc ,x ,lst :test #'equal) 
             (car (setf ,lst (cons (cons ,x ,init) ,lst))))))
+
+(defmacro ? (x &optional (lst '*settings*)) 
+  "alist accessor, defaults to searching `*settings*`"
+  `(cdr (assoc ',x ,lst :test #'equalp)))
+
 ;;;; ---------------------------------------------------------------
 (defstruct (data (:constructor %make-data)) rows cols)
 (defstruct (cols (:constructor %make-cols)) names all x y klass)
@@ -54,11 +59,11 @@ fun.lisp: LISP code for multi-objective semi-supervised explanations
 
 (defmethod clone ((d data) &optional rows)
   "data -> data"
-  (make-data :cols (cols-names (data-cols d)) :rows rows))
+  (make-data :cols (? d cols names) :rows rows))
 ;;;; ---------------------------------------------------------------
 (defmethod add ((d data) row)
   "Add a new row, summarizing its contents as we go."
-  (push (mapc #'add (cols-all (data-cols d)) row) (data-rows d)))
+  (push (mapc #'add (? d cols all) row) (? d rows))
 
 (defmethod add ((self sym) x)
   "update frequency counts (in `has`) and `most` and `mode`"
@@ -93,9 +98,25 @@ fun.lisp: LISP code for multi-objective semi-supervised explanations
  (with-slots (n m2) self 
    (rnd (if (<= n 1) 0 (sqrt (/ m2 (- n 1)))) places)))
 
-(defmethod stats ((self data) &key (places 2) (fun #'mid) (cols (cols-y (data-cols self))))
+(defun norm (num x)
+  (/ (- x (num-lo num)) 
+     (- (num-hi num) (num-lo num) (/ 1 most-positive-fixnum))))
+
+(defun stats (data &key (places 2) (fun #'mid) (cols (? data cols y)))
  (mapcar #'(lambda (col) (cons (slot-value col 'txt) 
                                (funcall fun col places))) cols))
+
+(defmethod better ((d data) row1 row2)
+  (let* ((s1   0) 
+         (s2   0) 
+         (cols (? d cols y))
+         (n    (length cols)))
+    (dolist (col cols (< (/ s1 n) (/ s2 n)))
+      (with-slots (at w) col
+        (let ((x (norm col (elt row1 at)))
+              (y (norm col (elt row2 at))))
+          (decf s1 (exp (* w (/ (- x y) n))))
+          (decf s2 (exp (* w (/ (- y x) n)))))))))
 ;;;; ---------------------------------------------------------------
 ;;; number stuff
 (defun rnd (n &optional places)
@@ -163,7 +184,7 @@ fun.lisp: LISP code for multi-objective semi-supervised explanations
  #+clisp (ext:exit status)
  #+sbcl  (sb-ext:exit :code status))
 
-;;;;; unit test  stuff  ----------------------------------------------------------------
+;;;;; unit test  stuff ----------------------------------------------------------------
 (defun main (tests)
  (setf *settings* (updates *settings*))
  (let ((fails 0)
@@ -182,6 +203,7 @@ fun.lisp: LISP code for multi-objective semi-supervised explanations
 
 (bye (main 
    `(
+     ;(bad      ,(lambda () nil))
      (settings ,(lambda () (print *settings*)))
      (rnd      ,(lambda () (print 1111) (print (rnd 3.14156 2)))) 
      (rand1    ,(lambda () (princ (rint 100)) (princ (rint 100))))
@@ -198,9 +220,9 @@ fun.lisp: LISP code for multi-objective semi-supervised explanations
                   (eql #\a (mid s))
                   (<= 1.37 (div s) 1.38)  ))
      (data     ,(lambda (&aux (d (file->data (? file))))
-                  (print (cols-y (data-cols d)))
-                  (eql 398 (length (data-rows d)))
-                  (eql 4 (length (cols-x (data-cols d))))   ))
+                  (print (? d cols y))
+                  (eql 398 (length (? d rows)))
+                  (eql 4 (length (? d cols x)))   ))
      (stats    ,(lambda (&aux (d (file->data (? file))))
                   (print (stats d))   ))
      )))
