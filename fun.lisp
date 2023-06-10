@@ -9,6 +9,11 @@ fun.lisp: LISP code for multi-objective semi-supervised explanations
   (seed "-s" "set random seed"     1234567891)
   ))
 
+(defun bye (&optional (status 0))
+ "Exit, returning status."
+ #+clisp (ext:exit status)
+ #+sbcl  (sb-ext:exit :code status))
+
 (defmacro ? (key)
   "Access setting value.s"
   `(fourth (assoc ',key (cdr *settings*))))
@@ -18,9 +23,12 @@ fun.lisp: LISP code for multi-objective semi-supervised explanations
   `(cdr (or (assoc ,x ,lst :test #'equal) 
             (car (setf ,lst (cons (cons ,x ,init) ,lst))))))
 
-(defmacro ? (x &optional (lst '*settings*)) 
-  "alist accessor, defaults to searching `*settings*`"
-  `(cdr (assoc ',x ,lst :test #'equalp)))
+(defmacro o (s x &rest xs)
+  "macro for recursive slot-values"
+  (if (null xs) 
+    `(slot-value ,s ',x)
+    `(o (slot-value ,s ',x) ,@xs)))
+
 
 ;;;; ---------------------------------------------------------------
 (defstruct (data (:constructor %make-data)) rows cols)
@@ -28,7 +36,7 @@ fun.lisp: LISP code for multi-objective semi-supervised explanations
 (defstruct sym (at 0) (txt "") (n 0) has (most 0) mode)
 
 (defstruct (num  (:constructor %make-num))
-  "summarizes a stream of numbers"
+ "summarizes a stream of numbers"
   (at 0) (txt "") (n 0) (w 1) ; w=1,-1 means "maximize", "minimize"
   (hi most-negative-fixnum) 
   (lo most-positive-fixnum)
@@ -57,13 +65,14 @@ fun.lisp: LISP code for multi-objective semi-supervised explanations
   "([string]+, [list]) -> data"
   (dolist (row rows self) (add self row)))
 
-(defmethod clone ((d data) &optional rows)
+(defun clone (data &optional rows)
   "data -> data"
-  (make-data :cols (? d cols names) :rows rows))
-;;;; ---------------------------------------------------------------
+  (make-data :cols (o data cols names) :rows rows))
+
+;;;;; ---------------------------------------------------------------
 (defmethod add ((d data) row)
   "Add a new row, summarizing its contents as we go."
-  (push (mapc #'add (? d cols all) row) (? d rows))
+  (push (mapc #'add (o d cols all) row) (o d rows)))
 
 (defmethod add ((self sym) x)
   "update frequency counts (in `has`) and `most` and `mode`"
@@ -102,14 +111,14 @@ fun.lisp: LISP code for multi-objective semi-supervised explanations
   (/ (- x (num-lo num)) 
      (- (num-hi num) (num-lo num) (/ 1 most-positive-fixnum))))
 
-(defun stats (data &key (places 2) (fun #'mid) (cols (? data cols y)))
+(defun stats (data &key (places 2) (fun #'mid) (cols (o data cols y)))
  (mapcar #'(lambda (col) (cons (slot-value col 'txt) 
                                (funcall fun col places))) cols))
 
 (defmethod better ((d data) row1 row2)
   (let* ((s1   0) 
          (s2   0) 
-         (cols (? d cols y))
+         (cols (o d cols y))
          (n    (length cols)))
     (dolist (col cols (< (/ s1 n) (/ s2 n)))
       (with-slots (at w) col
@@ -179,11 +188,6 @@ fun.lisp: LISP code for multi-objective semi-supervised explanations
  #+clisp ext:*args*  
  #+sbcl sb-ext:*posix-argv*)
 
-(defun bye (status)
- "Exit, returning status."
- #+clisp (ext:exit status)
- #+sbcl  (sb-ext:exit :code status))
-
 ;;;;; unit test  stuff ----------------------------------------------------------------
 (defun main (tests)
  (setf *settings* (updates *settings*))
@@ -201,9 +205,10 @@ fun.lisp: LISP code for multi-objective semi-supervised explanations
                               (incf fails))))))
    fails))
 
+
 (bye (main 
    `(
-     ;(bad      ,(lambda () nil))
+     (bad      ,(lambda () nil))
      (settings ,(lambda () (print *settings*)))
      (rnd      ,(lambda () (print 1111) (print (rnd 3.14156 2)))) 
      (rand1    ,(lambda () (princ (rint 100)) (princ (rint 100))))
@@ -219,10 +224,10 @@ fun.lisp: LISP code for multi-objective semi-supervised explanations
                   (dolist (x '(a a a a b b c)) (add s x))
                   (eql #\a (mid s))
                   (<= 1.37 (div s) 1.38)  ))
-     (data     ,(lambda (&aux (d (file->data (? file))))
-                  (print (? d cols y))
-                  (eql 398 (length (? d rows)))
-                  (eql 4 (length (? d cols x)))   ))
+      (data     ,(lambda (&aux (d (file->data (? file))))
+                   (print (o d cols y))
+                   (eql 398 (length (o d rows)))
+                   (eql 4 (length (o d cols x)))   ))
      (stats    ,(lambda (&aux (d (file->data (? file))))
-                  (print (stats d))   ))
+                   (print (stats d))   ))
      )))
