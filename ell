@@ -1,0 +1,3 @@
+cl() {
+  sbcl --noinform --script $* 2> >( gawk ' {print} /^2:/ {exit}' )
+}
