@@ -36,6 +36,12 @@
 (defun rint (&optional (n 1) &aux (base 10000000000.0))
   "random int 0..n-1"
   (floor (* n (/ (rand base) base))))
+
+(defun round2 (number &optional (digits 2))
+  "round to `digits` number of decimal places"
+  (let* ((div (expt 10 digits))
+         (tmp (/ (round (* number div)) div)))
+    (if (zerop digits) (floor tmp) (float tmp)))
 ;-------------------------------------------------------------------------------
 ;##  Lists
 (defun per (seq &optional (p .5))

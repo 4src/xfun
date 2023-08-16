@@ -8,13 +8,13 @@ USAGE:
   sbcl --script tiny.lisp")
 
 (defvar *settings* 
-  '((p       "-p"      "dialog asda" 2)
-    (dialog "--dialog" "asda"        t)
-    (seed   "--seed"   "randseed"    1234567891)
-    (help   "-h"       "shpw help"   nil)
-    (eg     "-e"       "start up example" "nothing")
-    (file   "-f"       "data file"  "../data/auto93.csv")
-    (xx     "-p"       "asdas"       (2 3))))
+  '(
+    (eg    "-e"  "start up example"  "nothing")
+    (file  "-f"  "data file"         "../data/auto93.csv")
+    (help  "-h"  "shpw help"         nil)
+    (p     "-p"  "dialog asda"       2)
+    (seed  "-s"  "random seed"       1234567891)
+    ))
 ;-----------------------------------------------------------------------------------------
 (defmacro ? (x) `(cadddr (assoc ',x  *settings*)))
 
@@ -39,6 +39,12 @@ USAGE:
   #+clisp (ext:exit x)
   #+sbcl  (sb-ext:exit :code x))
 
+(defun round2 (number &optional (digits 2))
+  "round to `digits` number of decimal places"
+  (let* ((div (expt 10 digits))
+         (tmp (/ (round (* number div)) div)))
+    (if (zerop digits) (floor tmp) (float tmp)))
+
 (defvar *seed* 10013)
 (defun rand (&optional (n 1))
   (setf *seed* (mod (* 16807.0d0 *seed*) 2147483647.0d0))
@@ -47,7 +53,8 @@ USAGE:
 (defun rint (&optional (n 1) &aux (base 10000000000.0))
   (floor (* n (/ (rand base) base))))
 
-(defun normal (mu sd) (+ mu (* sd (sqrt (* -2 (log (rand)))) (cos (* 2 pi (rand))))))
+(defun normal (&optional (mu 0) (sd 1)) 
+  (+ mu (* sd (sqrt (* -2 (log (rand)))) (cos (* 2 pi (rand))))))
 
 (defmethod last-char ((s string)) (char s (1- (length s))))
 (defmethod last-char ((s symbol)) (last-char (symbol-name s)))
@@ -75,7 +82,7 @@ USAGE:
     (labels ((tail () (if there (split s sep filter (1+ there)))))
       (if (equal word "") (tail) (cons word (tail))))))
 
-(defun with-file (file fun &optional (filter #'split))
+(defun with-lines (file fun &optional (filter #'split))
   (with-open-file (s file)
     (loop (funcall fun (funcall filter (or (read-line s nil) (return)))))))
 ;-----------------------------------------------------------------------------------------
@@ -145,37 +152,40 @@ USAGE:
               mode x)))))
 
 (defmethod adds ((self sheet) (file string))
-  (with-file file (lambda (lst) (add self (make-row :cells lst)))))
+  (with-lines file (lambda (lst) (add self (make-row :cells lst)))))
 
 (defmethod adds (self (lst cons))
   (dolist (item lst self) (add self item)))
 ;-----------------------------------------------------------------------------------------
-(defun eg_fail()
+(defun eg-fail()
    nil)
 
-(defun eg_set () 
-  "print something"
-  (print *settings*))
+(defun eg-set () 
+  "are the settings ok?"
+  (format t "~{~a~%~}" *settings*)
+  (dolist (x '(help seed file eg) t)
+    (or (cdr (assoc x *settings*)) 
+        (return-from eg-set (format t "missing in *settings* : ~a~%" x)))))
 
-(defun eg_rand () 
-  "print something"
+(defun eg-rand () 
+  "if seed reset, then same psuedoi-randoms?"
   (let (a b)
     (setf *seed* 1) (setf a (sort (loop repeat 10 collect (rint 100)) #'<))
     (setf *seed* 1) (setf b (sort (loop repeat 10 collect (rint 100)) #'<))
     (equal a b)))
 
-(defun eg_file (&aux (n 0))
-  (with-file (? file) (lambda (a) (incf n (length a))))
+(defun eg-file (&aux (n 0))
+  (with-lines (? file) (lambda (a) (incf n (length a))))
   (= n 3192))
 
-(defun eg_sym ()
+(defun eg-sym ()
   (< 1.378 (div (adds (make-sym) '(a a a a b b c))) 1.388))
  
-(defun eg_num()
+(defun eg-num()
   (< 9.95 (mid (adds (make-num) (loop repeat 10000 collect (normal 10 2)))) 10.05))
 
 ;-----------------------------------------------------------------------------------------
-(defun tiny (&optional (pre "eg_") (w 3))
+(defun tiny (&optional (pre "eg-") (w 3))
   (labels 
     ((str  (sym) (string-downcase (symbol-name sym)))
      (eg   (x)   (equalp pre (subseq (str x) 0 (min w (length (str x)))))) 
