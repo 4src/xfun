@@ -147,7 +147,7 @@ USAGE:
 
 (defun eg_jane () 
   "print something"
-  (print 2))
+  1)
 
 (defun tiny (&optional (pre "EG_"))
   "assumes there is a *settings* and *help*"
@@ -161,7 +161,7 @@ USAGE:
      (run  (sym) (let ((b4 (copy-tree *settings*)))
                    (setf *seed* (? seed))
                    (let ((status (funcall sym)))
-                     (unless status (format t "FAIL ❌ ~a~%" sym))
+                     (unless status (format t "FAIL: ❌ ~a~%" sym))
                      (setf *settings* (copy-tree b4))
                      status)))
      (show ()    (format t "~a~%~%" *help*)
