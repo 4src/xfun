@@ -160,9 +160,10 @@ USAGE:
      (uses (lst) (loop for x in lst if (use x) collect x))
      (run  (sym) (let ((b4 (copy-tree *settings*)))
                    (setf *seed* (? seed))
-                   (prog1 
-                     (funcall sym)
-                     (setf *settings* (copy-tree b4)))))
+                   (let ((status (funcall sym)))
+                     (unless status (format t "FAIL ❌ ~a~%" sym))
+                     (setf *settings* (copy-tree b4))
+                     status)))
      (show ()    (format t "~a~%~%" *help*)
                  (loop for (_ s1 s2 __) in *settings* do (format t "  ~10a  ~a~%" s1 s2))
                  (format t "~%OPTIONS:~%")
