@@ -9,11 +9,12 @@ USAGE:
 
 (defvar *settings* 
   '(
-    (eg    "-e"  "start up example"  "nothing")
-    (file  "-f"  "data file"         "../data/auto93.csv")
-    (help  "-h"  "shpw help"         nil)
-    (p     "-p"  "dialog asda"       2)
-    (seed  "-s"  "random seed"       1234567891)
+    (cliffs "-c"  "cliffs delta"      0.147)
+    eg      "-e"  "start up example"  "nothing")
+    (file   "-f"  "data file"         "../data/auto93.csv")
+    (help   "-h"  "shpw help"         nil)
+    (p      "-p"  "dialog asda"       2)
+    (seed   "-s"  "random seed"       1234567891)
     ))
 ;-----------------------------------------------------------------------------------------
 (defmacro ? (x) `(cadddr (assoc ',x  *settings*)))
@@ -43,7 +44,7 @@ USAGE:
   "round to `digits` number of decimal places"
   (let* ((div (expt 10 digits))
          (tmp (/ (round (* number div)) div)))
-    (if (zerop digits) (floor tmp) (float tmp)))
+    (if (zerop digits) (floor tmp) (float tmp))))
 
 (defvar *seed* 10013)
 (defun rand (&optional (n 1))
@@ -52,6 +53,17 @@ USAGE:
 
 (defun rint (&optional (n 1) &aux (base 10000000000.0))
   (floor (* n (/ (rand base) base))))
+
+(defmethod shuffle ((a cons)) 
+  (coerce (shuffle (coerce a 'simple-vector)) 'cons))
+(defmethod shuffle ((a array)) 
+  (loop for i from (length a) downto 2 do (rotatef (elt a (rint i)) (elt a (1- i))))
+  a)
+
+(defun time-it (fun &optional (repeats 1))
+  (let ((t0 (get-internal-real-time)))
+    (dotimes (_ repeats) (funcall fun))
+    (float (/ (-(get-internal-real-time) t0) repeats))))
 
 (defun normal (&optional (mu 0) (sd 1)) 
   (+ mu (* sd (sqrt (* -2 (log (rand)))) (cos (* 2 pi (rand))))))
@@ -85,6 +97,17 @@ USAGE:
 (defun with-lines (file fun &optional (filter #'split))
   (with-open-file (s file)
     (loop (funcall fun (funcall filter (or (read-line s nil) (return)))))))
+
+(defun cliffs-delta (xs ys &aux (n 0) (lt 0) (gt 0))
+  (let ((n1 (length xs))
+        (n2 (length ys)))
+    (cond ((> n1 (* 10 n2)) (cliffs-delta (subseq (shuffle xs) 0 (* 10 n2)) ys))
+          ((> n2 (* 10 n1)) (cliffs-delta xs (subseq (shuffle ys) 0 (* 10 n1))))
+          (t (dolist (x xs (> (/ (abs (- gt lt)) n) (? cliffs)))
+               (dolist (y ys)
+                 (incf n)
+                 (if (> x y) (incf gt))
+                 (if (< x y) (incf lt))))))))
 ;-----------------------------------------------------------------------------------------
 (defstruct sym 
   (at 0) (name " ") (n 0) has (most 0) mode)
@@ -158,6 +181,7 @@ USAGE:
   (dolist (item lst self) (add self item)))
 ;-----------------------------------------------------------------------------------------
 (defun eg-fail()
+  "can the test engine handle a fail?"
    nil)
 
 (defun eg-set () 
@@ -175,14 +199,23 @@ USAGE:
     (equal a b)))
 
 (defun eg-file (&aux (n 0))
+  "can count cells in a csv file?"
   (with-lines (? file) (lambda (a) (incf n (length a))))
   (= n 3192))
 
 (defun eg-sym ()
+  "can compute entropy?"
   (< 1.378 (div (adds (make-sym) '(a a a a b b c))) 1.388))
  
 (defun eg-num()
-  (< 9.95 (mid (adds (make-num) (loop repeat 10000 collect (normal 10 2)))) 10.05))
+  "can compute mu and standard deviation?"
+  (let ((num (adds (make-num) (loop repeat 10000 collect (normal 10 2)))))
+    (and (< 9.95 (mid num) 10.05) (< 1.95 (div num) 2.05))))
+
+(defun eg-shuffle ()
+  "can numbers be shuffled?"
+  (let ((nums (loop for x upto 20 collect x)))
+    (equal nums  (sort (shuffle (copy-tree nums)) #'<))))
 
 ;-----------------------------------------------------------------------------------------
 (defun tiny (&optional (pre "eg-") (w 3))
@@ -198,7 +231,7 @@ USAGE:
              (or (funcall sym) 
                  (format t "~&❌ FAIL: ~a~%" sym))
              (setf *settings* (copy-tree b4))))
-     (show ()    
+     (show-help ()    
            (format t "~a~%~%" *help*)
            (loop for (_ s1 s2 __) in *settings* do (format t "  ~10a  ~a~%" s1 s2))
            (format t "~%OPTIONS:~%")
@@ -207,7 +240,7 @@ USAGE:
                          (subseq (str x) w) (documentation x 'function)))))
     (setf *settings* (cli *settings*))
     (if (? help)
-      (show)
+      (show-help)
       (goodbye (loop for eg in (uses (egs)) sum (if (run eg) 0 1))))))
 
 (tiny)
