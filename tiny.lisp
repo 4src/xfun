@@ -147,7 +147,7 @@ USAGE:
 
 (defun eg_jane () 
   "print something"
-  1)
+  (print 2))
 
 (defun tiny (&optional (pre "EG_"))
   "assumes there is a *settings* and *help*"
