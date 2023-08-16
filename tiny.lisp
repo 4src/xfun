@@ -188,7 +188,8 @@ USAGE:
              (or (funcall sym) 
                  (format t "~&❌ FAIL: ~a~%" sym))
              (setf *settings* (copy-tree b4))))
-     (show ()    (format t "~a~%~%" *help*)
+     (show ()    
+           (format t "~a~%~%" *help*)
            (loop for (_ s1 s2 __) in *settings* do (format t "  ~10a  ~a~%" s1 s2))
            (format t "~%OPTIONS:~%")
            (loop for x in (egs) do
