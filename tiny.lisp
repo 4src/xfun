@@ -1,10 +1,18 @@
 ; vi: set ts=2 sw=2 sts=2 et :
 ;## Globals
+(defvar *help* "
+tiny : fun with stuff
+(c)2023 Tim Menzies <timm.ieee.org> BSD-2
+
+USAGE:
+  sbcl --script tiny.lisp")
 
 (defvar *settings* '(
   (p       "-p"      "dialog asda" 2)
   (dialog "--dialog" "asda"        t)
   (seed   "--seed"   "randseed"    1234567891)
+  (help   "-h"       "shpw help"   nil)
+  (eg     "-e"       "start up example" "nothing")
   (xx     "-p"       "asdas"       (2 3))))
 ;-----------------------------------------------------------------------------------------
 (defmacro ? (x) `(cadddr (assoc ',x  *settings*)))
@@ -22,28 +30,6 @@
   `(cdr (or (assoc ,x ,lst :test #'equal)
             (car (setf ,lst (cons (cons ,x ,init) ,lst))))))
 ;-----------------------------------------------------------------------------------------
-(defvar *seed* 10013)
-(defun rand (&optional (n 1))
-  (setf *seed* (mod (* 16807.0d0 *seed*) 2147483647.0d0))
-  (* n (- 1.0d0 (/ *seed* 2147483647.0d0))))
-
-(defun rint (&optional (n 1) &aux (base 10000000000.0))
-  (floor (* n (/ (rand base) base)))
-
-(defmethod last-char ((s string)) (char s (1- (length s))))
-(defmethod last-char ((s symbol)) (last-char (symbol-name s)))
-
-(defun thing (s &aux (s1 (string-trim '(#\Space #\Tab) s)))
-  (if (string= s1 "?") #\?
-    (let ((n (read-from-string s1)))
-      (if (numberp n) n s1))))
-
-(defun split (s &optional (sep #\,) (filter #'thing) (here 0))
-  (let* ((there (position sep s :start here))
-         (word  (funcall filter (subseq s here there))))
-    (labels ((tail () (if there (split s sep filter (1+ there)))))
-      (if (equal word "") (tail) (cons word (tail))))))
-
 (defun args ()
   #+clisp ext:*args*
   #+sbcl sb-ext:*posix-argv*)
@@ -52,14 +38,40 @@
   #+clisp (ext:exit x)
   #+sbcl  (sb-ext:exit :code x))
 
+(defvar *seed* 10013)
+(defun rand (&optional (n 1))
+  (setf *seed* (mod (* 16807.0d0 *seed*) 2147483647.0d0))
+  (* n (- 1.0d0 (/ *seed* 2147483647.0d0))))
+
+(defun rint (&optional (n 1) &aux (base 10000000000.0))
+  (floor (* n (/ (rand base) base))))
+
+(defmethod last-char ((s string)) (char s (1- (length s))))
+(defmethod last-char ((s symbol)) (last-char (symbol-name s)))
+
 (defun cli (lst)
   (loop for (key flag help b4) in lst collect
-        (list key flag help (aif (member flag (args))
+        (list key flag help (aif (member flag (args) :test #'string=)
                                  (cond ((eq b4 t) nil)
                                        ((eq b4 nil) t)
                                        ((stringp b4) (second it))
                                        (t  (read-from-string (second it))))
                                  b4))))
+
+(defun thing (s &aux (s1 (string-trim '(#\Space #\Tab) s)))
+  (if (string= s1 "?") #\?
+    (let ((x (read-from-string s1)))
+      (print (list 'things x (type-of x) s1))
+      (cond ((numberp x) x)
+            ((eq x t)    x)
+            ((eq x nil)  x)
+            (t           s1)))))
+
+(defun split (s &optional (sep #\,) (filter #'thing) (here 0))
+  (let* ((there (position sep s :start here))
+         (word  (funcall filter (subseq s here there))))
+    (labels ((tail () (if there (split s sep filter (1+ there)))))
+      (if (equal word "") (tail) (cons word (tail))))))
 
 (defun with-file (file fun &optional (filter #'split))
   (with-open-file (s file)
@@ -91,7 +103,7 @@
           (push col (cols-y self))
           (push col (cols-x self)))))))
 
-(defstruct row  cells)
+(defstruct row cells)
 
 (defstruct (sheet (:constructor %make-sheet))  rows cols)
 (defun make-sheet (src &optional (self (%make-sheet)))
@@ -129,22 +141,37 @@
 (defmethod adds ((self sheet) (rows cons))
   (dolist (row rows) (add self row)))
 
-(defun eg_fred () (print 1))
+(defun eg_fred () 
+  "print something"
+  (print 1))
 
-(defun egs()
-  (labels ((egp (s &aux (str (symbol-name s)))
-                (equalp "EG_" (subseq str 0 (min 3 (length str))))))
-    (loop for s being the symbols in *package* if (egp s) collect s)))
+(defun eg_jane () 
+  "print something"
+  (print 2))
 
-(defun run1 (sym)
- (let ((b4 (tree-copy *settings*)))
-    (setf *seed* (? seed))
-    (prog1 
-      (funcall sym)
-      (setf *settings* (tree-copy b4)))))
+(defun tiny (&optional (pre "EG_"))
+  "assumes there is a *settings* and *help*"
+  (labels 
+    ((str  (sym) (symbol-name sym))
+     (eg   (x)   (equalp pre (subseq (str x) 0 (min (length pre) (length (str x)))))) 
+     (egs  ()    (loop for x being the symbols in *package* if (eg x) collect x))
+     (use  (x)   (member (? eg) `("all" ,(string-downcase (subseq (str x) (length pre)))) 
+                         :test #'string=))
+     (uses (lst) (loop for x in lst if (use x) collect x))
+     (run  (sym) (let ((b4 (copy-tree *settings*)))
+                   (setf *seed* (? seed))
+                   (prog1 
+                     (funcall sym)
+                     (setf *settings* (copy-tree b4)))))
+     (show ()    (format t "~a~%~%" *help*)
+                 (loop for (_ s1 s2 __) in *settings* do (format t "  ~10a  ~a~%" s1 s2))
+                 (format t "~%OPTIONS:~%")
+                 (loop for x in (egs) do
+                     (format t "  -e ~(~8a~) ~a~%" (subseq (str x) (length pre)) 
+                        (documentation x 'function)))))
+    (if (? help)
+      (show)
+      (loop for eg in (uses (egs)) sum (if (run eg) 0 1)))))
 
-(print(make-row :cells '(10)))
-(print (? p))
 (setf *settings* (cli *settings*))
-(print (? dialog))
-(print (egs))
+(goodbye (tiny))
