@@ -1,4 +1,4 @@
-; vi: set ts=2 sw=2 sts=2 et :
+; vim : set ts=3 sw=3 sts=3 et :
 ;## Globals
 (defvar *help* "
 tiny : fun with stuff
@@ -7,13 +7,14 @@ tiny : fun with stuff
 USAGE:
   sbcl --script tiny.lisp")
 
-(defvar *settings* '(
-  (p       "-p"      "dialog asda" 2)
-  (dialog "--dialog" "asda"        t)
-  (seed   "--seed"   "randseed"    1234567891)
-  (help   "-h"       "shpw help"   nil)
-  (eg     "-e"       "start up example" "nothing")
-  (xx     "-p"       "asdas"       (2 3))))
+(defvar *settings* 
+  '((p       "-p"      "dialog asda" 2)
+    (dialog "--dialog" "asda"        t)
+    (seed   "--seed"   "randseed"    1234567891)
+    (help   "-h"       "shpw help"   nil)
+    (eg     "-e"       "start up example" "nothing")
+    (file   "-f"       "data file"  "../data/auto93.csv")
+    (xx     "-p"       "asdas"       (2 3))))
 ;-----------------------------------------------------------------------------------------
 (defmacro ? (x) `(cadddr (assoc ',x  *settings*)))
 
@@ -46,6 +47,8 @@ USAGE:
 (defun rint (&optional (n 1) &aux (base 10000000000.0))
   (floor (* n (/ (rand base) base))))
 
+(defun normal (mu sd) (+ mu (* sd (sqrt (* -2 (log (rand)))) (cos (* 2 pi (rand))))))
+
 (defmethod last-char ((s string)) (char s (1- (length s))))
 (defmethod last-char ((s symbol)) (last-char (symbol-name s)))
 
@@ -61,7 +64,6 @@ USAGE:
 (defun thing (s &aux (s1 (string-trim '(#\Space #\Tab) s)))
   (if (string= s1 "?") #\?
     (let ((x (read-from-string s1)))
-      (print (list 'things x (type-of x) s1))
       (cond ((numberp x) x)
             ((eq x t)    x)
             ((eq x nil)  x)
@@ -80,12 +82,19 @@ USAGE:
 (defstruct sym 
   (at 0) (name " ") (n 0) has (most 0) mode)
 
+(defmethod mid ((s sym)) (sym-mode s))
+(defmethod div ((s sym))
+  (with-slots (has n) s
+    (* -1  (loop for (_ . v) in has sum  (* (/ v n)  (log (/ v n) 2))))))
+
 (defstruct (num (:constructor %make-num)) 
-  (at 0) (name " ") (n 0) (mu 0) (mu2 0) (lo 1E30) (hi -1E30) (heaven 0))
+  (at 0) (name " ") (n 0) (mu 0) (m2 0) (lo 1E30) (hi -1E30) (heaven 0))
 
 (defun make-num (&key (at 0) (name " "))
-    (%make-num :at at :name name 
-                          :heaven (if (eq #\- (last-char name)) 0 1)))
+  (%make-num :at at :name name :heaven (if (eq #\- (last-char name)) 0 1)))
+
+(defmethod mid ((n num)) (num-mu n))
+(defmethod div ((n num)) (sqrt (/ (num-m2 n) (- (num-n n) 1))))
 
 (defun make-col (&key (at 0) (name " "))
   (if (upper-case-p (char name 0))
@@ -128,52 +137,66 @@ USAGE:
               hi (max x hi))))))
 
 (defmethod add ((self sym) x)
-  (with-slots (seen mode most n has) self
+  (with-slots (mode most n has) self
     (unless (eq #\? x)
       (incf n)
       (if (> (incf (seen x has)) most)
-        (setf most (cdr (assoc x seen))
+        (setf most (cdr (assoc x has))
               mode x)))))
 
 (defmethod adds ((self sheet) (file string))
   (with-file file (lambda (lst) (add self (make-row :cells lst)))))
 
-(defmethod adds ((self sheet) (rows cons))
-  (dolist (row rows) (add self row)))
+(defmethod adds (self (lst cons))
+  (dolist (item lst self) (add self item)))
+;-----------------------------------------------------------------------------------------
+(defun eg_fail()
+   nil)
 
-(defun eg_fred () 
+(defun eg_set () 
   "print something"
-  (print 1))
+  (print *settings*))
 
-(defun eg_jane () 
+(defun eg_rand () 
   "print something"
-  (print 2))
+  (let (a b)
+    (setf *seed* 1) (setf a (sort (loop repeat 10 collect (rint 100)) #'<))
+    (setf *seed* 1) (setf b (sort (loop repeat 10 collect (rint 100)) #'<))
+    (equal a b)))
 
-(defun tiny (&optional (pre "EG_"))
-  "assumes there is a *settings* and *help*"
+(defun eg_file (&aux (n 0))
+  (with-file (? file) (lambda (a) (incf n (length a))))
+  (= n 3192))
+
+(defun eg_sym ()
+  (< 1.378 (div (adds (make-sym) '(a a a a b b c))) 1.388))
+ 
+(defun eg_num()
+  (< 9.95 (mid (adds (make-num) (loop repeat 10000 collect (normal 10 2)))) 10.05))
+
+;-----------------------------------------------------------------------------------------
+(defun tiny (&optional (pre "eg_") (w 3))
   (labels 
-    ((str  (sym) (symbol-name sym))
-     (eg   (x)   (equalp pre (subseq (str x) 0 (min (length pre) (length (str x)))))) 
+    ((str  (sym) (string-downcase (symbol-name sym)))
+     (eg   (x)   (equalp pre (subseq (str x) 0 (min w (length (str x)))))) 
      (egs  ()    (loop for x being the symbols in *package* if (eg x) collect x))
-     (use  (x)   (member (? eg) `("all" ,(string-downcase (subseq (str x) (length pre)))) 
-                         :test #'string=))
+     (use  (x)   (member (? eg) `("all" ,(subseq (str x) w)) :test #'string=))
      (uses (lst) (loop for x in lst if (use x) collect x))
-     (run  (sym) (let (status
-                        (b4 (copy-tree *settings*)))
-                   (setf *seed* (? seed))
-                   (setf status (funcall sym))
-                   (unless status (format t "FAIL: ❌ ~a~%" sym))
-                   (setf *settings* (copy-tree b4))
-                   status))
+     (run  (sym &aux (b4 (copy-tree *settings*)))
+           (setf *seed* (? seed))
+           (prog1
+             (or (funcall sym) 
+                 (format t "~&❌ FAIL: ~a~%" sym))
+             (setf *settings* (copy-tree b4))))
      (show ()    (format t "~a~%~%" *help*)
-                 (loop for (_ s1 s2 __) in *settings* do (format t "  ~10a  ~a~%" s1 s2))
-                 (format t "~%OPTIONS:~%")
-                 (loop for x in (egs) do
-                     (format t "  -e ~(~8a~) ~a~%" (subseq (str x) (length pre)) 
-                        (documentation x 'function)))))
+           (loop for (_ s1 s2 __) in *settings* do (format t "  ~10a  ~a~%" s1 s2))
+           (format t "~%OPTIONS:~%")
+           (loop for x in (egs) do
+                 (format t "  -e ~8a ~a~%" 
+                         (subseq (str x) w) (documentation x 'function)))))
+    (setf *settings* (cli *settings*))
     (if (? help)
       (show)
-      (loop for eg in (uses (egs)) sum (if (run eg) 0 1)))))
+      (goodbye (loop for eg in (uses (egs)) sum (if (run eg) 0 1))))))
 
-(setf *settings* (cli *settings*))
-(goodbye (tiny))
+(tiny)
