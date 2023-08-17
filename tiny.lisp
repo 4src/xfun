@@ -10,7 +10,7 @@ USAGE:
 (defvar *settings* 
   '(
     (cliffs "-c"  "cliffs delta"      0.147)
-    eg      "-e"  "start up example"  "nothing")
+    (eg      "-e"  "start up example"  "nothing")
     (file   "-f"  "data file"         "../data/auto93.csv")
     (help   "-h"  "shpw help"         nil)
     (p      "-p"  "dialog asda"       2)
@@ -54,13 +54,17 @@ USAGE:
 (defun rint (&optional (n 1) &aux (base 10000000000.0))
   (floor (* n (/ (rand base) base))))
 
-(defmethod shuffle ((a cons)) 
-  (coerce (shuffle (coerce a 'simple-vector)) 'cons))
-(defmethod shuffle ((a array)) 
-  (loop for i from (length a) downto 2 do (rotatef (elt a (rint i)) (elt a (1- i))))
+(defmethod sample ((a cons)   &optional (n (length a))) (sample (coerce a 'vector) n))
+(defmethod sample ((a vector) &optional (n (length a)))
+  (let ((len (length a)))
+    (loop :repeat n :collect (elt a (rint len)))))
+
+(defmethod shuffle ((a cons)) (coerce (shuffle (coerce a 'vector)) 'cons))
+(defmethod shuffle ((a vector)) 
+  (loop :for i :from (length a) :downto 2 :do (rotatef (elt a (rint i)) (elt a (1- i))))
   a)
 
-(defun some (seq n)
+(defun few (seq n)
    (subseq (shuffle seq) 0 n))
 
 (defun time-it (fun &optional (repeats 1))
@@ -75,7 +79,7 @@ USAGE:
 (defmethod last-char ((s symbol)) (last-char (symbol-name s)))
 
 (defun cli (lst)
-  (loop for (key flag help b4) in lst collect
+  (loop :for (key flag help b4) :in lst :collect
         (list key flag help (aif (member flag (args) :test #'string=)
                                  (cond ((eq b4 t) nil)
                                        ((eq b4 nil) t)
@@ -101,20 +105,29 @@ USAGE:
   (with-open-file (s file)
     (loop (funcall fun (funcall filter (or (read-line s nil) (return)))))))
 
-(defun cliffs-delta (xs ys &aux (n 0) (lt 0) (gt 0))
-  (let ((n1 (length xs))
-        (n2 (length ys)))
-    (cond ((> n1 (* 10 n2)) (cliffs-delta (some xs (* 10 n2)) ys))
-          ((> n2 (* 10 n1)) (cliffs-delta xs (some ys (* 10 n1))))
-          (t (dolist (x xs (> (/ (abs (- gt lt)) n) (? cliffs)))
-               (dolist (y ys)
-                 (incf n)
-                 (if (> x y) (incf gt))
-                 (if (< x y) (incf lt))))))))
+(defun cliffs-delta (xs ys &aux (n12 0) (lt 0) (gt 0) 
+                                (n1 (length xs)) (n2 (length ys)))
+  (cond ((> n1 (* 10 n2)) (cliffs-delta (few xs (* 10 n2)) ys))
+        ((> n2 (* 10 n1)) (cliffs-delta xs (few ys (* 10 n1))))
+        (t (dolist (x xs (> (/ (abs (- gt lt)) n12) (? cliffs)))
+             (dolist (y ys)
+               (incf n12)
+               (if (> x y) (incf gt))
+               (if (< x y) (incf lt)))))))
 
-(defun boostrap (xs ys &optional (conf .05))
-  (labels ((ob (x y) (/ (abs (- (mid x) (mid y))) 
-                        (+ (/ 
+(defun bootstrap (y0 z0)
+  (let* ((y    (adds (make-num) y0))
+         (z    (adds (make-num) z0))
+         (x    (adds (adds (make-num y0)) z0))
+         (d    (critical y z))
+         (yhat (mapcar (lambda(y1) (- y1 (mid y) (mid x))) y0))
+         (zhat (mapcar (lambda(z1) (- z1 (mid z) (mid x))) z0))
+         (n    (loop :repeat (? bootstraps)
+                     :if     (> (critical (adds (make-num) (sample yhat)) 
+                                          (adds (make-num) (sample zhat))) 
+                                d) 
+                     :sum    1)))
+    (< (/ n (? bootstraps)) (? bootconf))))
 ;-----------------------------------------------------------------------------------------
 (defstruct sym 
   (at 0) (name " ") (n 0) has (most 0) mode)
@@ -122,7 +135,7 @@ USAGE:
 (defmethod mid ((s sym)) (sym-mode s))
 (defmethod div ((s sym))
   (with-slots (has n) s
-    (* -1  (loop for (_ . v) in has sum  (* (/ v n)  (log (/ v n) 2))))))
+    (* -1  (loop :for (_ . v) :in has :sum  (* (/ v n)  (log (/ v n) 2))))))
 
 (defstruct (num (:constructor %make-num)) 
   (at 0) (name " ") (n 0) (mu 0) (m2 0) (lo 1E30) (hi -1E30) (heaven 0))
@@ -132,6 +145,17 @@ USAGE:
 
 (defmethod mid ((n num)) (num-mu n))
 (defmethod div ((n num)) (sqrt (/ (num-m2 n) (- (num-n n) 1))))
+
+(defmethod pooled ((i num) (j num))
+   (sqrt (/ (+ (* (1- (o i n)) (expt (div i) 2))
+               (* (1- (o j n)) (expt (div j) 2)))
+            (+ (o i n) (o j n)  -2))))
+
+(defmethod critical ((i num) (j num))
+  (/ (abs (- (mid i) (mid j)))
+     (sqrt (+ (/ (expt (div i) 2) (o i n)) 
+              (/ (expt (div j) 2) (o j n))
+              1E-30))))
 
 (defun make-col (&key (at 0) (name " "))
   (if (upper-case-p (char name 0))
@@ -201,8 +225,8 @@ USAGE:
 (defun eg-rand () 
   "if seed reset, then same psuedoi-randoms?"
   (let (a b)
-    (setf *seed* 1) (setf a (sort (loop repeat 10 collect (rint 100)) #'<))
-    (setf *seed* 1) (setf b (sort (loop repeat 10 collect (rint 100)) #'<))
+    (setf *seed* 1) (setf a (sort (loop :repeat 10 :collect (rint 100)) #'<))
+    (setf *seed* 1) (setf b (sort (loop :repeat 10 :collect (rint 100)) #'<))
     (equal a b)))
 
 (defun eg-file (&aux (n 0))
@@ -216,12 +240,12 @@ USAGE:
  
 (defun eg-num()
   "can compute mu and standard deviation?"
-  (let ((num (adds (make-num) (loop repeat 10000 collect (normal 10 2)))))
+  (let ((num (adds (make-num) (loop :repeat 10000 :collect (normal 10 2)))))
     (and (< 9.95 (mid num) 10.05) (< 1.95 (div num) 2.05))))
 
 (defun eg-shuffle ()
   "can numbers be shuffled?"
-  (let ((nums (loop for x upto 20 collect x)))
+  (let ((nums (loop :for x :upto 20 :collect x)))
     (equal nums  (sort (shuffle (copy-tree nums)) #'<))))
 
 ;-----------------------------------------------------------------------------------------
@@ -229,9 +253,9 @@ USAGE:
   (labels 
     ((str  (sym) (string-downcase (symbol-name sym)))
      (eg   (x)   (equalp pre (subseq (str x) 0 (min w (length (str x)))))) 
-     (egs  ()    (loop for x being the symbols in *package* if (eg x) collect x))
+     (egs  ()    (loop :for x :being :the symbols :in *package* :if (eg x) :collect x))
      (use  (x)   (member (? eg) `("all" ,(subseq (str x) w)) :test #'string=))
-     (uses (lst) (loop for x in lst if (use x) collect x))
+     (uses (lst) (loop :for x :in lst :if (use x) :collect x))
      (run  (sym &aux (b4 (copy-tree *settings*)))
            (setf *seed* (? seed))
            (prog1
@@ -240,14 +264,14 @@ USAGE:
              (setf *settings* (copy-tree b4))))
      (show-help ()    
            (format t "~a~%~%" *help*)
-           (loop for (_ s1 s2 __) in *settings* do (format t "  ~10a  ~a~%" s1 s2))
+           (loop :for (_ s1 s2 __) :in *settings* :do (format t "  ~10a  ~a~%" s1 s2))
            (format t "~%OPTIONS:~%")
-           (loop for x in (egs) do
+           (loop :for x :in (egs) :do
                  (format t "  -e ~8a ~a~%" 
                          (subseq (str x) w) (documentation x 'function)))))
     (setf *settings* (cli *settings*))
     (if (? help)
       (show-help)
-      (goodbye (loop for eg in (uses (egs)) sum (if (run eg) 0 1))))))
+      (goodbye (loop :for eg :in (uses (egs)) :sum (if (run eg) 0 1))))))
 
 (tiny)
