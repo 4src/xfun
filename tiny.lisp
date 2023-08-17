@@ -1,23 +1,25 @@
 ; vim : set ts=3 sw=3 sts=3 et :
 ;## Globals
-(defvar *help* "
+(defvar *settings* ; car is help text, cdr are the settings
+'("
 tiny : fun with stuff
 (c)2023 Tim Menzies <timm.ieee.org> BSD-2
 
 USAGE:
-  sbcl --script tiny.lisp")
-
-(defvar *settings* 
-  '(
-    (cliffs "-c"  "cliffs delta"      0.147)
-    (eg      "-e"  "start up example"  "nothing")
-    (file   "-f"  "data file"         "../data/auto93.csv")
-    (help   "-h"  "shpw help"         nil)
-    (p      "-p"  "dialog asda"       2)
-    (seed   "-s"  "random seed"       1234567891)
+sbcl --script tiny.lisp [OPTIONS] -e [ACTIONS]
+"
+    (bootstraps "-B"  "number of bootstraps"  256)
+    (bootConf   "-C"  "bootstrap threshold"   .05)
+    (cliffs     "-cl"  "cliffs delta"         .147)
+    (cohen      "-c"  "cliffs delta"          .35)
+    (eg         "-e"  "start up actions"      "nothing")
+    (file       "-f"  "data file"             "../data/auto93.csv")
+    (help       "-h"  "show help"             nil)
+    (p          "-p"  "distance coefficient"  2)
+    (seed       "-s"  "random seed"           1234567891)
     ))
 ;-----------------------------------------------------------------------------------------
-(defmacro ? (x) `(cadddr (assoc ',x  *settings*)))
+(defmacro ? (x) `(cadddr (assoc ',x  (cdr *settings*))))
 
 (defmacro aif (test then &optional else) 
   `(let ((it ,test)) 
@@ -79,7 +81,7 @@ USAGE:
 (defmethod last-char ((s symbol)) (last-char (symbol-name s)))
 
 (defun cli (lst)
-  (loop :for (key flag help b4) :in lst :collect
+   (loop :for (key flag help b4) :in lst :collect
         (list key flag help (aif (member flag (args) :test #'string=)
                                  (cond ((eq b4 t) nil)
                                        ((eq b4 nil) t)
@@ -102,20 +104,35 @@ USAGE:
       (if (equal word "") (tail) (cons word (tail))))))
 
 (defun with-lines (file fun &optional (filter #'split))
-  (with-open-file (s file)
+  (with-open-file (s (or file  *standard-input*))
     (loop (funcall fun (funcall filter (or (read-line s nil) (return)))))))
 
-(defun cliffs-delta (xs ys &aux (n12 0) (lt 0) (gt 0) 
+(defun per (a &optional (p .5)) (elt a (floor (* p (length a)))))
+
+(defmethod div ((a cons)) (/ (- (per a .9) (per a .1)) 2.56))
+(defmethod mid ((a cons)) (per a .5))
+(defmethod len ((a cons)) (length a))
+
+(defmethod cohen ((xs cons) (ys cons) &optional sorted)
+  (unless sorted
+    (sort xs #'<)
+    (sort ys #'<))
+  (> (/ (abs (- (mid xs) (mid ys))) 
+        (pooled xs ys)) 
+     (? cohen)))
+
+(defmethod cliffs-delta ((xs cons) (ys cons) &aux (n12 0) (lt 0) (gt 0) 
                                 (n1 (length xs)) (n2 (length ys)))
   (cond ((> n1 (* 10 n2)) (cliffs-delta (few xs (* 10 n2)) ys))
         ((> n2 (* 10 n1)) (cliffs-delta xs (few ys (* 10 n1))))
-        (t (dolist (x xs (> (/ (abs (- gt lt)) n12) (? cliffs)))
+        (t (dolist (x xs)
              (dolist (y ys)
                (incf n12)
                (if (> x y) (incf gt))
-               (if (< x y) (incf lt)))))))
+               (if (< x y) (incf lt))))
+           (> (/ (abs (- gt lt)) n12) (? cliffs)))))
 
-(defun bootstrap (y0 z0)
+(defmethod bootstrap ((y0 cons) (z0 cons))
   (let* ((y    (adds (make-num) y0))
          (z    (adds (make-num) z0))
          (x    (adds (adds (make-num y0)) z0))
@@ -123,10 +140,9 @@ USAGE:
          (yhat (mapcar (lambda(y1) (- y1 (mid y) (mid x))) y0))
          (zhat (mapcar (lambda(z1) (- z1 (mid z) (mid x))) z0))
          (n    (loop :repeat (? bootstraps)
-                     :if     (> (critical (adds (make-num) (sample yhat)) 
+                     :count  (> (critical (adds (make-num) (sample yhat)) 
                                           (adds (make-num) (sample zhat))) 
-                                d) 
-                     :sum    1)))
+                                d)))) 
     (< (/ n (? bootstraps)) (? bootconf))))
 ;-----------------------------------------------------------------------------------------
 (defstruct sym 
@@ -146,12 +162,14 @@ USAGE:
 (defmethod mid ((n num)) (num-mu n))
 (defmethod div ((n num)) (sqrt (/ (num-m2 n) (- (num-n n) 1))))
 
-(defmethod pooled ((i num) (j num))
-   (sqrt (/ (+ (* (1- (o i n)) (expt (div i) 2))
-               (* (1- (o j n)) (expt (div j) 2)))
-            (+ (o i n) (o j n)  -2))))
+(defmethod len ((n num)) (num-n num))
 
-(defmethod critical ((i num) (j num))
+(defun pooled (i j) 
+   (sqrt (/ (+ (* (1- (len i)) (expt (div i) 2))
+               (* (1- (len j)) (expt (div j) 2)))
+            (+ (len i) (len j)  -2))))
+
+(defun critical (i j)
   (/ (abs (- (mid i) (mid j)))
      (sqrt (+ (/ (expt (div i) 2) (o i n)) 
               (/ (expt (div j) 2) (o j n))
@@ -219,7 +237,7 @@ USAGE:
   "are the settings ok?"
   (format t "~{~a~%~}" *settings*)
   (dolist (x '(help seed file eg) t)
-    (or (cdr (assoc x *settings*)) 
+    (or (cdr (assoc x (cdr *settings*))) 
         (return-from eg-set (format t "missing in *settings* : ~a~%" x)))))
 
 (defun eg-rand () 
@@ -257,19 +275,20 @@ USAGE:
      (use  (x)   (member (? eg) `("all" ,(subseq (str x) w)) :test #'string=))
      (uses (lst) (loop :for x :in lst :if (use x) :collect x))
      (run  (sym &aux (b4 (copy-tree *settings*)))
-           (setf *seed* (? seed))
+           (setf *seed* (?  seed))
+           (format *error-output* "🔆 ~(~a~)?~%" sym)
            (prog1
              (or (funcall sym) 
-                 (format t "~&❌ FAIL: ~a~%" sym))
+                 (format *error-output* "~&❌ FAIL: ~a~%" sym))
              (setf *settings* (copy-tree b4))))
      (show-help ()    
-           (format t "~a~%~%" *help*)
-           (loop :for (_ s1 s2 __) :in *settings* :do (format t "  ~10a  ~a~%" s1 s2))
-           (format t "~%OPTIONS:~%")
+           (format t "~a~%OPTIONS:~%" (car *settings*))
+           (loop :for (_ s1 s2 __) :in (cdr *settings*) :do (format t "  ~10a  ~a~%" s1 s2))
+           (format t "~%ACTIONS:~%")
            (loop :for x :in (egs) :do
                  (format t "  -e ~8a ~a~%" 
                          (subseq (str x) w) (documentation x 'function)))))
-    (setf *settings* (cli *settings*))
+    (setf (cdr *settings*) (cli (cdr *settings*)))
     (if (? help)
       (show-help)
       (goodbye (loop :for eg :in (uses (egs)) :sum (if (run eg) 0 1))))))
