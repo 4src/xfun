@@ -60,6 +60,9 @@ USAGE:
   (loop for i from (length a) downto 2 do (rotatef (elt a (rint i)) (elt a (1- i))))
   a)
 
+(defun some (seq n)
+   (subseq (shuffle seq) 0 n))
+
 (defun time-it (fun &optional (repeats 1))
   (let ((t0 (get-internal-real-time)))
     (dotimes (_ repeats) (funcall fun))
@@ -101,13 +104,17 @@ USAGE:
 (defun cliffs-delta (xs ys &aux (n 0) (lt 0) (gt 0))
   (let ((n1 (length xs))
         (n2 (length ys)))
-    (cond ((> n1 (* 10 n2)) (cliffs-delta (subseq (shuffle xs) 0 (* 10 n2)) ys))
-          ((> n2 (* 10 n1)) (cliffs-delta xs (subseq (shuffle ys) 0 (* 10 n1))))
+    (cond ((> n1 (* 10 n2)) (cliffs-delta (some xs (* 10 n2)) ys))
+          ((> n2 (* 10 n1)) (cliffs-delta xs (some ys (* 10 n1))))
           (t (dolist (x xs (> (/ (abs (- gt lt)) n) (? cliffs)))
                (dolist (y ys)
                  (incf n)
                  (if (> x y) (incf gt))
                  (if (< x y) (incf lt))))))))
+
+(defun boostrap (xs ys &optional (conf .05))
+  (labels ((ob (x y) (/ (abs (- (mid x) (mid y))) 
+                        (+ (/ 
 ;-----------------------------------------------------------------------------------------
 (defstruct sym 
   (at 0) (name " ") (n 0) has (most 0) mode)
