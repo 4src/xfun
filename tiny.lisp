@@ -7,7 +7,7 @@
 tiny : fun with stuff
 (c)2023 Tim Menzies <timm.ieee.org> BSD-2
 
-USAGE:
+USAGE :
 sbcl --script tiny.lisp [OPTIONS] -e [ACTIONS]
 "
     (bootstraps "-B"  "number of bootstraps"   256)
