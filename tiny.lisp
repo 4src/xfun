@@ -10,15 +10,15 @@ tiny : fun with stuff
 USAGE :
 sbcl --script tiny.lisp [OPTIONS] -e [ACTIONS]
 "
-    (bootstraps "-B"  "number of bootstraps"   256)
-    (bootConf   "-C"  "bootstrap threshold"   .05)
-    (cliffs     "-cl"  "cliffs delta"         .147)
-    (cohen      "-c"  "cliffs delta"          .35)
-    (eg         "-e"  "start up actions"      "nothing")
-    (file       "-f"  "data file"             "../data/auto93.csv")
-    (help       "-h"  "show help"             nil)
-    (p          "-p"  "distance coefficient"  2)
-    (seed       "-s"  "random seed"           1234567891)
+    (bootstraps "-B"    "number of bootstraps"  256)
+    (bootConf   "--CB"  "bootstrap threshold"   .05)
+    (cliffs     "--CC"  "cliffs delta"          .147)
+    (cohen      "-c"    "cliffs delta"          .35)
+    (eg         "-e"    "start up actions"      "nothing")
+    (file       "-f"    "data file"             "../data/auto93.csv")
+    (help       "-h"    "show help"             nil)
+    (p          "-p"    "distance coefficient"  2)
+    (seed       "-s"    "random seed"           1234567891)
     ))
 ;-----------------------------------------------------------------------------------------
 (defmacro ? (x) `(cadddr (assoc ',x  (cdr *settings*))))
@@ -58,7 +58,9 @@ sbcl --script tiny.lisp [OPTIONS] -e [ACTIONS]
 (defun rint (&optional (n 1) &aux (base 10000000000.0))
   (floor (* n (/ (rand base) base))))
 
-(defmethod sample ((a cons)   &optional (n (length a))) (sample (coerce a 'vector) n))
+(defmethod sample ((a cons)   &optional (n (length a))) 
+  (sample (coerce a 'vector) n))
+
 (defmethod sample ((a vector) &optional (n (length a)))
   (let ((len (length a)))
     (loop :repeat n :collect (elt a  (rint len)))))
@@ -191,6 +193,7 @@ sbcl --script tiny.lisp [OPTIONS] -e [ACTIONS]
 (defun make-cols (lst &aux (n -1) (self (%make-cols :names lst)))
   (let ((all (mapcar (lambda (name) (make-col :at (incf n) :name name)) lst)))
     (dolist (col all self)
+      (print (o col name))
       (if (not (eq #\X (last-char (o col name))))
         (if (member (last-char (o col name)) '(#\+ #\-))
           (push col (cols-y self))
@@ -236,9 +239,10 @@ sbcl --script tiny.lisp [OPTIONS] -e [ACTIONS]
 ;-----------------------------------------------------------------------------------------
 (defun eg-fail()
   "can the test engine handle a fail?"
-   nil)
+   (< 1 0))
+
 (defun eg-crash()
-  "can the test engine handle a crash"
+  "can the test engine handle a crash>"
    (fred 3 0))
 
 (defun eg-set () 
@@ -259,7 +263,8 @@ sbcl --script tiny.lisp [OPTIONS] -e [ACTIONS]
   "can we sample with/out replacement?"
   (let ((a '(a b c d e f g)))
     (loop repeat 10 do (format t "~{~a~}~%" (sample a)))
-    (loop repeat 10 do (format t "~{~a~}~%" (few a 3)))))
+    (loop repeat 10 do (format t "~{~a~}~%" (few a 3))))
+  t)
 
 (defun eg-file (&aux (n 0))
   "can count cells in a csv file?"
@@ -293,31 +298,36 @@ sbcl --script tiny.lisp [OPTIONS] -e [ACTIONS]
                  (b (loop :repeat r collect (normal (+ i mu) (* 4 sd)))))
             (say i (cliffs-delta a b) (bootstrap a b) (different a b) (cohen a b))))
     (rand)))
+
+(defun eg-cols()
+  "can we create columns from a list of names?"
+  (mapcar #'print (make-cols '("name" "Age" "HeightX"))))
+
 ;-----------------------------------------------------------------------------------------
-(defun tiny (&optional (pre "eg-") (w 3))
-  (labels 
-    ((str  (sym) (string-downcase (symbol-name sym)))
-     (eg   (x)   (equalp pre (subseq (str x) 0 (min w (length (str x)))))) 
-     (egs  ()    (loop :for x :being :the symbols :in *package* :if (eg x) :collect x))
-     (use  (x)   (member (? eg) `("all" ,(subseq (str x) w)) :test #'string=))
-     (uses (lst) (loop :for x :in lst :if (use x) :collect x))
-     (run  (sym &aux (b4 (copy-tree *settings*)))
-           (setf *seed* (?  seed))
-           (prog1
-             (or (handler-case (funcall sym) 
-                   (error (c) (format t "~&✋ CRASH on ~a. ~a~%" sym c)))
-                 (format *error-output* "~&❌ FAIL: ~a~%" sym))
-             (setf *settings* (copy-tree b4))))
-     (show-help ()    
-           (format t "~a~%OPTIONS:~%" (car *settings*))
-           (loop :for (_ s1 s2 __) :in (cdr *settings*) :do (format t "  ~10a  ~a~%" s1 s2))
-           (format t "~%ACTIONS:~%")
-           (loop :for x :in (egs) :do
-                 (format t "  -e ~8a ~a~%" 
-                         (subseq (str x) w) (documentation x 'function)))))
+(defun tiny-run (sym &aux (b4 (copy-tree *settings*)))
+  (setf *seed* (?  seed))
+  (prog1
+    (or (handler-case (funcall sym) 
+          (error (c) (format t "~&✋ CRASH on ~a. ~a~%" sym c)))
+        (format *error-output* "~&❌ FAIL: ~a~%" sym))
+    (setf *settings* (copy-tree b4))))
+
+(defun tiny-help (egs &optional (w 3))
+  (format t "~a~%OPTIONS:~%" (car *settings*))
+  (loop :for (_ s1 s2 __) :in (cdr *settings*) :do (format t "  ~10a  ~a~%" s1 s2))
+  (format t "~%ACTIONS:~%")
+  (loop :for x :in egs :do
+     (format t "  -e ~8a ~a~%" (subseq (str x) w) (documentation x 'function))))
+
+(defun tiny-main (&optional (pre "eg-") (w 3))
+  (labels ((str  (sym) (string-downcase (symbol-name sym)))
+           (eg   (x)   (equalp pre (subseq (str x) 0 (min w (length (str x)))))) 
+           (egs  ()    (loop :for x :being :the symbols :in *package* :if (eg x) :collect x))
+           (use  (x)   (member (? eg) `("all" ,(subseq (str x) w)) :test #'string=))
+           (uses (lst) (loop :for x :in lst :if (use x) :collect x)))
     (setf (cdr *settings*) (cli (cdr *settings*)))
     (if (? help)
-      (show-help)
-      (goodbye (+ 2 (loop :for eg :in (uses (egs)) :sum (if (run eg) 0 1)))))))
+      (tiny-help (egs) w)
+      (goodbye (loop :for eg :in (uses (egs)) :count (not (tiny-run eg)))))))
 
-(tiny)
+(tiny-main)
