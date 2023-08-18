@@ -161,7 +161,6 @@ sbcl --script tiny.lisp [OPTIONS] -e [ACTIONS]
 
 (defmethod mid ((n num)) (num-mu n))
 (defmethod div ((n num)) (sqrt (/ (num-m2 n) (- (num-n n) 1))))
-
 (defmethod len ((n num)) (num-n num))
 
 (defun pooled (i j) 
@@ -254,12 +253,13 @@ sbcl --script tiny.lisp [OPTIONS] -e [ACTIONS]
 
 (defun eg-sym ()
   "can compute entropy?"
-  (< 1.378 (div (adds (make-sym) '(a a a a b b c))) 1.388))
- 
+  (let ((sym1 (adds (make-sym) '(a a a a b b c))))
+    (and (eql 'a (mid sym1) (< 1.378 (div sym1) 1.388)))))
+
 (defun eg-num()
   "can compute mu and standard deviation?"
-  (let ((num (adds (make-num) (loop :repeat 10000 :collect (normal 10 2)))))
-    (and (< 9.95 (mid num) 10.05) (< 1.95 (div num) 2.05))))
+  (let ((num1 (adds (make-num) (loop :repeat 10000 :collect (normal 10 2)))))
+    (and (< 9.95 (mid num1) 10.05) (< 1.95 (div num1) 2.05))))
 
 (defun eg-shuffle ()
   "can numbers be shuffled?"
