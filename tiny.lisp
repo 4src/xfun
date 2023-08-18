@@ -10,7 +10,7 @@ tiny : fun with stuff
 USAGE:
 sbcl --script tiny.lisp [OPTIONS] -e [ACTIONS]
 "
-    (bootstraps "-B"  "number of bootstraps"  256)
+    (bootstraps "-B"  "number of bootstraps"   256)
     (bootConf   "-C"  "bootstrap threshold"   .05)
     (cliffs     "-cl"  "cliffs delta"         .147)
     (cohen      "-c"  "cliffs delta"          .35)
@@ -61,12 +61,17 @@ sbcl --script tiny.lisp [OPTIONS] -e [ACTIONS]
 (defmethod sample ((a cons)   &optional (n (length a))) (sample (coerce a 'vector) n))
 (defmethod sample ((a vector) &optional (n (length a)))
   (let ((len (length a)))
-    (loop :repeat n :collect (elt a (rint len)))))
+    (loop :repeat n :collect (elt a  (rint len)))))
 
 (defmethod shuffle ((a cons)) (coerce (shuffle (coerce a 'vector)) 'cons))
 (defmethod shuffle ((a vector)) 
   (loop :for i :from (length a) :downto 2 :do (rotatef (elt a (rint i)) (elt a (1- i))))
   a)
+
+(defun pooled (i j) 
+   (sqrt (/ (+ (* (1- (len i)) (expt (div i) 2))
+               (* (1- (len j)) (expt (div j) 2)))
+            (+ (len i) (len j)  -2))))
 
 (defun few (seq n)
    (subseq (shuffle seq) 0 n))
@@ -117,8 +122,8 @@ sbcl --script tiny.lisp [OPTIONS] -e [ACTIONS]
 
 (defmethod cohen ((xs cons) (ys cons) &optional sorted)
   (unless sorted
-    (sort xs #'<)
-    (sort ys #'<))
+    (setf xs (sort xs #'<)
+          ys (sort ys #'<)))
   (> (/ (abs (- (mid xs) (mid ys))) 
         (pooled xs ys)) 
      (? cohen)))
@@ -134,10 +139,16 @@ sbcl --script tiny.lisp [OPTIONS] -e [ACTIONS]
                (if (< x y) (incf lt))))
            (> (/ (abs (- gt lt)) n12) (? cliffs)))))
 
+(defun critical (i j)
+  (/ (abs (- (mid i) (mid j)))
+     (sqrt (+ (/ (expt (div i) 2) (o i n)) 
+              (/ (expt (div j) 2) (o j n))
+              1E-30))))
+
 (defmethod bootstrap ((y0 cons) (z0 cons))
   (let* ((y    (adds (make-num) y0))
          (z    (adds (make-num) z0))
-         (x    (adds (adds (make-num y0)) z0))
+         (x    (adds (adds (make-num) y0) z0))
          (d    (critical y z))
          (yhat (mapcar (lambda(y1) (- y1 (mid y) (mid x))) y0))
          (zhat (mapcar (lambda(z1) (- z1 (mid z) (mid x))) z0))
@@ -145,7 +156,10 @@ sbcl --script tiny.lisp [OPTIONS] -e [ACTIONS]
                      :count  (> (critical (adds (make-num) (sample yhat)) 
                                           (adds (make-num) (sample zhat))) 
                                 d)))) 
-    (< (/ n (? bootstraps)) (? bootconf))))
+    (< (/ n (? bootstraps)) (? bootConf))))
+
+(defun different (xs ys)
+  (and (cliffs-delta xs ys) (bootstrap xs ys)))
 ;-----------------------------------------------------------------------------------------
 (defstruct sym 
   (at 0) (name " ") (n 0) has (most 0) mode)
@@ -163,18 +177,8 @@ sbcl --script tiny.lisp [OPTIONS] -e [ACTIONS]
 
 (defmethod mid ((n num)) (num-mu n))
 (defmethod div ((n num)) (sqrt (/ (num-m2 n) (- (num-n n) 1))))
-(defmethod len ((n num)) (num-n num))
+(defmethod len ((n num)) (num-n n))
 
-(defun pooled (i j) 
-   (sqrt (/ (+ (* (1- (len i)) (expt (div i) 2))
-               (* (1- (len j)) (expt (div j) 2)))
-            (+ (len i) (len j)  -2))))
-
-(defun critical (i j)
-  (/ (abs (- (mid i) (mid j)))
-     (sqrt (+ (/ (expt (div i) 2) (o i n)) 
-              (/ (expt (div j) 2) (o j n))
-              1E-30))))
 
 (defun make-col (&key (at 0) (name " "))
   (if (upper-case-p (char name 0))
@@ -256,7 +260,7 @@ sbcl --script tiny.lisp [OPTIONS] -e [ACTIONS]
 (defun eg-sym ()
   "can compute entropy?"
   (let ((sym1 (adds (make-sym) '(a a a a b b c))))
-    (and (eql 'a (mid sym1) (< 1.378 (div sym1) 1.388)))))
+    (and (eql 'a (mid sym1)) (< 1.378 (div sym1) 1.388))))
 
 (defun eg-num()
   "can compute mu and standard deviation?"
@@ -268,6 +272,18 @@ sbcl --script tiny.lisp [OPTIONS] -e [ACTIONS]
   (let ((nums (loop :for x :upto 20 :collect x)))
     (equal nums  (sort (shuffle (copy-tree nums)) #'<))))
 
+(defun eg-stats ()
+  (labels ((yn (x) (if x "." "="))
+           (say (i &rest lst) (format t "~,2f ~{~,8T~a~}~%" i (mapcar #'yn lst))))
+    (format t "~a ~{~,8T~(~a~)~}~%" 'b/a '(cliffs boot c+b cohen))
+    (loop for i from 0 to 1.5 by .1 do 
+          (let* ((r 256)
+                 (sd .5) 
+                 (mu 10)
+                 (a (loop :repeat r collect (normal mu sd)))
+                 (b (loop :repeat r collect (normal (+ i mu) (* 4 sd)))))
+            (say i (cliffs-delta a b) (bootstrap a b) (different a b) (cohen a b))))
+    (rand)))
 ;-----------------------------------------------------------------------------------------
 (defun tiny (&optional (pre "eg-") (w 3))
   (labels 
@@ -278,7 +294,7 @@ sbcl --script tiny.lisp [OPTIONS] -e [ACTIONS]
      (uses (lst) (loop :for x :in lst :if (use x) :collect x))
      (run  (sym &aux (b4 (copy-tree *settings*)))
            (setf *seed* (?  seed))
-           (format *error-output* "🔆 ~(~a~)?~%" sym)
+           ;(format *error-output* "🔆 ~(~a~)?~%" sym)
            (prog1
              (or (funcall sym) 
                  (format *error-output* "~&❌ FAIL: ~a~%" sym))
