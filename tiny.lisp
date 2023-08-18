@@ -1,4 +1,6 @@
 ; vim : set ts=3 sw=3 sts=3 et :
+(defpackage :tiny (:use :cl))
+(in-package :tiny)
 ;## Globals
 (defvar *settings* ; car is help text, cdr are the settings
 '("
