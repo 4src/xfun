@@ -255,6 +255,12 @@ sbcl --script tiny.lisp [OPTIONS] -e [ACTIONS]
     (setf *seed* 1) (setf b (sort (loop :repeat 10 :collect (rint 100)) #'<))
     (equal a b)))
 
+(defun eg-sample ()
+  "can we sample with/out replacement?"
+  (let ((a '(a b c d e f g)))
+    (loop repeat 10 do (format t "~{~a~}~%" (sample a)))
+    (loop repeat 10 do (format t "~{~a~}~%" (few a 3)))))
+
 (defun eg-file (&aux (n 0))
   "can count cells in a csv file?"
   (with-lines (? file) (lambda (a) (incf n (length a))))
