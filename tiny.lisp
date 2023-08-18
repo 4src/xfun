@@ -237,6 +237,9 @@ sbcl --script tiny.lisp [OPTIONS] -e [ACTIONS]
 (defun eg-fail()
   "can the test engine handle a fail?"
    nil)
+(defun eg-crash()
+  "can the test engine handle a crash"
+   (fred 3 0))
 
 (defun eg-set () 
   "are the settings ok?"
@@ -294,9 +297,9 @@ sbcl --script tiny.lisp [OPTIONS] -e [ACTIONS]
      (uses (lst) (loop :for x :in lst :if (use x) :collect x))
      (run  (sym &aux (b4 (copy-tree *settings*)))
            (setf *seed* (?  seed))
-           ;(format *error-output* "🔆 ~(~a~)?~%" sym)
            (prog1
-             (or (funcall sym) 
+             (or (handler-case (funcall sym) 
+                   (error (c) (format t "~&✋ CRASH on ~a. ~a~%" sym c)))
                  (format *error-output* "~&❌ FAIL: ~a~%" sym))
              (setf *settings* (copy-tree b4))))
      (show-help ()    
@@ -309,6 +312,6 @@ sbcl --script tiny.lisp [OPTIONS] -e [ACTIONS]
     (setf (cdr *settings*) (cli (cdr *settings*)))
     (if (? help)
       (show-help)
-      (goodbye (loop :for eg :in (uses (egs)) :sum (if (run eg) 0 1))))))
+      (goodbye (+ 2 (loop :for eg :in (uses (egs)) :sum (if (run eg) 0 1)))))))
 
 (tiny)
