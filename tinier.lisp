@@ -12,9 +12,9 @@
           (t           s1))))
 
 (defun split (s &optional (sep #\,)  (here 0))
-  (let* ((there (position sep s :start here))
-         (word  (subseq s here there)))
-    (cons word (if there (split s sep (1+ there))))))
+  (let ((there (position sep s :start here)))
+    (cons (subseq s here there)
+          (if there (split s sep (1+ there))))))
 
 (defun with-lines (file fun)
   (with-open-file (s (or file  *standard-input*))
