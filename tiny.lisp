@@ -163,6 +163,7 @@ sbcl --script tiny.lisp [OPTIONS] -e [ACTIONS]
 (defun different (xs ys)
   (and (cliffs-delta xs ys) (bootstrap xs ys)))
 ;-----------------------------------------------------------------------------------------
+
 (defstruct sym 
   (at 0) (name " ") (n 0) has (most 0) mode)
 
@@ -177,40 +178,46 @@ sbcl --script tiny.lisp [OPTIONS] -e [ACTIONS]
 (defun make-num (&key (at 0) (name " "))
   (%make-num :at at :name name :heaven (if (eq #\- (last-char name)) 0 1)))
 
-(defmethod mid ((n num)) (num-mu n))
+(defmethod mid ((n num)) (float (num-mu n)))
 (defmethod div ((n num)) (sqrt (/ (num-m2 n) (- (num-n n) 1))))
 (defmethod len ((n num)) (num-n n))
 
+(defmethod norm ((n num) x)
+  (with-slots (lo hi) n
+    (if (eq x #\?) x (/ (- x lo) (- hi lo 1E-30)))))
 
 (defun make-col (&key (at 0) (name " "))
   (if (upper-case-p (char name 0))
-    (make-num  :at at :name name)
-    (make-sym  :at at :name name)))
+    (make-num :at at :name name)
+    (make-sym :at at :name name)))
 
 (defstruct (cols (:constructor %make-cols))
    x y all names)
 
-(defun make-cols (lst &aux (n -1) (self (%make-cols :names lst)))
-  (let ((all (mapcar (lambda (name) (make-col :at (incf n) :name name)) lst)))
-    (dolist (col all self)
-      (print (o col name))
-      (if (not (eq #\X (last-char (o col name))))
+(defun make-cols (lst &aux (n -1))
+  (let ((cols1 (%make-cols 
+                 :names lst
+                 :all (mapcar (lambda (s) (make-col :at (incf n) :name s)) lst))))
+    (dolist (col (reverse (o cols1 all)) cols1)
+      (when (not (eq #\X (last-char (o col name))))
         (if (member (last-char (o col name)) '(#\+ #\-))
-          (push col (cols-y self))
-          (push col (cols-x self)))))))
+          (push col (o cols1 y))
+          (push col (o cols1 x)))))))
 
 (defstruct row cells)
+(defmethod cell ((self row) col)
+  (elt (row-cells self) (o col at)))
 
 (defstruct (sheet (:constructor %make-sheet))  rows cols)
 (defun make-sheet (src &optional (self (%make-sheet)))
-  (adds self src)
-  self)
+  (adds self src))
+
 
 (defmethod add ((self sheet) (row1 row))
   (with-slots (rows cols) self
     (if cols 
       (progn (push row1 rows)
-             (mapcar (lambda (col x) (add col x)) cols (o row1 cells)))
+             (mapcar #'add (o cols all) (o row1 cells)))
       (setf cols (make-cols (row-cells row1))))))
 
 (defmethod add ((self num) x)
@@ -232,10 +239,31 @@ sbcl --script tiny.lisp [OPTIONS] -e [ACTIONS]
               mode x)))))
 
 (defmethod adds ((self sheet) (file string))
-  (with-lines file (lambda (lst) (add self (make-row :cells lst)))))
+  (with-lines file (lambda (lst) (add self (make-row :cells lst))))
+  self)
 
 (defmethod adds (self (lst cons))
   (dolist (item lst self) (add self item)))
+
+;-----------------------------------------------------------------------------------------
+(defmethod dist ((s sym) x y)
+  (if (and (eq x #\?) (eq y #\?)) 
+    1
+    (if (equal x y) 0 1)))
+
+(defmethod dist ((n num) x y)
+  (if (and (eq x #\?) (eq y #\?)) 
+    1
+    (let ((x (norm n x))
+          (y (norm n y))
+          (x (if (equal x #\?) (if (< y .5) 1 0) x))
+          (y (if (equal y #\?) (if (< x .5) 1 0) y)))
+      (abs (- x y)))))
+
+(defmethod dist ((self sheet) (x row) (y row))
+  (labels ((gap (col x y) (dist col (cell x col) (cell y col))))
+    (let* ((tmp (loop for col in (o self cols) sum (expt (gap col x y) (? p)))))
+      (expt (/ tmp (length (o self cols))  (/ 1 (? p)))))))
 ;-----------------------------------------------------------------------------------------
 (defun eg-fail()
   "can the test engine handle a fail?"
@@ -301,8 +329,11 @@ sbcl --script tiny.lisp [OPTIONS] -e [ACTIONS]
 
 (defun eg-cols()
   "can we create columns from a list of names?"
-  (mapcar #'print (make-cols '("name" "Age" "HeightX"))))
+  (mapcar #'print (cols-x (make-cols '("name" "Age" "HeightX")))))
 
+(defun eg-sheet ()
+  (let ((s (make-sheet (? file))))
+    (print (mapcar #'mid (o s cols y)))))
 ;-----------------------------------------------------------------------------------------
 (defun tiny-run (sym &aux (b4 (copy-tree *settings*)))
   (setf *seed* (?  seed))
