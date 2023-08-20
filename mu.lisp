@@ -31,6 +31,13 @@
   (defun rand-seed (n) (setf seed n))
   (defun rand      (&optional (n 1)) (setf seed (mod (* n2  seed) n1)) (* n (- 1.0d0 (/ seed n1))))
   (defun rand-int  (&optional (n 1) &aux (base b)) (floor (* n (/ (rand base) base)))))
+
+(defun slots (x)
+  (labels ((klass-slots (y) #+clisp (clos:class-slots   (class-of y)) 
+                            #+sbcl  (sb-mop:class-slots (class-of y)))
+           (slot--name  (y) #+clisp (clos:slot-definition-name    y) 
+                            #+sbcl  (sb-mop:slot-definition-name  y)))
+    (mapcar #'slot-name (klass-slots x))))
 ;----------------------------------------------------------------
 (defstruct col (at 0) (name ""))
 (defstruct (sym (:include col)))
@@ -66,6 +73,7 @@
 (defun goodbye (&optional (x 0))
   #+clisp (ext:exit x)
   #+sbcl  (sb-ext:exit :code x))
+(print (slots (make-num)))
 ;----------------------------------------------------------
 (defvar *acts* nil)
 
@@ -108,7 +116,7 @@
 (defact eg--all () 
   "run all"                
   (+ 2 (goodbye (loop for (flag _ fun) in *acts* 
-                  if  (not (eq fun 'eg--all)) 
-                  count (not (act fun flag))))))
+                  unless (eq fun 'eg--all) 
+                  count  (not (act fun flag))))))
 ;----------------------------------------------------------
 (acts)
