@@ -1,6 +1,9 @@
 ; vim : set ts=3 sw=3 sts=3 et :
+(print 1)
 (defpackage :tiny (:use :cl))
 (in-package :tiny)
+
+(print 1)
 ;## Globals
 (defvar *settings* ; car is help text, cdr are the settings
 '("
@@ -89,6 +92,7 @@ sbcl --script tiny.lisp [OPTIONS] -e [ACTIONS]
 (defmethod last-char ((s string)) (char s (1- (length s))))
 (defmethod last-char ((s symbol)) (last-char (symbol-name s)))
 
+(print 1)
 (defun cli (lst)
    (loop :for (key flag help b4) :in lst :collect
         (list key flag help (aif (member flag (args) :test #'string=)
@@ -251,14 +255,14 @@ sbcl --script tiny.lisp [OPTIONS] -e [ACTIONS]
     1
     (if (equal x y) 0 1)))
 
-(defmethod dist ((n num) x y)
-  (if (and (eq x #\?) (eq y #\?)) 
-    1
-    (let ((x (norm n x))
-          (y (norm n y))
-          (x (if (equal x #\?) (if (< y .5) 1 0) x))
-          (y (if (equal y #\?) (if (< x .5) 1 0) y)))
-      (abs (- x y)))))
+  (defmethod dist ((n num) x y)
+    (if (and (eq x #\?) (eq y #\?)) 
+      1
+      (let ((x (norm n x))
+            (y (norm n y)))
+        (if (equal x #\?) (setf x (if (< y .5) 1 0) x))
+        (if (equal y #\?) (setf y (if (< x .5) 1 0) y))
+        (abs (- x y)))))
 
 (defmethod dist ((self sheet) (x row) (y row))
   (labels ((gap (col x y) (dist col (cell x col) (cell y col))))
