@@ -40,8 +40,6 @@ OPTIONS:")
   `(cdr (or (assoc ,x ,lst :test #'equal)
             (car (setf ,lst (cons (cons ,x ,init) ,lst))))))
 
-
-
 (defun goodbye (&optional (x 0))
   #+clisp (ext:exit x)
   #+sbcl  (sb-ext:exit :code x))
