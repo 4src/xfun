@@ -1,59 +1,76 @@
-(defvar +settings+ ; car is help text, cdr are the settings
-"
-tiny : fun with stuff
+(defvar +about+ "
+LESS.lisp : less is more
 (c)2023 Tim Menzies <timm.ieee.org> BSD-2
 
 USAGE :
-  OPTIONS sbcl --script tiny.lisp
+  OPTIONS sbcl --script tiny.lisp"
 
-OPTIONS:
-"
-(defstruct opt key flag help value)
+(defvar *opts* nil)
+(defun opt (flag key help default)
+  (push (cons key flag value ) *opts*)
+  (format nil "  ~4a [~20a] ~a~%" key help default)))
 
-(defun opt! (key flag help defauts &optional (sym (intern key)))
-  (let* ((sym  (intern (string-upcase key)))
-         (flag (format nil "--~a" flag)))
-    (push (cons key 
-                (make-opt :key key :flag flag help:help :value value)))))
+(defconstant +help+ 
+  (with-output-to-string (s)
+    (format s "~aOPTIONS:~%~(~a)~%" +about+ (apply #'opt
+            '(("-b" BOOTSTRAPS "number of bootstraps"           256)
+              ("-B" BOOTCONF   "bootstrap threshoa"             .05) 
+              ("-d" COHEN      "Cohen delta"                    .35)
+              ("-e" EG         "start up actions nothing" "nothing")
+              ("-f" FILE       "data file"    "../data/auto93.lisp")
+              ("-h" HELP       "show help"                      nil)
+              ("-p" P          "distance coeffecient"             2)
+              ("-s" SEED       "random seed"                   7001))))))
 
-(opt! "BOOTSTRAPS"   "number of bootstraps" 256)
-(opt! "BOOTCONF" "bootstrap threshold .05)
-(opt! "CLIFFS" "cliffs delta" .147)
-(opt! "COHEN" -c cohens delta .35
---EG -e start up actions nothing
---FILE -f data file ../data/auto93.lisp
---HELP -h show help nil
---P -p distance coefficient 2
---SEED  -s random seed 1234567891
-")
+(defmacro ? (key) `(third (assoc ',key *opts*)))
+
+(defmacro aif (test then &optional else) 
+  `(let ((it ,test)) (if it ,then ,else)))
+
+(defmacro aif (test then &optional else) 
+  `(let ((it ,test)) 
+     (if it ,then ,else)))
+
+(defmacro o (struct f &rest fs)
+  (if fs `(o (slot-value ,struct ',f) ,@fs) `(f-value ,struct ',f)))  
+
+(defmacro seen (x lst &optional (init 0))
+  `(cdr (or (assoc ,x ,lst :test #'equal)
+            (car (setf ,lst (cons (cons ,x ,init) ,lst))))))
+
+(defun args ()
+  #+clisp ext:*args*
+  #+sbcl sb-ext:*posix-argv*)
+
+(defun goodbye (&optional (x 0))
+  #+clisp (ext:exit x)
+  #+sbcl  (sb-ext:exit :code x))
 
 (defun trim (s)  (string-trim '(#\Space #\Tab) s))
 
 (defun thing (s &aux (s1 (trim s)))
-  (let ((x (read-from-string s1)))
+  (let* ((*read-eval* nil)
+         (x (read-from-string s1)))
     (cond ((numberp x) x)
-          ((eq x t)    x)
-          ((eq x nil)  x)
+          ((eq x t)    t)
+          ((eq x nil)  nil)
           (t           s1))))
 
-(defun split (s &optional (sep #\Space) (here 0))
-  (when s
-    (format t "[~a]~%" s)
-    (let* ((there (position sep s :start here)))
-      (cons (thing (subseq s here there))
-            (if there (split s sep (1+ there)))))))
+(defun split (s &optional (here 0))
+  (let* ((there (position #\, s :start here))
+         (cons (thing (subseq s here there)
+                      (if there (split s (1+ there))))))))
 
-(defun lines (str) 
-  (with-input-from-string (s str) 
-    (loop 
-      :while   (setf x (read-line s nil nil nil))
-      :if      (string= "--" (subseq x 0 (min (length x) 2)))
-      :collect (let ((a (split x #\Space)))
-                 (list (first a) (second a) (car(last a)))))))
+(defun cli (lst)
+  (loop :for (flag key b4) :in lst :collect
+    (list flag key (aif (member flag (args) :test #'string=)
+                     (cond ((eq b4 t) nil)
+                           ((eq b4 nil) t)
+                           (t (eval (second it))))
+                     b4))))
 
 (print (lines +settings+))
 
-;  (defmacro ? (x) `(caddr (assoc ',x  (cdr *settings*))))
 ;
 ; (defmacro o (struct slot &rest slots)
 ;   (if slots `(o (slot-value ,struct ',slot) ,@slots) `(slot-value ,struct ',slot)))
