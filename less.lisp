@@ -1,37 +1,26 @@
-(defvar +about+ "
+(defvar +about-help+ "
 LESS.lisp : less is more
 (c)2023 Tim Menzies <timm.ieee.org> BSD-2
 
 USAGE :
      sbcl --script tiny.lisp OPTIONS
-     clisp less.lisp OPTIONS
+     clisp less.lisp OPTIONS")
 
-OPTIONS:")
+(defvar +about-options+
+  '(("-b" BOOTSTRAPS "number of bootstraps"           256)
+    ("-B" BOOTCONF   "bootstrap threshoa"             .05) 
+    ("-d" COHEN      "Cohen delta"                    .35)
+    ("-e" EG         "start up actions nothing" "nothing")
+    ("-f" FILE       "data file"    "../data/auto93.lisp")
+    ("-h" HELP       "show help"                      nil)
+    ("-p" P          "distance coeffecient"             2)
+    ("-s" SEED       "random seed"                   7001)))
 
-(defvar *opts* nil)
-(defun opt (lst)
-  (destructuring-bind (flag key help value) lst
-    (push (list key flag value ) *opts*)
-    (let ((what (typecase value 
-                  (integer "I")
-                  (number "F")
-                  (string "S")
-                  (t      ""))))
-    (format nil "  ~4a ~3a ~30a = ~a" flag what help value))))
+(defconstant +help+    "") ; to be filled in later
+(defvar      *options* nil) ; to be filled in later
 
-(defconstant +help+ 
-  (with-output-to-string (s)
-    (format s "~a~%~{~a~%~}" +about+ (mapcar #'opt 
-            '(("-b" BOOTSTRAPS "number of bootstraps"           256)
-              ("-B" BOOTCONF   "bootstrap threshoa"             .05) 
-              ("-d" COHEN      "Cohen delta"                    .35)
-              ("-e" EG         "start up actions nothing" "nothing")
-              ("-f" FILE       "data file"    "../data/auto93.lisp")
-              ("-h" HELP       "show help"                      nil)
-              ("-p" P          "distance coeffecient"             2)
-              ("-s" SEED       "random seed"                   7001))))))
-
-(defmacro ? (key) `(third (assoc ',key *opts*)))
+;--- macros (must go first) --------------------------------------
+(defmacro ? (key) `(third (assoc ',key *options*)))
 
 (defmacro o (struct f &rest fs)
   (if fs `(o (slot-value ,struct ',f) ,@fs) `(f-value ,struct ',f)))  
@@ -40,10 +29,27 @@ OPTIONS:")
   `(cdr (or (assoc ,x ,lst :test #'equal)
             (car (setf ,lst (cons (cons ,x ,init) ,lst))))))
 
+;--- lib --------------------------------------------------------
+;--- system specific stuff 
+(defun args ()
+  #+clisp ext:*args* 
+  #+sbcl sb-ext:*posix-argv*)
+
 (defun goodbye (&optional (x 0))
   #+clisp (ext:exit x)
   #+sbcl  (sb-ext:exit :code x))
 
+;---- settings  
+(defun settings (lst))
+  (labels ((opt (lst1)
+    (destructuring-bind (flag key help value) lst1
+      (push (list key flag value) *opts*)
+      (format nil "  ~4a ~3a ~30a = ~a" flag 
+        (typecase value (integer "I") (number "F") (string "S")(t "")) help value))))
+    (with-output-to-string (s)
+      (format s "~a~%OPTIONS:~%~{~a~%~}" +about+ (mapcar #'opt lst)))
+
+;--- strings2 things                 
 (defun thing (s &aux (s1 (string-trim '(#\Space #\Tab) s)))
   (let* ((*read-eval* nil)
          (x (read-from-string s1)))
@@ -61,53 +67,37 @@ OPTIONS:")
                             (t (thing (second it))))
                       b4)))))
 
+;---- strings 
+(defun down-name (x) (string-downcase (symbol-name x)))
+
+(defmethod last-char ((s string)) (char s (1- (length s))))
+(defmethod last-char ((s symbol)) (last-char (symbol-name s)))
+
 (defun split (s &optional (here 0))
   (let* ((there (position #\, s :start here))
          (cons (thing (subseq s here there)
                       (if there (split s (1+ there))))))))
 
+;---- start uo
 (setf *opts* (cli *opts*))
 (if (? help) (princ +help+))
  
-;
-; (defmacro o (struct slot &rest slots)
-;   (if slots `(o (slot-value ,struct ',slot) ,@slots) `(slot-value ,struct ',slot)))
-;
-; ;-------------------------------------------------------
-; (defun goodbye (&optional (x 0)) #+clisp (ext:exit x) #+sbcl  (sb-ext:exit :code x))
-;
-; (defun env (x &optional (s (symbol-name x))) ; http://tiny.cc/lispenv
-;   #+clisp (ext:getenv s) #+scl (cdr (assoc s ext:*environment-list* :test #'string=)))
-;
-; (defun down-name (x) (string-downcase (symbol-name x)))
-;
-; (defmethod last-char ((s string)) (char s (1- (length s))))
-; (defmethod last-char ((s symbol)) (last-char (symbol-name s)))
-;
-;  (defun thing (s &aux (s1 (string-trim '(#\Space #\Tab) s)))
-;   (let ((x (read-from-string s1)))
-;     (cond ((numberp x) x)
-;           ((eq x t)    x)
-;           ((eq x nil)  x)
-;           (t           s1))))
-;
-; (defun cli (lst)
-;   (cons (car lst) (loop :for (key help b4) :in (cdr lst) :collect
-;                         (list key help (if (env key) (thing (env key)) b4)))))
-;
-; (defun egs()
-;   (labels ((eg (x) (equalp "eg-" (subseq (down-name x) 0 (min 3 (length (str x))))))) 
-;     (loop :for x :being :the symbols :in *package* :if (eg x) :collect x)))
-;
-; (defun tiny-run (sym &aux (b4 (copy-tree *settings*)))
-;   (setf *seed* (?  seed))
-;   (prog1 (funcall sym) (setf *settings* (copy-tree b4))))
-;
-; (defun main ()
-;   (labels ((use (x) (member (? eg) `("all" ,(subseq (down-name x) 3)) :test #'string=)))
-;     (setf  *settings* (cli *settings*))
-;     (goodbye (loop :for eg :in (egs) :if (use eg) :count (not (tiny-run eg))))))
-;
+
+
+;---- examples
+(defun egs()
+  (labels ((eg (x) (equalp "eg-" (subseq (down-name x) 0 (min 3 (length (str x))))))) 
+    (loop :for x :being :the symbols :in *package* :if (eg x) :collect x)))
+
+ (defun run1 (sym &aux (b4 (copy-tree *settings*)))
+   (setf *seed* (?  seed))
+  (prog1 (funcall sym) (setf *settings* (copy-tree b4))))
+
+(defun run ()
+   (labels ((use (x) (member (? eg) `("all" ,(subseq (down-name x) 3)) :test #'string=)))
+     (setf  *settings* (cli *settings*))
+     (goodbye (loop :for eg :in (egs) :if (use eg) :count (not (tiny-run eg))))))
+
 ; (defun datas(f) (print f) (with-open-file (s f) (read s)))
 ;
 ; ;---------------------------------------------------------------
