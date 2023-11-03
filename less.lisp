@@ -3,16 +3,25 @@ LESS.lisp : less is more
 (c)2023 Tim Menzies <timm.ieee.org> BSD-2
 
 USAGE :
-  OPTIONS sbcl --script tiny.lisp"
+     sbcl --script tiny.lisp OPTIONS
+     clisp less.lisp OPTIONS
+
+OPTIONS:")
 
 (defvar *opts* nil)
-(defun opt (flag key help default)
-  (push (cons key flag value ) *opts*)
-  (format nil "  ~4a [~20a] ~a~%" key help default)))
+(defun opt (lst)
+  (destructuring-bind (flag key help value) lst
+    (push (list key flag value ) *opts*)
+    (let ((what (typecase value 
+                  (integer "I")
+                  (number "F")
+                  (string "S")
+                  (t      ""))))
+    (format nil "  ~4a ~3a ~30a = ~a" flag what help value))))
 
 (defconstant +help+ 
   (with-output-to-string (s)
-    (format s "~aOPTIONS:~%~(~a)~%" +about+ (apply #'opt
+    (format s "~a~%~{~a~%~}" +about+ (mapcar #'opt 
             '(("-b" BOOTSTRAPS "number of bootstraps"           256)
               ("-B" BOOTCONF   "bootstrap threshoa"             .05) 
               ("-d" COHEN      "Cohen delta"                    .35)
@@ -24,13 +33,6 @@ USAGE :
 
 (defmacro ? (key) `(third (assoc ',key *opts*)))
 
-(defmacro aif (test then &optional else) 
-  `(let ((it ,test)) (if it ,then ,else)))
-
-(defmacro aif (test then &optional else) 
-  `(let ((it ,test)) 
-     (if it ,then ,else)))
-
 (defmacro o (struct f &rest fs)
   (if fs `(o (slot-value ,struct ',f) ,@fs) `(f-value ,struct ',f)))  
 
@@ -38,17 +40,13 @@ USAGE :
   `(cdr (or (assoc ,x ,lst :test #'equal)
             (car (setf ,lst (cons (cons ,x ,init) ,lst))))))
 
-(defun args ()
-  #+clisp ext:*args*
-  #+sbcl sb-ext:*posix-argv*)
+
 
 (defun goodbye (&optional (x 0))
   #+clisp (ext:exit x)
   #+sbcl  (sb-ext:exit :code x))
 
-(defun trim (s)  (string-trim '(#\Space #\Tab) s))
-
-(defun thing (s &aux (s1 (trim s)))
+(defun thing (s &aux (s1 (string-trim '(#\Space #\Tab) s)))
   (let* ((*read-eval* nil)
          (x (read-from-string s1)))
     (cond ((numberp x) x)
@@ -56,21 +54,23 @@ USAGE :
           ((eq x nil)  nil)
           (t           s1))))
 
+(defun cli (lst &aux it)
+  (let ((args #+clisp ext:*args* #+sbcl sb-ext:*posix-argv*))
+    (loop :for (key flag b4) :in lst :collect
+      (list key flag (if (setf it (member flag args :test #'string=))
+                      (cond ((eq b4 t) nil)
+                            ((eq b4 nil) t)
+                            (t (thing (second it))))
+                      b4)))))
+
 (defun split (s &optional (here 0))
   (let* ((there (position #\, s :start here))
          (cons (thing (subseq s here there)
                       (if there (split s (1+ there))))))))
 
-(defun cli (lst)
-  (loop :for (flag key b4) :in lst :collect
-    (list flag key (aif (member flag (args) :test #'string=)
-                     (cond ((eq b4 t) nil)
-                           ((eq b4 nil) t)
-                           (t (eval (second it))))
-                     b4))))
-
-(print (lines +settings+))
-
+(setf *opts* (cli *opts*))
+(if (? help) (princ +help+))
+ 
 ;
 ; (defmacro o (struct slot &rest slots)
 ;   (if slots `(o (slot-value ,struct ',slot) ,@slots) `(slot-value ,struct ',slot)))
