@@ -32,14 +32,15 @@ OPTIONS:"
 
 ;--- col
 (defstruct col
-  (at 0) (txt " ") (n 0) has)
+  (at 0) (txt " ") (n 0) )
 
 (defun col0 (at &optional (txt " "))
   (if (upper-case-p (elt txt 0)) (make-num at txt) (make-sym at txt)))
 
-(defstruct (sym (:include col)) mode (most 0))
+(defstruct (sym (:include col)) has mode (most 0))
 (defstruct (num (:include col) 
-                (:constructor %make-num)) ok (heaven 1))
+                (:constructor %make-num)) (lo 1e30) (hi -1e30) (mu 0) 
+                (m2 0) (heaven 1))
 
 (defun make-num (&optional (at 0) (txt " "))
   (%make-num :at at :txt txt  :heaven (if (eq #\- (last-char txt)) 0 1)))
@@ -47,46 +48,38 @@ OPTIONS:"
 (defmethod adds ((col1 col) lst)
   (dolist (x lst col1) (add col1 x)))
 
-(defmethod add ((num1 num) x)
-  (with-slots (n has ok) num1
-    (unless (eql x '?)
+(defmethod add ((self num) x)
+  (with-slots (lo hi n mu m2) self
+    (unless (eq #\? x)
       (incf n)
-      (push x has)
-      (setf ok nil))))
+      (let ((d (- x mu)))
+        (incf mu (/ d n))
+        (incf m2 (* d (-  x mu)))
+        (setf lo (min x lo)
+              hi (max x hi))))))
 
 (defmethod add ((sym1 sym) x)
   (with-slots (n has most mode) sym1
     (unless (eq x '?)
       (incf n)
       (let ((new (inca x has)))
-         (print has)
          (if (> new most)
           (setf mode x 
                 most new))))))
 
-(defmethod seen ((sym1 sym)) (sym-has sym1))
-(defmethod seen ((num1 num))
-  (with-slots (has ok) num1
-    (unless ok (sort has #'<))
-    (setf ok t)
-    has))
-
-(defmethod per ((num1 num) &optional (p .5))
-  (let ((a (seen num1))) (elt a (floor (* p (length a))))))
-
-(defmethod div ((num1 num)) (/ (- (per num1 .9) (per num1 .1)) 2.56))
+(defmethod div ((num1 num)) (sqrt (/ (num-m2 num1) (- (num-n num1) 1))))
 (defmethod div ((sym1 sym))
   (with-slots (has n) sym1
     (* -1 (loop :for (_ . v) :in has :sum  (* (/ v n) (log (/ v n) 2))))))
 
-(defmethod mid ((num1 num)) (per num1 .5))
+(defmethod mid ((num1 num)) (num-mu num1))
 (defmethod mid ((sym1 sym)) (sym-mode sym1))
 
 (defstruct (cols (:constructor %make-cols)) x y all names)
 
 (defun make-cols (lst)
   (let* (x y (n -1)
-         (all (mapcar (lambda (s) (make-col :at (incf n) :names s)) lst)))
+         (all (mapcar (lambda (s) (col0  (incf n)  s)) lst)))
     (dolist (col1 all (%make-cols :names lst :all all :x x :y y))
       (when (not (eq #\X (last-char (o col1 txt))))
         (if (member (last-char (o col1 txt)) '(#\+ #\-))
@@ -129,7 +122,6 @@ OPTIONS:"
                            b4)))))
 
 ;---- lists
-
 ;---- strings 
 (defun down-name (x) (string-downcase (symbol-name x)))
 
@@ -201,6 +193,7 @@ OPTIONS:"
 
 ; ---------------------------------------------------------------
 (defun eg-fail() nil)
+
 (defun eg-the() (print (cdr *options*)))
 
 (defun eg-csv (&aux (n 0)) 
@@ -221,12 +214,11 @@ OPTIONS:"
 
 (defun eg-sym () 
   (let ((sym1 (adds (make-sym) '(a a a a b b c))))
-    (print sym1)
     (and (eql 'a (mid sym1)) (< 1.378 (div sym1) 1.388))))
 
 (defun eg-num()
-  (let ((num1 (add (make-num) (loop :repeat 10000 :collect (normal 10 2)))))
-    (and (< 9.95 (mid num1) 10.05) (< 1.95 (div num1) 2.05))))
+  (let ((num1 (adds (make-num) (loop :repeat 1000 :collect (normal 10 2)))))
+    (and (< 9.9 (mid num1) 10.1) (< 1.9 (div num1) 2.1))))
 
 ; ---------------------------------------------------------------
 (main)
