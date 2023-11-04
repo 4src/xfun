@@ -61,6 +61,11 @@ sbcl --script tiny.lisp [OPTIONS] -e [ACTIONS]
 (defun rint (&optional (n 1) &aux (base 10000000000.0))
   (floor (* n (/ (rand base) base))))
 
+(defmethod shuffle ((a cons)) (coerce (shuffle (coerce a 'vector)) 'cons))
+(defmethod shuffle ((a vector)) 
+  (loop :for i :from (length a) :downto 2 :do (rotatef (elt a (rint i)) (elt a (1- i))))
+  a)
+
 (defmethod sample ((a cons)   &optional (n (length a))) 
   (sample (coerce a 'vector) n))
 
@@ -68,10 +73,7 @@ sbcl --script tiny.lisp [OPTIONS] -e [ACTIONS]
   (let ((len (length a)))
     (loop :repeat n :collect (elt a  (rint len)))))
 
-(defmethod shuffle ((a cons)) (coerce (shuffle (coerce a 'vector)) 'cons))
-(defmethod shuffle ((a vector)) 
-  (loop :for i :from (length a) :downto 2 :do (rotatef (elt a (rint i)) (elt a (1- i))))
-  a)
+(
 
 (defun pooled (i j) 
    (sqrt (/ (+ (* (1- (len i)) (expt (div i) 2))
