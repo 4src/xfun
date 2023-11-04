@@ -26,9 +26,9 @@ OPTIONS:"
 (defmacro o (struct f &rest fs)
   (if fs `(o (slot-value ,struct ',f) ,@fs) `(f-value ,struct ',f)))  
 
-(defmacro inc (x lst &optional (init 0))
-  `(cdr (or (assoc ,x ,lst :test #'equal) 
-            (car (setf ,lst (cons (cons ,x ,init) ,lst))))))
+(defmacro inca (x lst &optional (init 0))
+  `(incf (cdr (or (assoc ,x ,lst :test #'equal) 
+            (car (setf ,lst (cons (cons ,x ,init) ,lst)))))))
 
 ;--- col
 (defstruct col
@@ -44,8 +44,8 @@ OPTIONS:"
 (defun make-num (&optional (at 0) (txt " "))
   (%make-num :at at :txt txt  :heaven (if (eq #\- (last-char txt)) 0 1)))
 
-(defmethod add ((col1 col) (lst cons))
-  (dolist (x lst col1) (add col1) x))
+(defmethod adds ((col1 col) lst)
+  (dolist (x lst col1) (add col1 x)))
 
 (defmethod add ((num1 num) x)
   (with-slots (n has ok) num1
@@ -56,9 +56,10 @@ OPTIONS:"
 
 (defmethod add ((sym1 sym) x)
   (with-slots (n has most mode) sym1
-    (unless (eql x '?)
+    (unless (eq x '?)
       (incf n)
-      (let ((new (inc x has)))
+      (let ((new (inca x has)))
+         (print has)
          (if (> new most)
           (setf mode x 
                 most new))))))
@@ -85,7 +86,7 @@ OPTIONS:"
 
 (defun make-cols (lst)
   (let* (x y (n -1)
-         (all (mapcar (lambda (s) (make-col :at (incf n) :name s)) lst)))
+         (all (mapcar (lambda (s) (make-col :at (incf n) :names s)) lst)))
     (dolist (col1 all (%make-cols :names lst :all all :x x :y y))
       (when (not (eq #\X (last-char (o col1 txt))))
         (if (member (last-char (o col1 txt)) '(#\+ #\-))
@@ -219,7 +220,8 @@ OPTIONS:"
   t)
 
 (defun eg-sym () 
-  (let ((sym1 (add (make-sym) '(a a a a b b c))))
+  (let ((sym1 (adds (make-sym) '(a a a a b b c))))
+    (print sym1)
     (and (eql 'a (mid sym1)) (< 1.378 (div sym1) 1.388))))
 
 (defun eg-num()

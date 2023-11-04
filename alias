@@ -1,0 +1,5 @@
+alias reply="rlwrap sbcl --noinform - "
+
+lisp() {
+    sbcl --noinform --script $* 2> >( gawk '{print} /^Backtrace/ {exit}' )  
+}
