@@ -13,6 +13,9 @@ install: $(DO_repos)  ## get related repos
 ../config:
 		(cd ..; git clone https://gist.github.com/42f78b8beec9e98434b55438f9983ecc.git config)
 
+repl:
+	rlwrap sbcl --noinform -
+	
 sbcl:;  sbcl --noinform --script $l $l 2> >( gawk ' {print} /^2:/ {exit}' )  ## run sbcl
 
 install-codespaces:
