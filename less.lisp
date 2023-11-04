@@ -34,15 +34,15 @@ OPTIONS:"
 (defstruct col
   (at 0) (txt " ") (n 0) has)
 
-(defun make-col (at &optional (txt " "))
+(defun col0 (at &optional (txt " "))
   (if (upper-case-p (elt txt 0)) (make-num at txt) (make-sym at txt)))
 
 (defstruct (sym (:include col)) mode (most 0))
 (defstruct (num (:include col) 
                 (:constructor %make-num)) ok (heaven 1))
 
-(defun make-num (&optiional (at 0) (txt " "))
-  (%make-num :at at :txt txt  :heaven (if (eq #\- (last-char name)) 0 1)))
+(defun make-num (&optional (at 0) (txt " "))
+  (%make-num :at at :txt txt  :heaven (if (eq #\- (last-char txt)) 0 1)))
 
 (defmethod add ((col1 col) (lst cons))
   (dolist (x lst col1) (add col1) x))
@@ -55,7 +55,7 @@ OPTIONS:"
       (setf ok nil))))
 
 (defmethod add ((sym1 sym) x)
-  (with-slots (n has most mode) sym
+  (with-slots (n has most mode) sym1
     (unless (eql x '?)
       (incf n)
       (let ((new (inc x has)))
@@ -76,7 +76,7 @@ OPTIONS:"
 (defmethod div ((num1 num)) (/ (- (per num1 .9) (per num1 .1)) 2.56))
 (defmethod div ((sym1 sym))
   (with-slots (has n) sym1
-    (* -1 (loop :for (_ . v) :in has :sum  (* (/ v n)  (log (/ v n) 2))))))
+    (* -1 (loop :for (_ . v) :in has :sum  (* (/ v n) (log (/ v n) 2))))))
 
 (defmethod mid ((num1 num)) (per num1 .5))
 (defmethod mid ((sym1 sym)) (sym-mode sym1))
@@ -84,13 +84,13 @@ OPTIONS:"
 (defstruct (cols (:constructor %make-cols)) x y all names)
 
 (defun make-cols (lst)
-  (let (x y (n -1)
-        (all (mapcar (lambda (s) (make-col :at (incf n) :name s)) lst)))
-    (dolist (col all (%make-cols :names lst :all all :x x :y y))
-      (when (not (eq #\X (last-char (o col name))))
-        (if (member (last-char (o col name)) '(#\+ #\-))
-          (push col (o cols1 y))
-          (push col (o cols1 x)))))))
+  (let* (x y (n -1)
+         (all (mapcar (lambda (s) (make-col :at (incf n) :name s)) lst)))
+    (dolist (col1 all (%make-cols :names lst :all all :x x :y y))
+      (when (not (eq #\X (last-char (o col1 txt))))
+        (if (member (last-char (o col1 txt)) '(#\+ #\-))
+          (push col1 y)
+          (push col1 x))))))
 
 ;--- lib --------------------------------------------------------
 ;--- system specific stuff 
@@ -176,7 +176,7 @@ OPTIONS:"
   a)
 
 (defun few (seq n)
-   (subseq (shuffle seq) 0 n))
+  (subseq (shuffle seq) 0 n))
 
 ;---- examples
 (defun egs()
@@ -218,14 +218,12 @@ OPTIONS:"
     (loop repeat 10 do (format t "~{~a~}~%" (few a 3))))
   t)
 
-(defun eg-sym ()
-  "can compute entropy?"
+(defun eg-sym () 
   (let ((sym1 (add (make-sym) '(a a a a b b c))))
     (and (eql 'a (mid sym1)) (< 1.378 (div sym1) 1.388))))
 
 (defun eg-num()
-  "can compute mu and standard deviation?"
-  (let ((num (add (make-num) (loop :repeat 10000 :collect (normal 10 2)_))))
+  (let ((num1 (add (make-num) (loop :repeat 10000 :collect (normal 10 2)))))
     (and (< 9.95 (mid num1) 10.05) (< 1.95 (div num1) 2.05))))
 
 ; ---------------------------------------------------------------

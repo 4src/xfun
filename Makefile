@@ -16,7 +16,7 @@ install: $(DO_repos)  ## get related repos
 repl:
 	rlwrap sbcl --noinform -
 	
-sbcl:;  sbcl --noinform --script $l $l 2> >( gawk ' {print} /^2:/ {exit}' )  ## run sbcl
+sbcl:;  sbcl --noinform --script $l $l 2> >( gawk '{print} /^Backtrace/ {exit}' )  ## run sbcl
 
 install-codespaces:
 	sudo apt -q update

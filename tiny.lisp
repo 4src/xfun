@@ -167,7 +167,6 @@ sbcl --script tiny.lisp [OPTIONS] -e [ACTIONS]
 (defun different (xs ys)
   (and (cliffs-delta xs ys) (bootstrap xs ys)))
 ;-----------------------------------------------------------------------------------------
-
 (defstruct sym 
   (at 0) (name " ") (n 0) has (most 0) mode)
 
@@ -179,7 +178,7 @@ sbcl --script tiny.lisp [OPTIONS] -e [ACTIONS]
 (defstruct (num (:constructor %make-num)) 
   (at 0) (name " ") (n 0) (mu 0) (m2 0) (lo 1E30) (hi -1E30) (heaven 0))
 
-(defun make-num (&key (at 0) (name " "))
+(defun make-num (&optional (at 0) (name " "))
   (%make-num :at at :name name :heaven (if (eq #\- (last-char name)) 0 1)))
 
 (defmethod mid ((n num)) (float (num-mu n)))
@@ -216,7 +215,6 @@ sbcl --script tiny.lisp [OPTIONS] -e [ACTIONS]
 (defun make-sheet (src &optional (self (%make-sheet)))
   (adds self src))
 
-
 (defmethod add ((self sheet) (row1 row))
   (with-slots (rows cols) self
     (if cols 
@@ -248,7 +246,6 @@ sbcl --script tiny.lisp [OPTIONS] -e [ACTIONS]
 
 (defmethod adds (self (lst cons))
   (dolist (item lst self) (add self item)))
-
 ;-----------------------------------------------------------------------------------------
 (defmethod dist ((s sym) x y)
   (if (and (eq x #\?) (eq y #\?)) 
