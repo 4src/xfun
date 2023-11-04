@@ -25,8 +25,9 @@ USAGE :
 (defmacro o (struct f &rest fs)
   (if fs `(o (slot-value ,struct ',f) ,@fs) `(f-value ,struct ',f)))  
 
-(defmacro freq (x lst &optional (init 0))
-  `(cdr (or (assoc ,x ,lst :test #'equal) (car (setf ,lst (cons (cons ,x ,init) ,lst))))))
+(defmacro +1 (x lst &optional (init 0))
+  `(cdr (or (assoc ,x ,lst :test #'equal) 
+            (car (setf ,lst (cons (cons ,x ,init) ,lst))))))
 
 ;--- col
 (defstruct col
@@ -52,7 +53,7 @@ USAGE :
   (with-slots (n has most mode) sym
     (unless (eql x '?)
       (incf n)
-      (let ((new (freq x has)))
+      (let ((new (+1 x has)))
          (if (> new most)
           (setf mode x 
                 most new))))))
@@ -122,11 +123,11 @@ USAGE :
 (defun cli (lst &aux it)
   (let ((args #+clisp ext:*args* #+sbcl sb-ext:*posix-argv*))
     (loop :for (key flag b4) :in lst :collect
-      (list key flag (if (setf it (member flag args :test #'string=))
-                      (cond ((eq b4 t) nil)
-                            ((eq b4 nil) t)
-                            (t (thing (second it))))
-                      b4)))))
+          (list key flag (if (setf it (member flag args :test #'string=))
+                           (cond ((eq b4 t) nil)
+                                 ((eq b4 nil) t)
+                                 (t (thing (second it))))
+                           b4)))))
 
 ;---- lists
 
