@@ -1,47 +1,52 @@
-(defvar +about-help+ "
-LESS.lisp : less is more
+(defvar +about+
+  '("
+LESS: less is more
 (c)2023 Tim Menzies <timm.ieee.org> BSD-2
 
-USAGE :
-     sbcl --script tiny.lisp [OPTIONS]
-     clisp less.lisp [OPTIONS]")
+USAGE:
+    sbcl --script tiny.lisp [OPTIONS]
+    clisp less.lisp [OPTIONS]
+     
+OPTIONS:"
+  ("-b"  BOOTSTRAPS  "number of bootstraps"           256)
+  ("-B"  BOOTCONF    "bootstrap threshold"            .05) 
+  ("-d"  COHEN       "Cohen delta"                    .35)
+  ("-e"  EG          "start up actions"         "nothing")
+  ("-f"  FILE        "data file"     "../data/auto93.csv")
+  ("-h"  HELP        "show help"                      nil)
+  ("-p"  P           "distance coeffecient"             2)
+  ("-s"  SEED        "random seed"                  10013)))
 
-(defvar +about-options+
-  '(("-b" BOOTSTRAPS "number of bootstraps"           256)
-    ("-B" BOOTCONF   "bootstrap threshoa"             .05) 
-    ("-d" COHEN      "Cohen delta"                    .35)
-    ("-e" EG         "start up actions nothing" "nothing")
-    ("-f" FILE       "data file"    "../data/auto93.csv")
-    ("-h" HELP       "show help"                      nil)
-    ("-p" P          "distance coeffecient"             2)
-    ("-s" SEED       "random seed"                  10013)))
-
-(defvar *about* nil)
+;--- macros  (must go first) -------------------------------------
+;--- optionMacros
 (defvar *options* nil) ;  filled in later by `settings`
-
-;--- macros (must go first) --------------------------------------
 (defmacro ? (key) `(third (assoc ',key *options*)))
 
+;--- generalMacros 
 (defmacro o (struct f &rest fs)
   (if fs `(o (slot-value ,struct ',f) ,@fs) `(f-value ,struct ',f)))  
 
-(defmacro +1 (x lst &optional (init 0))
+(defmacro inc (x lst &optional (init 0))
   `(cdr (or (assoc ,x ,lst :test #'equal) 
             (car (setf ,lst (cons (cons ,x ,init) ,lst))))))
 
 ;--- col
 (defstruct col
-  (at 0) (txt " ") (n 0) has (heaven 1))
+  (at 0) (txt " ") (n 0) has)
 
 (defun make-col (at &optional (txt " "))
   (if (upper-case-p (elt txt 0)) (make-num at txt) (make-sym at txt)))
 
-(defstruct (sym (:include col) mode (most 0))
-(defstruct (num (:include col :constructor %make-num)) ok (heaven 1))
+(defstruct (sym (:include col)) mode (most 0))
+(defstruct (num (:include col) 
+                (:constructor %make-num)) ok (heaven 1))
 
 (defun make-num (&optiional (at 0) (txt " "))
   (%make-num :at at :txt txt  :heaven (if (eq #\- (last-char name)) 0 1)))
- 
+
+(defmethod add ((col1 col) (lst cons))
+  (dolist (x lst col1) (add col1) x))
+
 (defmethod add ((num1 num) x)
   (with-slots (n has ok) num1
     (unless (eql x '?)
@@ -53,7 +58,7 @@ USAGE :
   (with-slots (n has most mode) sym
     (unless (eql x '?)
       (incf n)
-      (let ((new (+1 x has)))
+      (let ((new (inc x has)))
          (if (> new most)
           (setf mode x 
                 most new))))))
@@ -78,37 +83,30 @@ USAGE :
 
 (defstruct (cols (:constructor %make-cols)) x y all names)
 
-(defun make-cols (lst &aux (n -1))
-  (let ((cols1 (%make-cols 
-                 :names lst
-                 :all (mapcar (lambda (s) (make-col :at (incf n) :name s)) lst))))
-    (dolist (col (reverse (o cols1 all)) cols1)
+(defun make-cols (lst)
+  (let (x y (n -1)
+        (all (mapcar (lambda (s) (make-col :at (incf n) :name s)) lst)))
+    (dolist (col all (%make-cols :names lst :all all :x x :y y))
       (when (not (eq #\X (last-char (o col name))))
         (if (member (last-char (o col name)) '(#\+ #\-))
           (push col (o cols1 y))
           (push col (o cols1 x)))))))
 
-
 ;--- lib --------------------------------------------------------
 ;--- system specific stuff 
-(defun args ()
-  #+clisp ext:*args* 
-  #+sbcl sb-ext:*posix-argv*)
-
-(defun goodbye (&optional (x 0))
-  #+clisp (ext:exit x)
-  #+sbcl  (sb-ext:exit :code x))
+(defun args    ()  #+clisp ext:*args*   #+sbcl sb-ext:*posix-argv*)
+(defun goodbye (x) #+clisp (ext:exit x) #+sbcl (sb-ext:exit :code x))
 
 ;---- settings  
 (defun opt (lst)
   (destructuring-bind (flag key help value) lst
     (push (list key flag value) *options*)
-    (format nil "  ~4a ~3a ~30a = ~a" flag 
+    (format nil "    ~4a ~3a ~22a = ~a" flag 
       (typecase value (integer "I") (number "F") (string "S")(t "")) help value)))
 
 (defun settings (lst)
   (with-output-to-string (s)
-    (format s "~a~%~%OPTIONS:~%~{~a~%~}" +about-help+ (mapcar #'opt lst))))
+    (format s "~a~%~{~a~%~}" (car lst) (mapcar #'opt (cdr lst)))))
 
 ;--- strings2 things                 
 (defun thing (s &aux (s1 (string-trim '(#\Space #\Tab) s)))
@@ -146,12 +144,10 @@ USAGE :
   (with-open-file (s (or file  *standard-input*))
     (loop (funcall fun (funcall filter (or (read-line s nil) (return)))))))
 
-(defmacro do-csv ((cells file &optional out) &rest code)
-  `(progn 
-    (with-csv ,file #'(lambda (,cells) ,@code))
-    ,out))
-
 ;--- maths
+(defun normal (&optional (mu 0) (sd 1)) 
+  (+ mu (* sd (sqrt (* -2 (log (rand)))) (cos (* 2 pi (rand))))))
+
 (defun rnd2 (number &optional (digits 2))
   (let* ((div (expt 10 digits))
          (tmp (/ (round (* number div)) div)))
@@ -166,11 +162,21 @@ USAGE :
 (defun rint (&optional (n 1) &aux (base 10000000000.0))
   (floor (* n (/ (rand base) base))))
 
+(defmethod sample ((a cons) &optional (n (length a))) 
+  (sample (coerce a 'vector) n))
+
+(defmethod sample ((a vector) &optional (n (length a)))
+  (let ((len (length a)))
+    (loop :repeat n :collect (elt a  (rint len)))))
+
 (defmethod shuffle ((a cons)) (coerce (shuffle (coerce a 'vector)) 'cons))
 (defmethod shuffle ((a vector)) 
   (loop :for i :from (length a) :downto 2 
         :do (rotatef (elt a (rint i)) (elt a (1- i))))
   a)
+
+(defun few (seq n)
+   (subseq (shuffle seq) 0 n))
 
 ;---- examples
 (defun egs()
@@ -179,23 +185,50 @@ USAGE :
 
 (defun main ()
   (labels ((use (x) (member (? eg) `("all" ,(subseq (down-name x) 3)) :test #'string=)))
-    (let ((help (settings +about-options+)))
+    (let ((help (settings +about+)))
       (setf *options* (cli *options*))  
       (if (? help)
         (princ help)
-        (goodbye (loop :for eg :in (egs) :if (use eg) :count (not (run eg))))))))
+        (goodbye (1- (loop :for eg :in (egs) :if (use eg) :count (eq nil (run eg)))))))))
 
 (defun run (sym &aux (b4 (copy-tree *options*)))
-  (setf *seed* (?  seed))
-  (prog1 (funcall sym) (setf *options* (copy-tree b4))))
+  (setf *seed* (? seed))
+  (let ((passed (funcall sym)))
+    (setf *options* (copy-tree b4))
+    (unless passed (format t "❌ FAIL : ~(~a~)~%" sym))
+    passed))
 
-; (defun datas(f) (print f) (with-open-file (s f) (read s)))
-;
 ; ---------------------------------------------------------------
-(defun eg-aa() (print 1))
+(defun eg-fail() nil)
 (defun eg-the() (print (cdr *options*)))
-(defun eg-csv() (with-csv (? file)))
-   
+
+(defun eg-csv (&aux (n 0)) 
+  (with-csv (? file) (lambda (a) (incf n (length a))))
+  (= n 3192))
+
+(defun eg-rand ()  
+  (let (a b)
+    (setf *seed* 1) (setf a (sort (loop :repeat 10 :collect (rint 100)) #'<))
+    (setf *seed* 1) (setf b (sort (loop :repeat 10 :collect (rint 100)) #'<))
+    (equal a b)))
+
+(defun eg-sample ()
+  (let ((a '(a b c d e f g)))
+    (loop repeat 10 do (format t "~{~a~}~%" (sample a)))
+    (loop repeat 10 do (format t "~{~a~}~%" (few a 3))))
+  t)
+
+(defun eg-sym ()
+  "can compute entropy?"
+  (let ((sym1 (add (make-sym) '(a a a a b b c))))
+    (and (eql 'a (mid sym1)) (< 1.378 (div sym1) 1.388))))
+
+(defun eg-num()
+  "can compute mu and standard deviation?"
+  (let ((num (add (make-num) (loop :repeat 10000 :collect (normal 10 2)_))))
+    (and (< 9.95 (mid num1) 10.05) (< 1.95 (div num1) 2.05))))
+
+; ---------------------------------------------------------------
 (main)
  
 
