@@ -34,7 +34,7 @@ OPTIONS:"
 (defstruct col
   (at 0) (txt " ") (n 0) )
 
-(defun col0 (at &optional (txt " "))
+(defun col0 (&optional (at 0) (txt " "))
   (if (upper-case-p (elt txt 0)) (make-num at txt) (make-sym at txt)))
 
 (defstruct (sym (:include col)) has mode (most 0))
@@ -74,18 +74,36 @@ OPTIONS:"
 
 (defmethod mid ((num1 num)) (num-mu num1))
 (defmethod mid ((sym1 sym)) (sym-mode sym1))
-
+;--- data -------------------------------------------------------
+(defstruct (data (:constructor %make-data)) rows cols)
 (defstruct (cols (:constructor %make-cols)) x y all names)
 
-(defun make-cols (lst)
+(defun make-data (str &aux (data1 (%make-data)))
+  (if (stringp str)
+    (with-csv str (lambda (row) (add data1 row)))
+    (dolist (row str) (add data1 row)))
+  data1)
+
+(defmethod add ((data1 data) row)
+  (with-slots (rows cols) data1
+    (if cols 
+      (push (add cols row) rows) 
+      (setf cols (make-cols row)))))
+            
+(defun make-cols (names)
   (let* (x y (n -1)
-         (all (mapcar (lambda (s) (col0  (incf n)  s)) lst)))
-    (dolist (col1 all (%make-cols :names lst :all all :x x :y y))
+         (all (loop :for s :in names :collect (col0 (incf n) s)))) 
+    (dolist (col1 all (%make-cols :names names :all all :x x :y y))
       (when (not (eq #\X (last-char (o col1 txt))))
         (if (member (last-char (o col1 txt)) '(#\+ #\-))
           (push col1 y)
           (push col1 x))))))
 
+(defmethod add ((cols1 cols) row)
+  (with-slots (x y) cols1
+    (dolist (tmp (list x y) row)
+      (dolist (col tmp) 
+        (add col (elt row (col-at col)))))))
 ;--- lib --------------------------------------------------------
 ;--- system specific stuff 
 (defun args    ()  #+clisp ext:*args*   #+sbcl sb-ext:*posix-argv*)
@@ -219,6 +237,10 @@ OPTIONS:"
 (defun eg-num()
   (let ((num1 (adds (make-num) (loop :repeat 1000 :collect (normal 10 2)))))
     (and (< 9.9 (mid num1) 10.1) (< 1.9 (div num1) 2.1))))
+
+(defun eg-data()
+   (make-data (? file))
+)
 
 ; ---------------------------------------------------------------
 (main)
