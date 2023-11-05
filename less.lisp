@@ -24,28 +24,26 @@ OPTIONS:"
 
 ;--- generalMacros 
 (defmacro o (struct f &rest fs)
-  (if fs `(o (slot-value ,struct ',f) ,@fs) `(f-value ,struct ',f)))  
+  (if fs `(o (slot-value ,struct ',f) ,@fs) `(slot-value ,struct ',f)))  
 
 (defmacro inca (x lst &optional (init 0))
   `(incf (cdr (or (assoc ,x ,lst :test #'equal) 
             (car (setf ,lst (cons (cons ,x ,init) ,lst)))))))
 
 ;--- col
-(defstruct col
-  (at 0) (txt " ") (n 0) )
+(defun make-col (&key (at 0) (txt " "))
+  (if (upper-case-p (elt txt 0)) 
+    (make-num :at at :txt txt) 
+    (make-sym :at at :txt txt)))
 
-(defun col0 (&optional (at 0) (txt " "))
-  (if (upper-case-p (elt txt 0)) (make-num at txt) (make-sym at txt)))
+(defstruct sym  (at 0) (txt " ") (n 0)  has mode (most 0))
+(defstruct (num (:constructor %make-num)) 
+   (lo 1e30) (hi -1e30) (mu 0) (at 0) (txt " ") (n 0) (m2 0) (heaven 1))
 
-(defstruct (sym (:include col)) has mode (most 0))
-(defstruct (num (:include col) 
-                (:constructor %make-num)) (lo 1e30) (hi -1e30) (mu 0) 
-                (m2 0) (heaven 1))
-
-(defun make-num (&optional (at 0) (txt " "))
+(defun make-num (&key (at 0) (txt " "))
   (%make-num :at at :txt txt  :heaven (if (eq #\- (last-char txt)) 0 1)))
 
-(defmethod adds ((col1 col) lst)
+(defmethod adds (col1 lst)
   (dolist (x lst col1) (add col1 x)))
 
 (defmethod add ((self num) x)
@@ -90,9 +88,9 @@ OPTIONS:"
       (push (add cols row) rows) 
       (setf cols (make-cols row)))))
             
-(defun make-cols (names)
+(defun make-cols (names)   
   (let* (x y (n -1)
-         (all (loop :for s :in names :collect (col0 (incf n) s)))) 
+         (all (loop :for s :in names :collect (make-col :at (incf n) :txt s))))
     (dolist (col1 all (%make-cols :names names :all all :x x :y y))
       (when (not (eq #\X (last-char (o col1 txt))))
         (if (member (last-char (o col1 txt)) '(#\+ #\-))
@@ -103,7 +101,13 @@ OPTIONS:"
   (with-slots (x y) cols1
     (dolist (tmp (list x y) row)
       (dolist (col tmp) 
-        (add col (elt row (col-at col)))))))
+        (add col (elt row (o col at)))))))
+
+(defmethod stats ((data1 data) &key (rows (data-rows data1)) 
+                                    (what #'mid) (digits 2) (cols 'y))
+  (let ((out (list (cons 'N (length rows)))))
+    (dolist (col (slot-value (slot-value data1 'cols) cols) out)
+      (push (cons (o col txt) (rnd2 (funcall what col) digits)) out))))
 ;--- lib --------------------------------------------------------
 ;--- system specific stuff 
 (defun args    ()  #+clisp ext:*args*   #+sbcl sb-ext:*posix-argv*)
@@ -140,6 +144,12 @@ OPTIONS:"
                            b4)))))
 
 ;---- lists
+(defun keysort (lst fun order)
+  (mapcar #'cdr
+    (sort 
+      (mapcar (lambda (x) (cons (funcall fun x) x)) lst) 
+      order :key #'car)))
+
 ;---- strings 
 (defun down-name (x) (string-downcase (symbol-name x)))
 
@@ -159,9 +169,10 @@ OPTIONS:"
 (defun normal (&optional (mu 0) (sd 1)) 
   (+ mu (* sd (sqrt (* -2 (log (rand)))) (cos (* 2 pi (rand))))))
 
-(defun rnd2 (number &optional (digits 2))
+(defmethod rnd2 (x  &optional (digits 2)) x)
+(defmethod rnd2 ((num number) &optional (digits 2))
   (let* ((div (expt 10 digits))
-         (tmp (/ (round (* number div)) div)))
+         (tmp (/ (round (* num div)) div)))
     (if (zerop digits) (floor tmp) (float tmp))))
 
 ;--- randoms
@@ -214,6 +225,13 @@ OPTIONS:"
 
 (defun eg-the() (print (cdr *options*)))
 
+(defun eg-keysort ()
+  (let ((lst '(7 6 5 4 3 2 1)))
+   (print (let ((n 0)) 
+      (keysort lst #'(lambda (x) (incf n) (* -1 x)) #'<)
+      n))
+    (print lst)))
+
 (defun eg-csv (&aux (n 0)) 
   (with-csv (? file) (lambda (a) (incf n (length a))))
   (= n 3192))
@@ -238,9 +256,15 @@ OPTIONS:"
   (let ((num1 (adds (make-num) (loop :repeat 1000 :collect (normal 10 2)))))
     (and (< 9.9 (mid num1) 10.1) (< 1.9 (div num1) 2.1))))
 
+(defun eg-cols ()
+  (dolist (col (o (make-cols '("Name" "Age" "married" "Weight-")) all))
+    (print col)))
+    
 (defun eg-data()
-   (make-data (? file))
-)
+  (print (first (o (make-data (? file)) cols y))))
+
+(defun eg-data()
+  (print (stats (make-data (? file)))))
 
 ; ---------------------------------------------------------------
 (main)
