@@ -269,32 +269,3 @@ OPTIONS:"
 
 ; ---------------------------------------------------------------
 (main)
- 
-
-;; ; ;
-;; ; ; (defstruct (cols (:constructor %make-cols)) all x y klass names)
-;; ; ;
-;; ; ; (defmacro (data (:constructor %make-data)) rows cols)
-;; ; ;
-;; ; ; (defun make-cols (lst &aux (n -1) (cols0 (%make-cols :names lst)))
-;; ; ;   (with-slots (all x y klass) cols0
-;; ; ;     (setf all (mapcar (lambda (s) (make-col :at (incf n) :name s)) lst))
-;; ; ;     (dolist (col all cols0)
-;; ; ;       (when (not (eq #\X (last-char (o col name))))
-;; ; ;         (if (member (last-char (o col name)) '(#\+ #\-))
-;; ; ;           (push col (o cols1 y))
-;; ; ;           (push col (o cols1 x)))))))
-;; ; ;
-;; ; ; (defun make-data (s &aux (data1 (%make-data :names s)))
-;; ; ;   (with-slots (all x y klass) data1
-;; ; ;     (setf all (mapcar 
-;; ; ;  (dolist (a (datas (? file)) data) (add data1 a)))
-;; ; ;
-;; ; ; (defmethod add ((data1 data) (a cons)) (add data1 (coerce a 'vector)))
-;; ; ;
-;; ; ; (defmethod add ((data1 data) (v vector))
-;; ; ;   (with-slots (cols row) data1
-;; ; ;     (if  cols
-;; ; ;       (push (dolist (col cols v) (add col (elt v (? col at)))) rows)
-;; ; ;       (setf cols (make-cols v)))))
-;; ; ;
