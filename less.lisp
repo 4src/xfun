@@ -105,9 +105,10 @@ OPTIONS:"
 
 (defmethod stats ((data1 data) &key (rows (data-rows data1)) 
                                     (what #'mid) (digits 2) (cols 'y))
-  (let ((out (list (cons 'N (length rows)))))
-    (dolist (col (slot-value (slot-value data1 'cols) cols) out)
-      (push (cons (o col txt) (rnd2 (funcall what col) digits)) out))))
+  (list (cons "N" (length rows))
+        (loop :for col :in (slot-value (o data1 cols) cols)
+              :collect (cons (o col txt) (rnd2 (funcall what col) digits)))))
+
 ;--- lib --------------------------------------------------------
 ;--- system specific stuff 
 (defun args    ()  #+clisp ext:*args*   #+sbcl sb-ext:*posix-argv*)
