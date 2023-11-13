@@ -28,7 +28,7 @@ lorem ipsum whatever lorem ipsum whatever lorem ipsum whatever
 ![example]
 
 
-[example]: https://user-images.githubusercontent.com/image-4.png "example image"
+[example]: https://rainbowprintables.com/wp-content/uploads/2021/03/How-to-Draw-a-Cute-Baby-Puppy-Final.jpg "example image"
 [issues]:    https://github.com/grantwinney/BlogCodeSamples/issues
 [pulls]:     https://github.com/grantwinney/BlogCodeSamples/pulls
 
