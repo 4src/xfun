@@ -115,15 +115,14 @@ OPTIONS:"
 (defun goodbye (x) #+clisp (ext:exit x) #+sbcl (sb-ext:exit :code x))
 
 ;---- settings  
-(defun opt (lst)
+(defun help-txt (lst)
+  (with-output-to-string (s)
+    (format s "~a~%~{~a~%~}" (car lst) (mapcar #'%help-txt (cdr lst)))))
+
+(defun %help-txt (lst)
   (destructuring-bind (flag key help value) lst
-    (push (list key flag value) *options*)
     (format nil "    ~4a ~3a ~22a = ~a" flag 
       (typecase value (integer "I") (number "F") (string "S")(t "")) help value)))
-
-(defun settings (lst)
-  (with-output-to-string (s)
-    (format s "~a~%~{~a~%~}" (car lst) (mapcar #'opt (cdr lst)))))
 
 ;--- strings2 things                 
 (defun thing (s &aux (s1 (string-trim '(#\Space #\Tab) s)))
@@ -199,17 +198,20 @@ OPTIONS:"
   a)
 
 (defun few (seq n)
-  (subseq (shuffle seq) 0 n))
+  (subseq (shuffle seq) 0 n))   
 
 ;---- examples
 (defun egs()
   (labels ((eg (s) (equalp "eg-" (subseq s 0 (min 3 (length s)))))) 
     (loop :for x :being :the symbols :in *package* :if (eg (down-name x)) :collect x)))
 
-(defun main ()
+(defun main (&optional fun)
   (labels ((use (x) (member (? eg) `("all" ,(subseq (down-name x) 3)) :test #'string=)))
-    (let ((help (settings +about+)))
-      (setf *options* (cli *options*))  
+    (let ((help (help-txt +about+)))
+      (setf *options* 
+        (loop :for (k key help v) :in (cdr +about+) :collect (list k flag v)))
+      (if fun  
+        (setf *options* (funcall fun *options*)))
       (if (? help)
         (princ help)
         (goodbye (1- (loop :for eg :in (egs) :if (use eg) :count (eq nil (run eg)))))))))
@@ -268,4 +270,4 @@ OPTIONS:"
   (print (stats (make-data (? file)))))
 
 ; ---------------------------------------------------------------
-(main)
+(main #'cli)
