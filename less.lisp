@@ -46,8 +46,8 @@ OPTIONS:"
 (defmethod adds (col1 lst)
   (dolist (x lst col1) (add col1 x)))
 
-(defmethod add ((self num) x)
-  (with-slots (lo hi n mu m2) self
+(defmethod add ((num1 num) x)
+  (with-slots (lo hi n mu m2) num1
     (unless (eq #\? x)
       (incf n)
       (let ((d (- x mu)))
@@ -114,20 +114,21 @@ OPTIONS:"
 (defun args    ()  #+clisp ext:*args*   #+sbcl sb-ext:*posix-argv*)
 (defun goodbye (x) #+clisp (ext:exit x) #+sbcl (sb-ext:exit :code x))
 
-;---- settings  
-(defun help-txt (lst)
-  (with-output-to-string (s)
-    (format s "~a~%~{~a~%~}" (car lst) (mapcar #'%help-txt (cdr lst)))))
+;---- settings 
+(defun about->settings (lst)
+  (loop :for (k key _ v) :in (cdr lst) :collect (list key k v)))
 
-(defun %help-txt (lst)
-  (destructuring-bind (flag key help value) lst
-    (format nil "    ~4a ~3a ~22a = ~a" flag 
-      (typecase value (integer "I") (number "F") (string "S")(t "")) help value)))
+(defun about->help (lst)
+  (labels ((mark (x)  (typecase x (integer "I") (number "F") (string "S")(t "")))
+           (fun (lst) (destructuring-bind (flag _ help x) lst
+                        (format nil "    ~4a ~3a ~22a = ~a" flag (mark x) help x))))
+    (with-output-to-string (s)
+      (format s "~a~%~{~a~%~}" (car lst) (mapcar #'fun (cdr lst))))))
 
 ;--- strings2 things                 
 (defun thing (s &aux (s1 (string-trim '(#\Space #\Tab) s)))
   (let* ((*read-eval* nil)
-         (x (read-from-string s1)))
+         (x (read-from-string s nil )))
     (cond ((numberp x) x)
           ((eq x t)    t)
           ((eq x nil)  nil)
@@ -157,9 +158,9 @@ OPTIONS:"
 (defmethod last-char ((s symbol)) (last-char (symbol-name s)))
 
 (defun split (s &optional (here 0))
-  (let* ((there (position #\, s :start here)))
-      (cons (thing (subseq s here there))
-            (if there (split s (1+ there))))))
+  (let ((there (position #\, s :start here)))
+     (cons (thing (subseq s here there))
+       (if there (split s (1+ there))))))
 
 (defun with-csv (file &optional (fun #'print) (filter #'split))
   (with-open-file (s (or file  *standard-input*))
@@ -205,23 +206,19 @@ OPTIONS:"
   (labels ((eg (s) (equalp "eg-" (subseq s 0 (min 3 (length s)))))) 
     (loop :for x :being :the symbols :in *package* :if (eg (down-name x)) :collect x)))
 
-(defun main (&optional fun)
-  (labels ((use (x) (member (? eg) `("all" ,(subseq (down-name x) 3)) :test #'string=)))
-    (let ((help (help-txt +about+)))
-      (setf *options* 
-        (loop :for (k key help v) :in (cdr +about+) :collect (list k flag v)))
-      (if fun  
-        (setf *options* (funcall fun *options*)))
-      (if (? help)
-        (princ help)
-        (goodbye (1- (loop :for eg :in (egs) :if (use eg) :count (eq nil (run eg)))))))))
-
 (defun run (sym &aux (b4 (copy-tree *options*)))
   (setf *seed* (? seed))
   (let ((passed (funcall sym)))
     (setf *options* (copy-tree b4))
     (unless passed (format t "❌ FAIL : ~(~a~)~%" sym))
     passed))
+
+(defun main (&optional cli)
+  (labels ((use (x) (member (? eg) `("all" ,(subseq (down-name x) 3)) :test #'string=)))
+    (if cli  (setf *options* (funcall cli *options*)))
+    (if (? help)
+      (princ (about->help +about+))
+      (goodbye (1- (loop :for eg :in (egs) :if (use eg) :count (not (run eg))))))))
 
 ; ---------------------------------------------------------------
 (defun eg-fail() nil)
@@ -269,5 +266,6 @@ OPTIONS:"
 (defun eg-data()
   (print (stats (make-data (? file)))))
 
-; ---------------------------------------------------------------
+; -------------------------------------------------------------
+(setf *options* (about->settings +about+))
 (main #'cli)
