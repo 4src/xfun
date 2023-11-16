@@ -15,3 +15,19 @@ Basic multi-objective random projections, timm@ieee.org
 [makefile](#file-makefile) 
 
 
+
+If you take [issue][issues] with any [issues][issues]
+I [issued][issues], grab a tissue.
+
+If you find a bug, please report an [issue][issues], or better yet,
+fix it and submit a [pull request][pulls].
+
+
+lorem ipsum whatever lorem ipsum whatever lorem ipsum whatever 
+
+![example]
+
+
+[example]: https://blog.apify.com/content/images/2022/11/lisp_logo.png  "example image"
+[issues]:  https://github.com/grantwinney/BlogCodeSamples/issues
+[pulls]:   https://github.com/grantwinney/BlogCodeSamples/pulls
