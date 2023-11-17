@@ -1,4 +1,4 @@
-(defvar +help+ "
+(defvar +about+ "
 LESS: less is more
 (c)2023 Tim Menzies <timm.ieee.org> BSD-2
 
@@ -21,7 +21,7 @@ USAGE:
 (defmacro ? (key) `(fourth (assoc ',key *options*)))
 
 (defun print-help ()
-  (format t "~a~%~%OPTIONS:~%" +help+)
+  (format t "~a~%~%OPTIONS:~%" +about+)
   (loop :for (_ flag help value) :in *options* :do
      (let ((isa (typecase value (integer "I") (number "F") (string "S")(t ""))))
        (format t "    ~4a ~3a ~22a = ~a~%" flag isa help value))))
@@ -37,6 +37,7 @@ USAGE:
 (defmacro aif (test-form then-form &optional else-form) 
   `(let ((it ,test-form))
      (if it ,then-form ,else-form)))
+
 ;--- col
 (defun make-col (&key (at 0) (txt " "))
   (if (upper-case-p (elt txt 0)) 
@@ -72,13 +73,14 @@ USAGE:
           (setf mode x 
                 most new))))))
 
+(defmethod mid ((num1 num)) (num-mu num1))
+(defmethod mid ((sym1 sym)) (sym-mode sym1))
+
 (defmethod div ((num1 num)) (sqrt (/ (num-m2 num1) (- (num-n num1) 1))))
 (defmethod div ((sym1 sym))
   (with-slots (has n) sym1
     (* -1 (loop :for (_ . v) :in has :sum  (* (/ v n) (log (/ v n) 2))))))
 
-(defmethod mid ((num1 num)) (num-mu num1))
-(defmethod mid ((sym1 sym)) (sym-mode sym1))
 ;--- data -------------------------------------------------------
 (defstruct (data (:constructor %make-data)) rows cols)
 (defstruct (cols (:constructor %make-cols)) x y all names)
@@ -135,14 +137,21 @@ USAGE:
              ((string= it "?") '?)
              (t               s1)))); else return nil
 
+(defun agrees (flag old new)  
+  (or (cond ((member old '(t nil)) (member new '(t nil)))
+             ((stringp old) (stringp new))
+             (t (equalp (type-of new) (type-of old))))
+        (error "~a unexpeceted for ~a" new flag))
+  new)
+
 (defun cli (lst)
   (loop :for (key flag help b4) :in lst :collect
-        (list key flag help (aif (member flag (args) :test #'string=)
-                                 (cond ((eq b4 t)   nil)
-                                       ((eq b4 nil) t)
-                                       (t           (thing (second it))))
-                                 b4))))
-
+        (list key flag help (agrees flag b4 
+                              (aif (member flag (args) :test #'string=)
+                                (cond ((eq b4 t)   nil)
+                                      ((eq b4 nil) t)
+                                      (t           (thing (second it))))
+                                b4)))))
 ;---- lists
 (defun keysort (lst fun order)
   (mapcar #'cdr
@@ -197,12 +206,12 @@ USAGE:
         :do (rotatef (elt a (rint i)) (elt a (1- i))))
   a)
 
-(defun few (seq n)
+(defun few (seq &optional (n 1))
   (subseq (shuffle seq) 0 n))   
 
 ;---- examples
 (defun egs()
-  (labels ((eg (s) (equalp "eg-" (subseq s 0 (min 3 (length s)))))) 
+  (labels ((eg (s) (equalp "eg-" (subseq s 0 (min 3 (length s))))))
     (loop :for x :being :the symbols :in *package* :if (eg (down-name x)) :collect x)))
 
 (defun run (sym &aux (b4 (copy-tree *options*)))
