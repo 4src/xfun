@@ -4,9 +4,7 @@ LESS: less is more
 
 USAGE:
     sbcl --script tiny.lisp [OPTIONS]
-    clisp less.lisp [OPTIONS]
-     
-OPTIONS:")
+    clisp less.lisp [OPTIONS]")
 
 (defvar *options* '(
   (BOOTSTRAPS  "-b"  "number of bootstraps"                  256)
@@ -23,7 +21,7 @@ OPTIONS:")
 (defmacro ? (key) `(fourth (assoc ',key *options*)))
 
 (defun print-help ()
-  (format t "~a~%" +help+)
+  (format t "~a~%~%OPTIONS:~%" +help+)
   (loop :for (_ flag help value) :in *options* :do
      (let ((isa (typecase value (integer "I") (number "F") (string "S")(t ""))))
        (format t "    ~4a ~3a ~22a = ~a~%" flag isa help value))))
@@ -258,7 +256,7 @@ OPTIONS:")
     (and (< 9.9 (mid num1) 10.1) (< 1.9 (div num1) 2.1))))
 
 (defun eg-cols ()
-  (dolist (col (o (make-cols '("Name" "Age" "married" "Weight-")) all))
+  (dolist (col (o (make-cols '("Name" "Age" "married" "Weight-")) all) t)
     (print col)))
     
 (defun eg-data()
