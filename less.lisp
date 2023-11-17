@@ -1,5 +1,4 @@
-(defvar +about+
-  '("
+(defvar +help+ "
 LESS: less is more
 (c)2023 Tim Menzies <timm.ieee.org> BSD-2
 
@@ -7,20 +6,27 @@ USAGE:
     sbcl --script tiny.lisp [OPTIONS]
     clisp less.lisp [OPTIONS]
      
-OPTIONS:"
-  ("-b"  BOOTSTRAPS  "number of bootstraps"           256)
-  ("-B"  BOOTCONF    "bootstrap threshold"            .05) 
-  ("-d"  COHEN       "Cohen delta"                    .35)
-  ("-e"  EG          "start up actions"         "nothing")
-  ("-f"  FILE        "data file"     "../data/auto93.csv")
-  ("-h"  HELP        "show help"                      nil)
-  ("-p"  P           "distance coeffecient"             2)
-  ("-s"  SEED        "random seed"                  10013)))
+OPTIONS:")
+
+(defvar *options* '(
+  (BOOTSTRAPS  "-b"  "number of bootstraps"                  256)
+  (BOOTCONF    "-B"  "bootstrap threshold"                   .05) 
+  (COHEN       "-d"  "Cohen delta"                           .35)
+  (EG          "-e"  "start up actions"                "nothing")
+  (FILE        "-f"  "data file"            "../data/auto93.csv")
+  (HELP        "-h"  "show help"                             nil)
+  (P           "-p"  "distance coeffecient"                    2)
+  (SEED        "-s"  "random seed"                         10013)))
 
 ;--- macros  (must go first) -------------------------------------
 ;--- optionMacros
-(defvar *options* nil) ;  filled in later by `settings`
-(defmacro ? (key) `(third (assoc ',key *options*)))
+(defmacro ? (key) `(fourth (assoc ',key *options*)))
+
+(defun print-help ()
+  (format t "~a~%" +help+)
+  (loop :for (_ flag help value) :in *options* :do
+     (let ((isa (typecase value (integer "I") (number "F") (string "S")(t ""))))
+       (format t "    ~4a ~3a ~22a = ~a~%" flag isa help value))))
 
 ;--- generalMacros 
 (defmacro o (struct f &rest fs)
@@ -30,6 +36,9 @@ OPTIONS:"
   `(incf (cdr (or (assoc ,x ,lst :test #'equal) 
             (car (setf ,lst (cons (cons ,x ,init) ,lst)))))))
 
+(defmacro aif (test-form then-form &optional else-form) 
+  `(let ((it ,test-form))
+     (if it ,then-form ,else-form)))
 ;--- col
 (defun make-col (&key (at 0) (txt " "))
   (if (upper-case-p (elt txt 0)) 
@@ -107,7 +116,8 @@ OPTIONS:"
                                     (what #'mid) (digits 2) (cols 'y))
   (list (cons "N" (length rows))
         (loop :for col :in (slot-value (o data1 cols) cols)
-              :collect (cons (o col txt) (rnd2 (funcall what col) digits)))))
+              :collect (cons (o col txt) 
+                              (rnd2 (funcall what col) digits)))))
 
 ;--- lib --------------------------------------------------------
 ;--- system specific stuff 
@@ -115,34 +125,25 @@ OPTIONS:"
 (defun goodbye (x) #+clisp (ext:exit x) #+sbcl (sb-ext:exit :code x))
 
 ;---- settings 
-(defun about->settings (lst)
-  (loop :for (k key _ v) :in (cdr lst) :collect (list key k v)))
+;--- strings2 things   
+(defun read-safely-from-string (s)
+  (let ((*read-eval* nil))
+    (read-from-string s nil)))
 
-(defun about->help (lst)
-  (labels ((mark (x)  (typecase x (integer "I") (number "F") (string "S")(t "")))
-           (fun (lst) (destructuring-bind (flag _ help x) lst
-                        (format nil "    ~4a ~3a ~22a = ~a" flag (mark x) help x))))
-    (with-output-to-string (s)
-      (format s "~a~%~{~a~%~}" (car lst) (mapcar #'fun (cdr lst))))))
-
-;--- strings2 things                 
 (defun thing (s &aux (s1 (string-trim '(#\Space #\Tab) s)))
-  (let* ((*read-eval* nil)
-         (x (read-from-string s nil )))
-    (cond ((numberp x) x)
-          ((eq x t)    t)
-          ((eq x nil)  nil)
-          ((string= x "?") '?)
-          (t           s1))))
+  (aif (read-safely-from-string s1)
+       (cond ((numberp it)     it)
+             ((eq it t)        it)
+             ((string= it "?") '?)
+             (t               s1)))); else return nil
 
-(defun cli (lst &aux it)
-  (let ((args #+clisp ext:*args* #+sbcl sb-ext:*posix-argv*))
-    (loop :for (key flag b4) :in lst :collect
-          (list key flag (if (setf it (member flag args :test #'string=))
-                           (cond ((eq b4 t) nil)
-                                 ((eq b4 nil) t)
-                                 (t (thing (second it))))
-                           b4)))))
+(defun cli (lst)
+  (loop :for (key flag help b4) :in lst :collect
+        (list key flag help (aif (member flag (args) :test #'string=)
+                                 (cond ((eq b4 t)   nil)
+                                       ((eq b4 nil) t)
+                                       (t           (thing (second it))))
+                                 b4))))
 
 ;---- lists
 (defun keysort (lst fun order)
@@ -217,7 +218,7 @@ OPTIONS:"
   (labels ((use (x) (member (? eg) `("all" ,(subseq (down-name x) 3)) :test #'string=)))
     (if cli  (setf *options* (funcall cli *options*)))
     (if (? help)
-      (princ (about->help +about+))
+      (print-help)
       (goodbye (1- (loop :for eg :in (egs) :if (use eg) :count (not (run eg))))))))
 
 ; ---------------------------------------------------------------
@@ -267,5 +268,4 @@ OPTIONS:"
   (print (stats (make-data (? file)))))
 
 ; -------------------------------------------------------------
-(setf *options* (about->settings +about+))
 (main #'cli)
