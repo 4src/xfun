@@ -212,12 +212,14 @@ USAGE:
     (unless passed (format t "❌ FAIL : ~(~a~)~%" sym))
     passed))
 
-(defun main (&optional cli)
-  (labels ((use (x) (member (? eg) `("all" ,(subseq (down-name x) 3)) :test #'string=)))
-    (if cli  (setf *options* (funcall cli *options*)))
-    (if (? help)
-      (print-help)
-      (goodbye (1- (loop :for eg :in (egs) :if (use eg) :count (not (run eg))))))))
+(defun run-p(x)
+  (member (? eg) `("all" ,(subseq (down-name x) 3)) :test #'string=))
+
+(defun main (&optional update)
+  (if update  (setf *options* (cli *options*)))
+  (if (? help)
+    (print-help)
+    (goodbye (1- (loop :for eg :in (egs) :if (run-p eg) :count (not (run eg)))))))
 
 ; ---------------------------------------------------------------
 (defun eg-fail() nil)
@@ -266,4 +268,4 @@ USAGE:
   (print (stats (make-data (? file)))))
 
 ; -------------------------------------------------------------
-(main #'cli)
+(main t)
