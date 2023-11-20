@@ -23,8 +23,9 @@ USAGE:
 (defun print-help ()
   (format t "~a~%~%OPTIONS:~%" +about+)
   (loop :for (_ flag help value) :in *options* :do
-     (let ((isa (typecase value (integer "I") (number "F") (string "S")(t ""))))
-       (format t "    ~4a ~3a ~22a = ~a~%" flag isa help value))))
+    (format t "    ~4a ~3a ~22a = ~a~%" flag 
+      (typecase value (integer "I") (number "F") (string "S")(t ""))
+      help value))))
 
 ;--- generalMacros 
 (defmacro o (struct f &rest fs)
@@ -32,7 +33,7 @@ USAGE:
 
 (defmacro inca (x lst &optional (init 0))
   `(incf (cdr (or (assoc ,x ,lst :test #'equal) 
-            (car (setf ,lst (cons (cons ,x ,init) ,lst)))))))
+              (car (setf ,lst (cons (cons ,x ,init) ,lst)))))))
 
 (defmacro aif (test-form then-form &optional else-form) 
   `(let ((it ,test-form))
@@ -98,9 +99,10 @@ USAGE:
       (setf cols (make-cols row)))))
             
 (defun make-cols (names)   
-  (let* (x y (n -1)
-         (all (loop :for s :in names :collect (make-col :at (incf n) :txt s))))
-    (dolist (col1 all (%make-cols :names names :all all :x x :y y))
+  (let (all x y (n -1))
+    (dolist (col1 (loop :for s :in names :collect (make-col :at (incf n) :txt s)) 
+                  (%make-cols :names names :all all :x x :y y))
+      (push col1 all)
       (when (not (eq #\X (last-char (o col1 txt))))
         (if (member (last-char (o col1 txt)) '(#\+ #\-))
           (push col1 y)
@@ -117,7 +119,7 @@ USAGE:
   (list (cons "N" (length rows))
         (loop :for col :in (slot-value (o data1 cols) cols)
               :collect (cons (o col txt) 
-                              (rnd2 (funcall what col) digits)))))
+                             (rnd2 (funcall what col) digits)))))
 
 ;--- lib --------------------------------------------------------
 ;--- system specific stuff 
@@ -128,19 +130,20 @@ USAGE:
 ;--- strings2 things   
 (defun read-safely-from-string (s)
   (let ((*read-eval* nil))
-    (read-from-string s nil)))
+     (read-from-string s "")))
 
 (defun thing (s &aux (s1 (string-trim '(#\Space #\Tab) s)))
-  (aif (read-safely-from-string s1)
-       (cond ((numberp it)     it)
-             ((eq it t)        it)
-             ((string= it "?") '?)
-             (t               s1)))); else return nil
+  (let ((it (read-safely-from-string s1)))
+    (cond ((numberp it)     it)
+          ((eq it t)        it)
+          ((eq it nil)      nil)
+          ((string= it "?") '?)
+          (t                s1)))); else return nil
 
 (defun agrees (flag old new)  
   (or (cond ((member old '(t nil)) (member new '(t nil)))
-             ((stringp old) (stringp new))
-             (t (equalp (type-of new) (type-of old))))
+            ((stringp old) (stringp new))
+            (t (equalp (type-of new) (type-of old))))
         (error "~a unexpeceted for ~a" new flag))
   new)
 
@@ -212,7 +215,8 @@ USAGE:
 ;---- examples
 (defun egs()
   (labels ((eg (s) (equalp "eg-" (subseq s 0 (min 3 (length s))))))
-    (loop :for x :being :the symbols :in *package* :if (eg (down-name x)) :collect x)))
+    (loop :for x :being :the symbols :in *package* 
+          :if (eg (down-name x)) :collect x)))
 
 (defun run (sym &aux (b4 (copy-tree *options*)))
   (setf *seed* (? seed))
