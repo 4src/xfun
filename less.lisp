@@ -25,7 +25,7 @@ USAGE:
   (loop :for (_ flag help value) :in *options* :do
     (format t "    ~4a ~3a ~22a = ~a~%" flag 
       (typecase value (integer "I") (number "F") (string "S")(t ""))
-      help value))))
+      help value)))
 
 ;--- generalMacros 
 (defmacro o (struct f &rest fs)
