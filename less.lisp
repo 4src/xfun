@@ -16,6 +16,7 @@ USAGE:
   (P           "-p"  "distance coeffecient"                    2)
   (SEED        "-s"  "random seed"                         10013)))
 
+
 ;--- macros  (must go first) -------------------------------------
 ;--- optionMacros
 (defmacro ? (key) `(fourth (assoc ',key *options*)))
@@ -39,18 +40,34 @@ USAGE:
   `(let ((it ,test-form))
      (if it ,then-form ,else-form)))
 
+(defmethod last-char ((s string)) (char s (1- (length s))))
+(defmethod last-char ((s symbol)) (last-char (symbol-name s)))
+
+#+sbcl
+(defun loader (x)
+  (handler-bind
+      ((simple-warning 
+         #'(lambda (w) 
+             (when (undefined-variable-warning-p w)
+               (invoke-restart 'muffle-warning)))))
+    (load x)))
+
+
 ;--- col
-(defun make-col (&key (at 0) (txt " "))
-  (if (upper-case-p (elt txt 0)) 
-    (make-num :at at :txt txt) 
-    (make-sym :at at :txt txt)))
 
 (defstruct sym  (at 0) (txt " ") (n 0)  has mode (most 0))
 (defstruct (num (:constructor %make-num)) 
    (lo 1e30) (hi -1e30) (mu 0) (at 0) (txt " ") (n 0) (m2 0) (heaven 1))
 
+
+
 (defun make-num (&key (at 0) (txt " "))
   (%make-num :at at :txt txt  :heaven (if (eq #\- (last-char txt)) 0 1)))
+
+(defun make-col (&key (at 0) (txt " "))
+  (if (upper-case-p (elt txt 0)) 
+    (make-num :at at :txt txt) 
+    (make-sym :at at :txt txt)))
 
 (defmethod adds (col1 lst)
   (dolist (x lst col1) (add col1 x)))
@@ -115,7 +132,7 @@ USAGE:
         (add col (elt row (o col at)))))))
 
 (defmethod stats ((data1 data) &key (rows (data-rows data1)) 
-                                    (what #'mid) (digits 2) (cols 'y))
+                                    (what #'mid) (digits) (cols 'y))
   (list (cons "N" (length rows))
         (loop :for col :in (slot-value (o data1 cols) cols)
               :collect (cons (o col txt) 
@@ -165,8 +182,6 @@ USAGE:
 ;---- strings 
 (defun down-name (x) (string-downcase (symbol-name x)))
 
-(defmethod last-char ((s string)) (char s (1- (length s))))
-(defmethod last-char ((s symbol)) (last-char (symbol-name s)))
 
 (defun split (s &optional (here 0))
   (let ((there (position #\, s :start here)))
@@ -181,11 +196,12 @@ USAGE:
 (defun normal (&optional (mu 0) (sd 1)) 
   (+ mu (* sd (sqrt (* -2 (log (rand)))) (cos (* 2 pi (rand))))))
 
-(defmethod rnd2 (x  &optional (digits 2)) x)
-(defmethod rnd2 ((num number) &optional (digits 2))
-  (let* ((div (expt 10 digits))
-         (tmp (/ (round (* num div)) div)))
-    (if (zerop digits) (floor tmp) (float tmp))))
+(defmethod rnd2 (x &optional (digits 2))
+  (if (numberp x)
+      (let* ((div (expt 10 digits))
+             (tmp (/ (round (* num div)) div)))
+        (if (zerop digits) (floor tmp) (float tmp)))
+  x))
 
 ;--- randoms
 (defvar *seed* 10013)
@@ -281,4 +297,4 @@ USAGE:
   (print (stats (make-data (? file)))))
 
 ; -------------------------------------------------------------
-(main t)
+;(main t)
