@@ -157,27 +157,18 @@ USAGE:
           ((string= it "?") '?)
           (t                s1)))); else return nil
 
-(defun agrees (flag old new)  
-  (or (cond ((member old '(t nil)) (member new '(t nil)))
-            ((stringp old) (stringp new))
-            (t (equalp (type-of new) (type-of old))))
-        (error "~a unexpeceted for ~a" new flag))
-  new)
-
 (defun cli (lst)
   (loop :for (key flag help b4) :in lst :collect
-        (list key flag help (agrees flag b4 
-                              (aif (member flag (args) :test #'string=)
-                                (cond ((eq b4 t)   nil)
-                                      ((eq b4 nil) t)
-                                      (t           (thing (second it))))
-                                b4)))))
+    (list key flag help (aif (member flag (args) :test #'string=)
+                          (cond ((eq b4 t)   nil)
+                                ((eq b4 nil) t)
+                                (t (thing (second it))))
+                          b4))))
 ;---- lists
 (defun keysort (lst fun order)
   (mapcar #'cdr
-    (sort 
-      (mapcar (lambda (x) (cons (funcall fun x) x)) lst) 
-      order :key #'car)))
+          (sort (mapcar (lambda (x) (cons (funcall fun x) x)) lst) 
+                order :key #'car)))
 
 ;---- strings 
 (defun down-name (x) (string-downcase (symbol-name x)))
@@ -199,7 +190,7 @@ USAGE:
 (defmethod rnd2 (x &optional (digits 2))
   (if (numberp x)
       (let* ((div (expt 10 digits))
-             (tmp (/ (round (* num div)) div)))
+             (tmp (/ (round (* x div)) div)))
         (if (zerop digits) (floor tmp) (float tmp)))
   x))
 
@@ -297,4 +288,4 @@ USAGE:
   (print (stats (make-data (? file)))))
 
 ; -------------------------------------------------------------
-;(main t)
+(main t)
