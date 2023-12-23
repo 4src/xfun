@@ -42,15 +42,7 @@ USAGE:
 
 (defmethod last-char ((s string)) (char s (1- (length s))))
 (defmethod last-char ((s symbol)) (last-char (symbol-name s)))
-
-#+sbcl
-(defun loader (x)
-  (handler-bind
-      ((simple-warning 
-         #'(lambda (w) 
-             (when (undefined-variable-warning-p w)
-               (invoke-restart 'muffle-warning)))))
-    (load x)))
+ 
 
 
 ;--- col
@@ -105,12 +97,13 @@ USAGE:
 
 (defun make-data (str &aux (data1 (%make-data)))
   (if (stringp str)
-    (with-csv str (lambda (row) (add data1 row)))
+    (with-csv str (lambda (row)  (add data1 row)))
     (dolist (row str) (add data1 row)))
   data1)
 
 (defmethod add ((data1 data) row)
   (with-slots (rows cols) data1
+     (print 1)
     (if cols 
       (push (add cols row) rows) 
       (setf cols (make-cols row)))))
@@ -279,13 +272,11 @@ USAGE:
 
 (defun eg-cols ()
   (dolist (col (o (make-cols '("Name" "Age" "married" "Weight-")) all) t)
-    (print col)))
-    
-(defun eg-data()
-  (print (first (o (make-data (? file)) cols y))))
+   (print col)))
 
 (defun eg-data()
-  (print (stats (make-data (? file)))))
+  (stats (make-data (? file))))
+;  (print (stats (make-data (? file)))))
 
 ; -------------------------------------------------------------
 (main t)
