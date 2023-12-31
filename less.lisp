@@ -27,11 +27,11 @@ USAGE:
   (FILE       "-f"  "data file"            "../data/auto93.csv")
   (HELP       "-h"  "show help"                             nil)
   (P          "-p"  "distance coeffecient"                    2)
-  (SEED       "-s"  "random seed"                         10013)))
+                    (SEED       "-s"  "random seed"                         10013)))
 
 ; Optionally, we can update these flags with commnand-line flags.
 
-; Update settings from the command line values
+                                        ; Update settings from the command line values
 
 (defun args ()  #+clisp ext:*args*   #+sbcl sb-ext:*posix-argv*)
 
@@ -42,7 +42,7 @@ USAGE:
           ((eq it nil)      nil)
           ((string= it "?") '?)
           (t                s1)))))
- 
+
 (defun cli (lst)
    (loop :for (key flag help b4) :in lst 
       :collect (list key flag help
