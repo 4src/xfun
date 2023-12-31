@@ -5,7 +5,7 @@ src="https://img.shields.io/badge/platform-osx,linux-9cf">
 <img align=right width=200 src="/etc/img/dots4.png">
 <h1>xfun</h1>
 <p>Basic multi-objective random projections, timm@ieee.org</P> 
-<a href="http://tiny.cc/xfun">[home]</a> |
+<p text-align=right><a href="http://tiny.cc/xfun">[home]</a> |
 <a href="">[code]</a> |
 <a href="">[lib]</a> |
 <a href="">[tests]</a> |
