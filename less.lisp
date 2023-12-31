@@ -42,16 +42,12 @@ USAGE:
 
 (defmethod last-char ((s string)) (char s (1- (length s))))
 (defmethod last-char ((s symbol)) (last-char (symbol-name s)))
- 
-
 
 ;--- col
 
 (defstruct sym  (at 0) (txt " ") (n 0)  has mode (most 0))
 (defstruct (num (:constructor %make-num)) 
    (lo 1e30) (hi -1e30) (mu 0) (at 0) (txt " ") (n 0) (m2 0) (heaven 1))
-
-
 
 (defun make-num (&key (at 0) (txt " "))
   (%make-num :at at :txt txt  :heaven (if (eq #\- (last-char txt)) 0 1)))
@@ -103,7 +99,6 @@ USAGE:
 
 (defmethod add ((data1 data) row)
   (with-slots (rows cols) data1
-     (print 1)
     (if cols 
       (push (add cols row) rows) 
       (setf cols (make-cols row)))))
@@ -166,7 +161,6 @@ USAGE:
 ;---- strings 
 (defun down-name (x) (string-downcase (symbol-name x)))
 
-
 (defun split (s &optional (here 0))
   (let ((there (position #\, s :start here)))
      (cons (thing (subseq s here there))
@@ -215,8 +209,7 @@ USAGE:
 ;---- examples
 (defun egs()
   (labels ((eg (s) (equalp "eg-" (subseq s 0 (min 3 (length s))))))
-    (loop :for x :being :the symbols :in *package* 
-          :if (eg (down-name x)) :collect x)))
+    (loop :for x :being :the symbols :in *package* :if (eg (down-name x)) :collect x)))
 
 (defun run (sym &aux (b4 (copy-tree *options*)))
   (setf *seed* (? seed))
@@ -275,7 +268,8 @@ USAGE:
    (print col)))
 
 (defun eg-data()
-  (stats (make-data (? file))))
+  (make-data (? file)))
+  ;(stats (make-data (? file))))
 ;  (print (stats (make-data (? file)))))
 
 ; -------------------------------------------------------------
