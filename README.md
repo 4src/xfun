@@ -2,8 +2,8 @@
 src="https://img.shields.io/badge/sbcl-2.3-orange"><img 
 src="https://img.shields.io/badge/purpose-se--ai-pink"><img 
 src="https://img.shields.io/badge/platform-osx,linux-9cf">
+<img align=left width=300 src="/etc/img/dots4.png">
 <h1>xfun</h1>
-<img align=right width=300 src="/etc/img/dots4.png">
 <p>Basic multi-objective random projections, timm@ieee.org</P> 
 <p text-align=right><a href="http://tiny.cc/xfun">[home]</a> |
 <a href="">[code]</a> |
