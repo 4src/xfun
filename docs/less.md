@@ -75,9 +75,13 @@ Anaphoric if                                        ;
 ```
 
 ## Columns
+
+```lisp
 (defstruct sym  (at 0) (txt " ") (n 0)  has mode (most 0))
 (defstruct (num (:constructor %make-num)) 
    (lo 1e30) (hi -1e30) (mu 0) (at 0) (txt " ") (n 0) (m2 0) (heaven 1))
+```
+
 
 ```lisp
 (defun make-num (&key (at 0) (txt " "))
