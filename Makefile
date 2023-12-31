@@ -15,10 +15,17 @@ install: $(DO_repos)  ## get related repos
 
 repl:
 	rlwrap sbcl --noinform -
-	
+
 sbcl:;  sbcl --noinform --script $l $l 2> >( gawk '{print} /^Backtrace/ {exit}' )  ## run sbcl
 
 install-codespaces:
 	sudo apt -q update
 	sudo apt -q upgrade
 	sudo apt -q install rlwrap clisp sbcl
+
+FILES=$(wildcard *.lisp)
+docs: $(addprefix docs/,$(FILES:.lisp=.md))
+
+docs/%.md : %.lisp
+	@echo "$^ ==> $@"
+	@gawk -f etc/lisp2md.awk -v file="$^" $^ > $@

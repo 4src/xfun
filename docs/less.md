@@ -1,6 +1,9 @@
-; ## Config
-; About
+# less.lisp
 
+## Config
+About
+
+```lisp
 (defvar +about+ "
 LESS: less is more
 (c)2023 Tim Menzies <timm.ieee.org> BSD-2
@@ -8,9 +11,11 @@ LESS: less is more
 USAGE:
     sbcl --script tiny.lisp [OPTIONS]
     clisp less.lisp [OPTIONS]")
+```
 
-; Options:
+Options:
 
+```lisp
 (defvar *options* '(
   (BOOTSTRAPS "-b"  "number of bootstraps"                  256)
   (BOOTCONF   "-B"  "bootstrap threshold"                   .05) 
@@ -20,14 +25,18 @@ USAGE:
   (HELP       "-h"  "show help"                             nil)
   (P          "-p"  "distance coeffecient"                    2)
   (SEED       "-s"  "random seed"                         10013)))
+```
 
-; ## Macros 
-; Option macros
+## Macros 
+Option macros
 
+```lisp
 (defmacro ? (key) `(fourth (assoc ',key *options*)))
+```
 
-; Print help                                        ;
+Print help                                        ;
 
+```lisp
 (defun print-help ()
   "asas'asdas'asa'"
   (format t "~a~%~%OPTIONS:~%" +about+)
@@ -35,39 +44,61 @@ USAGE:
     (format t "    ~4a ~3a ~22a = ~a~%" flag 
       (typecase value (integer "I") (number "F") (string "S")(t ""))
       help value)))
+```
 
-; Accessor macros.
+Accessor macros.
 
+```lisp
 (defmacro o (struct f &rest fs)
   (if fs `(o (slot-value ,struct ',f) ,@fs) `(slot-value ,struct ',f)))  
+```
 
+
+```lisp
 (defmacro inca (x lst &optional (init 0))
   `(incf (cdr (or (assoc ,x ,lst :test #'equal) 
               (car (setf ,lst (cons (cons ,x ,init) ,lst)))))))
+```
 
+
+```lisp
 (defmacro aif (test-form then-form &optional else-form) 
   `(let ((it ,test-form))
      (if it ,then-form ,else-form)))
+```
 
+
+```lisp
 (defmethod last-char ((s string)) (char s (1- (length s))))
 (defmethod last-char ((s symbol)) (last-char (symbol-name s)))
+```
 
 ;--- col
 (defstruct sym  (at 0) (txt " ") (n 0)  has mode (most 0))
 (defstruct (num (:constructor %make-num)) 
    (lo 1e30) (hi -1e30) (mu 0) (at 0) (txt " ") (n 0) (m2 0) (heaven 1))
 
+```lisp
 (defun make-num (&key (at 0) (txt " "))
   (%make-num :at at :txt txt  :heaven (if (eq #\- (last-char txt)) 0 1)))
+```
 
+
+```lisp
 (defun make-col (&key (at 0) (txt " "))
   (if (upper-case-p (elt txt 0)) 
     (make-num :at at :txt txt) 
     (make-sym :at at :txt txt)))
+```
 
+
+```lisp
 (defmethod adds (col1 lst)
   (dolist (x lst col1) (add col1 x)))
+```
 
+
+```lisp
 (defmethod add ((num1 num) x)
   (with-slots (lo hi n mu m2) num1
     (unless (eq #\? x)
@@ -77,7 +108,10 @@ USAGE:
         (incf m2 (* d (-  x mu)))
         (setf lo (min x lo)
               hi (max x hi))))))
+```
 
+
+```lisp
 (defmethod add ((sym1 sym) x)
   (with-slots (n has most mode) sym1
     (unless (eq x '?)
@@ -86,29 +120,43 @@ USAGE:
          (if (> new most)
           (setf mode x 
                 most new))))))
+```
 
+
+```lisp
 (defmethod mid ((num1 num)) (num-mu num1))
 (defmethod mid ((sym1 sym)) (sym-mode sym1))
+```
 
+
+```lisp
 (defmethod div ((num1 num)) (sqrt (/ (num-m2 num1) (- (num-n num1) 1))))
 (defmethod div ((sym1 sym))
   (with-slots (has n) sym1
     (* -1 (loop :for (_ . v) :in has :sum  (* (/ v n) (log (/ v n) 2))))))
+```
 
 ;--- data -------------------------------------------------------
 (defstruct (data (:constructor %make-data)) rows cols)
 (defstruct row cells)
 (defstruct (cols (:constructor %make-cols)) x y all names)
 
+```lisp
 (defun make-data (str &aux (data1 (%make-data)))
   (if (stringp str)
     (with-csv str (lambda (row)  (add data1 row)))
     (dolist (row str) (add data1 row)))
   data1)
+```
 
+
+```lisp
 (defmethod add ((data1 data) (cells cons))
   (add data1 (make-row :cells cells)))
+```
 
+
+```lisp
 (defmethod add ((data1 data) (row1 row))
   (with-slots (rows cols) data1
     (if cols 
@@ -124,30 +172,37 @@ USAGE:
         (if (member (last-char (o col1 txt)) '(#\+ #\-))
           (push col1 y)
           (push col1 x))))))
+```
 
+
+```lisp
 (defmethod add ((cols1 cols) (row1 row))
   (with-slots (x y) cols1
     (dolist (tmp (list x y) row1)
       (dolist (col tmp) 
         (add col (elt (row-cells row1) (o col at)))))))
+```
 
+
+```lisp
 (defmethod stats ((data1 data) &key (rows (data-rows data1)) 
                                     (what #'mid) (digits 3) (cols 'y))
   (cons (cons "N" (length rows))
         (loop :for col :in (slot-value (o data1 cols) cols)
               :collect (cons (o col txt) 
                              (rnd2 (funcall what col) digits)))))
+```
 
 ;--- lib --------------------------------------------------------
 ;--- system specific stuff 
 (defun args    ()  #+clisp ext:*args*   #+sbcl sb-ext:*posix-argv*)
 (defun goodbye (x) #+clisp (ext:exit x) #+sbcl (sb-ext:exit :code x))
-
 ;---- settings 
 ;--- strings2 things   
 (defun read-safely-from-string (s)
   (let ((*read-eval* nil)) (read-from-string s "")))
 
+```lisp
 (defun thing (s &aux (s1 (string-trim '(#\Space #\Tab) s)))
   (let ((it (read-safely-from-string s1)))
     (cond ((numberp it)     it)
@@ -155,6 +210,7 @@ USAGE:
           ((eq it nil)      nil)
           ((string= it "?") '?)
           (t                s1)))); else return nil
+```
 
 ;--- update settings from the command line values
 (defun cli (lst)
@@ -164,34 +220,39 @@ USAGE:
                                 ((eq b4 nil) t)
                                 (t (thing (second it))))
                           b4))))
-
 ;---- lists
 (defun keysort (lst fun order)
   (mapcar #'cdr (sort (mapcar (lambda (x) (cons (funcall fun x) x)) lst) 
                       order :key #'car)))
-
 ;---- strings 
 (defun down-name (x) (string-downcase (symbol-name x)))
 
+```lisp
 (defun split (s &optional (here 0))
   (let ((there (position #\, s :start here)))
      (cons (thing (subseq s here there))
        (if there (split s (1+ there))))))
+```
 
+
+```lisp
 (defun with-csv (file &optional (fun #'print) (filter #'split))
   (with-open-file (s (or file  *standard-input*))
     (loop (funcall fun (funcall filter (or (read-line s nil) (return)))))))
+```
 
 ;--- maths
 (defun normal (&optional (mu 0) (sd 1)) 
   (+ mu (* sd (sqrt (* -2 (log (rand)))) (cos (* 2 pi (rand))))))
 
+```lisp
 (defmethod rnd2 (x &optional (digits 2))
   (if (numberp x)
       (let* ((div (expt 10 digits))
              (tmp (/ (round (* x div)) div)))
         (if (zerop digits) (floor tmp) (float tmp)))
       x))
+```
 
 ;--- randoms
 (defvar *seed* 10013)
@@ -199,88 +260,136 @@ USAGE:
   (setf *seed* (mod (* 16807.0d0 *seed*) 2147483647.0d0))
   (* n (- 1.0d0 (/ *seed* 2147483647.0d0))))
 
+```lisp
 (defun rint (&optional (n 1) &aux (base 10000000000.0))
   (floor (* n (/ (rand base) base))))
+```
 
+
+```lisp
 (defmethod sample ((a cons) &optional (n (length a))) 
   (sample (coerce a 'vector) n))
+```
 
+
+```lisp
 (defmethod sample ((a vector) &optional (n (length a)))
   (let ((len (length a)))
     (loop :repeat n :collect (elt a  (rint len)))))
+```
 
+
+```lisp
 (defmethod shuffle ((a cons)) (coerce (shuffle (coerce a 'vector)) 'cons))
 (defmethod shuffle ((a vector)) 
   (loop :for i :from (length a) :downto 2 
         :do (rotatef (elt a (rint i)) (elt a (1- i))))
   a)
+```
 
+
+```lisp
 (defun few (seq &optional (n 1))
   (subseq (shuffle seq) 0 n))   
+```
 
 ;---- examples
 (defun egs()
   (labels ((eg (s) (equalp "eg-" (subseq s 0 (min 3 (length s))))))
     (loop :for x :being :the symbols :in *package* :if (eg (down-name x)) :collect x)))
 
+```lisp
 (defun run (sym &aux (b4 (copy-tree *options*)))
   (setf *seed* (? seed))
   (let ((passed (funcall sym)))
     (setf *options* (copy-tree b4))
     (unless passed (format t "❌ FAIL : ~(~a~)~%" sym))
     passed))
+```
 
+
+```lisp
 (defun run-p(x)
   (member (? eg) `("all" ,(subseq (down-name x) 3)) :test #'string=))
+```
 
+
+```lisp
 (defun main (&optional update)
   (if update  (setf *options* (cli *options*)))
   (if (? help)
     (print-help)
     (goodbye (1- (loop :for eg :in (egs) :if (run-p eg) :count (not (run eg)))))))
+```
 
-; ---------------------------------------------------------------
+---------------------------------------------------------------
 (defun eg-fail() nil)
 
+```lisp
 (defun eg-the() (print (cdr *options*)))
+```
 
+
+```lisp
 (defun eg-keysort ()
   (let ((lst '(7 6 5 4 3 2 1)))
    (print (let ((n 0)) 
       (keysort lst #'(lambda (x) (incf n) (* -1 x)) #'<)
       n))
     (print lst)))
+```
 
+
+```lisp
 (defun eg-csv (&aux (n 0)) 
   (with-csv (? file) (lambda (a) (incf n (length a))))
   (= n 3192))
+```
 
+
+```lisp
 (defun eg-rand ()  
   (let (a b)
     (setf *seed* 1) (setf a (sort (loop :repeat 10 :collect (rint 100)) #'<))
     (setf *seed* 1) (setf b (sort (loop :repeat 10 :collect (rint 100)) #'<))
     (equal a b)))
+```
 
+
+```lisp
 (defun eg-sample ()
   (let ((a '(a b c d e f g)))
     (loop repeat 10 do (format t "~{~a~}~%" (sample a)))
     (loop repeat 10 do (format t "~{~a~}~%" (few a 3))))
   t)
+```
 
+
+```lisp
 (defun eg-sym () 
   (let ((sym1 (adds (make-sym) '(a a a a b b c))))
     (and (eql 'a (mid sym1)) (< 1.378 (div sym1) 1.388))))
+```
 
+
+```lisp
 (defun eg-num()
   (let ((num1 (adds (make-num) (loop :repeat 1000 :collect (normal 10 2)))))
     (and (< 9.9 (mid num1) 10.1) (< 1.9 (div num1) 2.1))))
+```
 
+
+```lisp
 (defun eg-cols ()
   (dolist (col (o (make-cols '("Name" "Age" "married" "Weight-")) all) t)
    (print col)))
+```
 
+
+```lisp
 (defun eg-data(    &aux (n 0))
   (print (stats (make-data (? file)))))
+```
 
-; -------------------------------------------------------------
+-------------------------------------------------------------
 (main t)
