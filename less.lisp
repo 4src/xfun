@@ -19,7 +19,9 @@ USAGE:
                     (SEED       "-s"  "random seed"                         10013)))
  
 ;; cli
-(defun args ()  #+clisp ext:*args*   #+sbcl sb-ext:*posix-argv*)
+(defun args ()
+  "access argv (for both clisp and sbcl"
+  #+clisp ext:*args*  #+sbcl sb-ext:*posix-argv*)
 
 (defun str2thing (s &aux (s1 (string-trim '(#\Space #\Tab) s)))
   "from string extract a number, bool, string, or '? symbol"
