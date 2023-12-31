@@ -2,9 +2,12 @@
 ; Best way to do inference is to not sweat the small stuff.
 ; Instead, do some quick clusteringm then only look at things
 ; that differ between the clusters.  
-  
-; All programs need a test suite, an interface,and  some help text.
-; Here's the help desk describing the interface:
+                                        
+; ## Help
+; All programs need an interface,and  some help text and some
+; config setings.
+; Here's the help desk describing the interface (which sets
+; the config,
 
 (defvar +about+ "
 LESS: less is more
@@ -31,22 +34,23 @@ USAGE:
 ; Update settings from the command line values
 
 (defun args ()  #+clisp ext:*args*   #+sbcl sb-ext:*posix-argv*)
-  
+
+(defun str2thing (s &aux (s1 (string-trim '(#\Space #\Tab) s)))
+  (let ((it (read-from-string s1)))
+    (cond ((numberp it)     it)
+          ((eq it t)        it)
+          ((eq it nil)      nil)
+          ((string= it "?") '?)
+          (t                s1)))))
+ 
 (defun cli (lst)
-  (values ((str2thing (s &aux (s1 (string-trim '(#\Space #\Tab) s)))
-             (let ((it (read-from-string s1)))
-               (cond ((numberp it)     it)
-                     ((eq it t)        it)
-                     ((eq it nil)      nil)
-                     ((string= it "?") '?)
-                     (t                s1)))))
-    (loop :for (key flag help b4) :in lst 
-          :collect (list key flag help
-                         (aif (member flag (args) :test #'string=)
-                              (cond ((eq b4 t)   nil)
-                                    ((eq b4 nil) t)
-                                    (t (str2thing (second it))))
-                              b4)))))
+   (loop :for (key flag help b4) :in lst 
+      :collect (list key flag help
+                     (aif (member flag (args) :test #'string=)
+                          (cond ((eq b4 t)   nil)
+                                ((eq b4 nil) t)
+                                (t (str2thing (second it))))
+                          b4)))))
 
 ; ## Macros 
 ; Option macros
