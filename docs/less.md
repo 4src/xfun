@@ -2,8 +2,13 @@
 
 # less.lisp
 
-## Config
-About
+## About
+Best way to do inference is to not sweat the small stuff.
+Instead, do some quick clusteringm then only look at things
+that differ between the clusters.  
+  
+All programs need a test suite, an interface,and  some help text.
+Here's the help desk describing the interface:
 
 ```lisp
 (defvar +about+ "
@@ -27,6 +32,29 @@ Options:
   (HELP       "-h"  "show help"                             nil)
   (P          "-p"  "distance coeffecient"                    2)
   (SEED       "-s"  "random seed"                         10013)))
+```
+
+Optionally, we can update these flags with commnand-line flags.
+Update settings from the command line values
+
+```lisp
+(defun args ()  #+clisp ext:*args*   #+sbcl sb-ext:*posix-argv*)
+  
+(defun cli (lst)
+  (values ((str2thing (s &aux (s1 (string-trim '(#\Space #\Tab) s)))
+             (let ((it (read-from-string s1)))
+               (cond ((numberp it)     it)
+                     ((eq it t)        it)
+                     ((eq it nil)      nil)
+                     ((string= it "?") '?)
+                     (t                s1)))))
+    (loop :for (key flag help b4) :in lst 
+          :collect (list key flag help
+                         (aif (member flag (args) :test #'string=)
+                              (cond ((eq b4 t)   nil)
+                                    ((eq b4 nil) t)
+                                    (t (str2thing (second it))))
+                              b4)))))
 ```
 
 ## Macros 
@@ -202,31 +230,13 @@ Anaphoric if                                        ;
 
 ;--- lib --------------------------------------------------------
 ;--- system specific stuff 
-(defun args    ()  #+clisp ext:*args*   #+sbcl sb-ext:*posix-argv*)
-(defun goodbye (x) #+clisp (ext:exit x) #+sbcl (sb-ext:exit :code x))
-;---- settings 
-;--- strings2 things   
-(defun read-safely-from-string (s)
-  (let ((*read-eval* nil)) (read-from-string s "")))
 
 ```lisp
-(defun thing (s &aux (s1 (string-trim '(#\Space #\Tab) s)))
-  (let ((it (read-safely-from-string s1)))
-    (cond ((numberp it)     it)
-          ((eq it t)        it)
-          ((eq it nil)      nil)
-          ((string= it "?") '?)
-          (t                s1)))); else return nil
+(defun goodbye (x) #+clisp (ext:exit x) #+sbcl (sb-ext:exit :code x))
 ```
 
-;--- update settings from the command line values
-(defun cli (lst)
-  (loop :for (key flag help b4) :in lst :collect
-    (list key flag help (aif (member flag (args) :test #'string=)
-                          (cond ((eq b4 t)   nil)
-                                ((eq b4 nil) t)
-                                (t (thing (second it))))
-                          b4))))
+;---- settings 
+;--- strings2 things   
 ;---- lists
 (defun keysort (lst fun order)
   (mapcar #'cdr (sort (mapcar (lambda (x) (cons (funcall fun x) x)) lst) 
@@ -303,7 +313,8 @@ Anaphoric if                                        ;
 ;---- examples
 (defun egs()
   (labels ((eg (s) (equalp "eg-" (subseq s 0 (min 3 (length s))))))
-    (loop :for x :being :the symbols :in *package* :if (eg (down-name x)) :collect x)))
+    (loop :for x :being :the symbols :in *package*
+          :if (eg (down-name x)) :collect x)))
 
 ```lisp
 (defun run (sym &aux (b4 (copy-tree *options*)))
