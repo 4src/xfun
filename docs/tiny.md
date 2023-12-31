@@ -1,3 +1,5 @@
+<img src=dots4.png align=right width=300>
+
 # tiny.lisp
 
 vim : set ts=3 sw=3 sts=3 et :

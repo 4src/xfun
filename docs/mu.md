@@ -1,3 +1,5 @@
+<img src=dots4.png align=right width=300>
+
 # mu.lisp
 
 

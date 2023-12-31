@@ -1,5 +1,6 @@
 BEGIN { FS="\n"; RS=""
-        print "# " file "\n" }
+        print "<img src=dots4.png align=right width=300>"
+        print "\n# " file "\n" }
       { a[NR] = $0     }
 END   { for(i=1; i<=NR; i++) main(i, a[i]) }
 
