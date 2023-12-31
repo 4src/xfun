@@ -28,10 +28,10 @@ USAGE:
   (HELP       "-h"  "show help"                             nil)
   (P          "-p"  "distance coeffecient"                    2)
                     (SEED       "-s"  "random seed"                         10013)))
+ 
+; Optionally, we can update these flags with commnand-line flags. `args` returns
+; the command line; `str2thing` coerces CLI strings to the right type; and `cli` <small>
 
-; Optionally, we can update these flags with commnand-line flags.
-
-                                        ; Update settings from the command line values
 
 (defun args ()  #+clisp ext:*args*   #+sbcl sb-ext:*posix-argv*)
 
@@ -43,10 +43,10 @@ USAGE:
           ((string= it "?") '?)
           (t                s1)))))
 
-(defun cli (lst)
+(defun cli (lst &aux it)
    (loop :for (key flag help b4) :in lst 
       :collect (list key flag help
-                     (aif (member flag (args) :test #'string=)
+                     (if (setf ,(member flag (args) :test #'string=)
                           (cond ((eq b4 t)   nil)
                                 ((eq b4 nil) t)
                                 (t (str2thing (second it))))
