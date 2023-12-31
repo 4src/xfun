@@ -38,7 +38,6 @@ Print help                                        ;
 
 ```lisp
 (defun print-help ()
-  "asas'asdas'asa'"
   (format t "~a~%~%OPTIONS:~%" +about+)
   (loop :for (_ flag help value) :in *options* :do
     (format t "    ~4a ~3a ~22a = ~a~%" flag 
@@ -46,13 +45,14 @@ Print help                                        ;
       help value)))
 ```
 
-Accessor macros.
+Nested slot accessors.
 
 ```lisp
 (defmacro o (struct f &rest fs)
   (if fs `(o (slot-value ,struct ',f) ,@fs) `(slot-value ,struct ',f)))  
 ```
 
+Simple frequency counter.
 
 ```lisp
 (defmacro inca (x lst &optional (init 0))
@@ -60,6 +60,7 @@ Accessor macros.
               (car (setf ,lst (cons (cons ,x ,init) ,lst)))))))
 ```
 
+Anaphoric if                                        ;
 
 ```lisp
 (defmacro aif (test-form then-form &optional else-form) 
@@ -73,7 +74,7 @@ Accessor macros.
 (defmethod last-char ((s symbol)) (last-char (symbol-name s)))
 ```
 
-;--- col
+## Columns
 (defstruct sym  (at 0) (txt " ") (n 0)  has mode (most 0))
 (defstruct (num (:constructor %make-num)) 
    (lo 1e30) (hi -1e30) (mu 0) (at 0) (txt " ") (n 0) (m2 0) (heaven 1))
@@ -136,7 +137,7 @@ Accessor macros.
     (* -1 (loop :for (_ . v) :in has :sum  (* (/ v n) (log (/ v n) 2))))))
 ```
 
-;--- data -------------------------------------------------------
+## Data 
 (defstruct (data (:constructor %make-data)) rows cols)
 (defstruct row cells)
 (defstruct (cols (:constructor %make-cols)) x y all names)
