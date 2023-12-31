@@ -1,5 +1,5 @@
 <img src="https://img.shields.io/badge/tests-passing-green">
-<img align=right width=300 src="/etc/img/dots4.png">
+<img align=left width=300 src="/etc/img/dots4.png">
 <img 
 src="https://img.shields.io/badge/sbcl-2.3-orange"> <img 
 src="https://img.shields.io/badge/purpose-se--ai-pink"> <img 
