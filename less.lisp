@@ -1,14 +1,4 @@
-; ## About
-; Best way to do inference is to not sweat the small stuff.
-; Instead, do some quick clusteringm then only look at things
-; that differ between the clusters.  
-                                        
-; ## Help
-; All programs need an interface,and  some help text and some
-; config setings.
-; Here's the help desk describing the interface (which sets
-; the config,
-
+;; about
 (defvar +about+ "
 LESS: less is more
 (c)2023 Tim Menzies <timm.ieee.org> BSD-2
@@ -17,7 +7,6 @@ USAGE:
     sbcl --script tiny.lisp [OPTIONS]
     clisp less.lisp [OPTIONS]")
 
-; Options:
 
 (defvar *options* '(
   (BOOTSTRAPS "-b"  "number of bootstraps"                  256)
@@ -29,29 +18,29 @@ USAGE:
   (P          "-p"  "distance coeffecient"                    2)
                     (SEED       "-s"  "random seed"                         10013)))
  
-; Optionally, we can update these flags with commnand-line flags. `args` returns
-; the command line; `str2thing` coerces CLI strings to the right type; and `cli` <small>
-
-
+;; cli
 (defun args ()  #+clisp ext:*args*   #+sbcl sb-ext:*posix-argv*)
 
 (defun str2thing (s &aux (s1 (string-trim '(#\Space #\Tab) s)))
-  (let ((it (read-from-string s1)))
+  "from string extract a number, bool, string, or '? symbol"
+  (let ((it (let ((*read-eval* nil)) (read-from-string s1 ""))))
     (cond ((numberp it)     it)
           ((eq it t)        it)
           ((eq it nil)      nil)
           ((string= it "?") '?)
-          (t                s1)))))
+          (t                s1))))
 
 (defun cli (lst &aux it)
-   (loop :for (key flag help b4) :in lst 
-      :collect (list key flag help
-                     (if (setf ,(member flag (args) :test #'string=)
-                          (cond ((eq b4 t)   nil)
-                                ((eq b4 nil) t)
-                                (t (str2thing (second it))))
-                          b4)))))
+  "replace the last item of each setting with details from CLI"
+  (loop :for (key flag help b4) :in lst 
+        :collect (list key flag help
+                       (if (setf it (member flag (args) :test #'string=))
+                           (cond ((eq b4 t)   nil)
+                                 ((eq b4 nil) t)
+                                 (t (str2thing (second it))))
+                           b4))))
 
+;; macros
 ; ## Macros 
 ; Option macros
 
