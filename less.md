@@ -7,9 +7,10 @@ src="https://img.shields.io/badge/platform-osx,linux-9cf"> by
 <h1>SE and AI, just the important bits</h1>
 <p>101 simple SE tricks for simpler AI.</P><br clear=all>
 
-<h2>AI</h2>
+<h2>The Great Secret</h2>
 
-Suppose you 
+What have we learned?
+
 
 dsfds
 
