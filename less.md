@@ -24,13 +24,19 @@ actually write are mostly simple and rather repetitive,
 and thus they have usefully predictable statistical properties that can be captured ...
 and leveraged for software engineering tasks .
 
-[^hindle16]: Hindle, A., Barr, E. T., Gabel, M., Su, Z., & Devanbu, P. (2016). On the naturalness of software. Communications of the ACM, 59(5), 122-131.
+[^hindle16]: Hindle, A., Barr, E. T., Gabel, M., Su, Z., & Devanbu, P. (2016).
+On the naturalness of software. Communications of the ACM, 59(5), 122-131.
 
 Now programs are tools for changing the world; i.e. they are functions $f$ for turning inputs  $x$ to outputs $y$. Which means
-(and here's where the AI comes in), if software functions $f$ have predictable properties, then those same properties are either
-caused, or cause, regularities in the inputs, outputs. 
+if software functions $f$ have simple and  repetitive properties, then those same properties  cause, or are caused by, simple and  repetitive properties in the inputs and outputs.
 
-It puzzling why software works. We routinely field systems with 1000s of variables (or more), each of which can take dozens of 
+Now here's where the AI comes in.  When rows of data contains repetitive structures, then lots
+of rows can be reduced to a smaller number [^ss]. Which, in turn, means searching for 
+
+[^ssl]: There's actually a mathematical proof of this, which we won't use. But for the record,
+the Johnson–Lindenstrauss lemma [^john] states that a set of points in a high-dimensional space can be embedded into a space of much lower dimension in such a way that distances between the points are nearly preserved. 
+
+[^john]: Johnson, W.B., Lindenstrauss, J. & Schechtman, G. Extensions of lipschitz maps into Banach spaces. Israel J. Math. 54, 129–138 (1986). https://doi.org/10.1007/BF02764938
 
 ```lisp <less cli>
 (defun args ()
