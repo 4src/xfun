@@ -60,7 +60,7 @@ IEEE Transactions on Software Engineering, 46(7), 794-811.
 
 [^ling23]: Ling, X., & Menzies, T. (2023). On the Benefits of Semi-Supervised Test Case Generation for Cyber-Physical Systems. arXiv preprint arXiv:2305.03714.
 
-[^nair18a] Nair, V., Menzies, T., Siegmund, N., & Apel, S. (2018). Faster discovery of faster system configurations with spectral learning. Automated Software Engineering, 25, 247-277.
+[^nair18a]: Nair, V., Menzies, T., Siegmund, N., & Apel, S. (2018). Faster discovery of faster system configurations with spectral learning. Automated Software Engineering, 25, 247-277.
 
 [^ssl]: There's actually a mathematical proof of this, which we won't use. But for the record,
 the Johnson–Lindenstrauss lemma [^john86] states that a set of points in a high-dimensional space can be embedded into a space of much lower dimension in such a way that distances between the points are nearly preserved. 
