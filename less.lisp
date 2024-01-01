@@ -27,7 +27,7 @@ USAGE:
   "from string extract a number, bool, string, or '? symbol"
   (let ((it (let ((*read-eval* nil)) (read-from-string s1 ""))))
     (cond ((numberp it)     it)
-          ((eq it t)        it)
+          ((eq it t)        t)
           ((eq it nil)      nil)
           ((string= it "?") '?)
           (t                s1))))

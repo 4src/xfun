@@ -15,6 +15,8 @@ sdsdds
 
 dsfds
 
+<details><summary>[code]</summary>
+
 ```lisp <less cli>
 (defun args ()
   "access argv (for both clisp and sbcl"
@@ -24,7 +26,7 @@ dsfds
   "from string extract a number, bool, string, or '? symbol"
   (let ((it (let ((*read-eval* nil)) (read-from-string s1 ""))))
     (cond ((numberp it)     it)
-          ((eq it t)        it)
+          ((eq it t)        t)
           ((eq it nil)      nil)
           ((string= it "?") '?)
           (t                s1))))
@@ -39,4 +41,6 @@ dsfds
                                  (t (str2thing (second it))))
                            b4))))
 ```
+
+</details>
 
