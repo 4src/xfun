@@ -15,8 +15,10 @@ make it simpler.
 When I teach graduates students about SE and AI, I offer
 100+   tips, tricks,  and techniques for making SE and AI better.  
 Here, I show those points using the simplest code base I could make
-(less than a 1000 lines of code).  So keep reading if you prefer specific 
-examples to abstract descriptions.  
+(less than a 1000 lines of code).  
+
+So if you prefer specific 
+examples to abstract descriptions, then keep reading.
 
 ## The Great Secret to Simpler Software
 
