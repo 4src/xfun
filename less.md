@@ -5,7 +5,9 @@ src="https://img.shields.io/badge/platform-osx,linux-9cf"> by
 <a href="mailto:timm@ieee.org">timm@ieee.org</a>
 <img align=left width=250 src="/etc/img/dots4.png">
 <h1>SE and AI, just the important bits</h1>
-<p>101 simple SE tricks for simpler AI.</P><br clear=all>
+<p>101 simple SE tricks for simpler AI.</P>
+
+<br clear=all>
 
 Sometimes, the complexity of modern SE and AI methods seems overwhelming.  So lets
 make it simpler.
