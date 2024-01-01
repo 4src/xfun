@@ -1,5 +1,8 @@
 -include ../config/do.mk
 
+saved: ## grab a commit message, commit github
+	read -p "commit msg> " x; git commit -am "$$x"; git push; git status
+
 DO_what=      xfun: semi-supervised multi-objective explanation (in LISP)
 DO_copyright= Copyright (c) 2023 Tim Menzies, BSD-2.
 DO_repos=     . ../config ../data
