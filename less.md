@@ -33,7 +33,7 @@ Now programs are tools for changing the world; i.e. they are functions $f$ for t
 if software functions $f$ have simple and  repetitive properties, then those same properties  cause, or are caused by, simple and  repetitive properties in the inputs and outputs.
 
 Now here's where the AI comes in.  When rows of data contains repetitive structures, then lots
-of rows can be reduced to a smaller number [^ss]. Which, in turn, means searching for 
+of rows can be reduced to a smaller number [^ssl]. Which, in turn, means searching for 
 
 [^ssl]: There's actually a mathematical proof of this, which we won't use. But for the record,
 the Johnson–Lindenstrauss lemma [^john] states that a set of points in a high-dimensional space can be embedded into a space of much lower dimension in such a way that distances between the points are nearly preserved. 
