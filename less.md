@@ -20,7 +20,29 @@ Here, I show those points using the simplest code base I could make
 So if you prefer specific 
 examples to abstract descriptions, then keep reading.
 
-## The Great Secret to Simpler Software
+## But What is AI? What is SE?
+
+<img src="/etc/img/phases.png" align=right width=400>
+
+SE is not (usually) about programming. Before coding comes deciding what to code. After coding comes testing and integration to other code, and maintainance. All the while, the people doing the coding do other things like taking meetings, or working on their career skills, or XXX. 
+Recent studies suggest that "programmers" usually don't program. Depending on what study you read,
+programmers spend aboyt 16 to 35% of their time actually coding (brookes, ) of their time coding and the rest doing other things.
+The  figure  at right (from a 2023 paper by  Long et al.[^long23]) shows the amount of time spent coding
+during six phases (listed below). Note that even while "coding", developers usually code less than half the time. 
+
+1. requirements analysis;
+2. architecture & design; 
+3. coding;
+4. system integration (combiming your code with everyone else's);
+5. qualification testing;
+6. development test & evaluation.
+
+[^long23]: D. Long, S. Drylie, J. Ritschel and C. Koschnick, "An Assessment of Rules of Thumb for Software Phase Management, and the Relationship between Phase Effort and Schedule Success," in IEEE Transactions on Software Engineering, doi: 10.1109/TSE.2023.3339383.
+
+expertise is not about one solution, its gfeneralizing acorss N solutions. can you glance at a solution and propoose 5 alternatives? can be cluster them u into one most anstract solution that describes what is true across all the colsutions? can you comment on the trade-offs
+between these solutions?
+
+## The Great Secret to Simplicity
 
 Two of my favorite researchers, Abram Hindle and Prem Devanbu [^hindle16], 
 offer the great secret to simplifying softwre develpment:
@@ -42,8 +64,10 @@ then those same properties  cause, or are caused by, simple and  repetitive prop
 Now here's where the AI comes in. Picture a table of data, where each row is one run of a system. This
 table has one column for each output $y_i$ and input $x_i$.  When table rows     contains repetitive structures, then lots
 of rows can be reduced to a smaller number [^ssl]. So one tactic for simplification is this: don't look at all the details.
-Cluster what your know into a few groups, then just reason about a few items per groups. This can be very usefuk for many applications:
+Cluster what your know into a few groups, then just reason about a few items per groups [^bless]. This can be very usefuk for many applications:
 
+[^bless]: I'm not alone in saying that   complex things are inherently simplifiable, has been said by many people. XXX narrows, PCA, backdoors, etcetc, bless of dimensionality. But in all that, I have not seen work that reduces things as much as my code.
+ 
 - **Test case reduction:** Instead of testing everything,
   just test a small sample [^ling23].
 - **Software configuration:** Instead of trying all configurations
