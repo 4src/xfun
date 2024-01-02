@@ -5,7 +5,11 @@ src="https://img.shields.io/badge/platform-osx,linux-9cf"> by
 <a href="mailto:timm@ieee.org">timm@ieee.org</a>
 <img align=right width=300 src="/etc/img/dots4.png">
 <h1>SE and AI, just the important bits</h1>
-<p>101 simple SE tricks for simpler AI.</P><br clear=all>
+<p>I've been working on AI and SE for oer 30 years.
+Sometimes, that tech is inherently complex and hard to understand.
+And often it isn't. Here I present the least code needed to
+understand  the most about SE and AI that can explain itself.
+  </p><br clear=all>
 
 <br clear=all>
 
@@ -24,11 +28,17 @@ examples to abstract descriptions, then keep reading.
 
 <img src="/etc/img/phases.png" align=right width=400>
 
-SE is not (usually) about programming. Before coding comes deciding what to code. After coding comes testing and integration to other code, and maintainance. All the while, the people doing the coding do other things like taking meetings, or working on their career skills, or XXX. 
-Recent studies suggest that "programmers" usually don't program. Depending on what study you read,
-programmers spend aboyt 16 to 35% of their time actually coding (brookes, ) of their time coding and the rest doing other things.
+Here's something that moght surprise you.
+Most of the time, SE is not  about programming:
+
+- _Before_ coding, _choices_ must be made about what to code. 
+_ _After_ coding comes testing and integration to other code, and maintenance. - And all the while, the people called "programmers" do many things besides
+coding like  take meetings, support users,   working on their career skills, etc etc
+
+Depending on what study you read,
+programmers spend about 16 to 35% of their time actually coding (brookes, ) of their time coding and the rest doing other things.
 The  figure  at right (from a 2023 paper by  Long et al.[^long23]) shows the amount of time spent coding
-during six phases (listed below). Note that even while "coding", developers usually code less than half the time. 
+during six activities (listed below). Note that even while "coding", developers usually code less than half the time. 
 
 1. requirements analysis;
 2. architecture & design; 
