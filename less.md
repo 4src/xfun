@@ -11,18 +11,6 @@ And often it isn't. Here I present the least code needed to
 understand  the most about SE and AI that can explain itself.
   </p><br clear=all>
 
-<br clear=all>
-
-The complexity of modern SE and AI methods seems overwhelming.  So lets
-make it simpler.
-
-When I teach graduates students about SE and AI, I offer
-100+   tips, tricks,  and techniques for making SE and AI better.  
-Here, I show those points using the simplest code base I could make
-(less than a 1000 lines of code).  
-
-So if you prefer specific 
-examples to abstract descriptions, then keep reading.
 
 ## But What is AI? What is SE?
 
