@@ -11,8 +11,7 @@ And often it isn't. Here I present the least code needed to
 understand  the most about SE and AI that can explain itself.
   </p><br clear=all>
 
-
-## But What is AI? What is SE?
+## What is AI? What is SE?
 
 <img src="/etc/img/phases.png" align=right width=400>
 
