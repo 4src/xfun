@@ -33,12 +33,14 @@ USAGE:
           (t                s1))))
 
 ;; cli
-(defun cli (lst &aux it)
-  "CLI items that match `flag` can update items in `*settings`"
-  (loop :for (key flag help b4) :in lst 
+(defun cli (options &aux it)
+  "CLI items that match `flag` can update items in `*settings`. For non-boolean
+   settings, we expect a value after a flag. For boolean settings, flags do not
+   need value (we just flip toe old value)."
+  (loop :for (key flag help b4) :in options 
         :collect (list key flag help
                        (if (setf it (member flag (args) :test #'string=))
-                           (cond ((eq b4 t)   nil)
+                           (cond ((eq b4 t) nil)
                                  ((eq b4 nil) t)
                                  (t (str2thing (second it))))
                            b4))))
