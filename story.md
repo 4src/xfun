@@ -39,6 +39,8 @@ USAGE:
    (SEED       "-s"  "random seed"                         10013)))
 ```
 
+We need some way to access the various config settings, and some way to print that help.
+
 ```lisp <less help>
 (defmacro ? (key) 
   "config items are in item four of the *options* sub-lists" 
