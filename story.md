@@ -82,3 +82,5 @@ Also, optionally,  we can update `*options*`  via flags on the command-line.
           (t                s1))))
 ```
 
+## Strucuted Input
+
