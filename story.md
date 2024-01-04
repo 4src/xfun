@@ -69,3 +69,16 @@ Also, optionally,  we can update `*options*`  via flags on the command-line.
                            b4))))
 ```
 
+(Aside: and we'll need something that compile strings from the command-line.)
+
+```lisp <less coerce>
+(defun str2thing (s &aux (s1 (string-trim '(#\Space #\Tab) s)))
+  "from string extract a number, bool, string, or '? symbol"
+  (let ((it (let ((*read-eval* nil)) (read-from-string s1 ""))))
+    (cond ((numberp it)     it)
+          ((eq it t)        t)
+          ((eq it nil)      nil)
+          ((string= it "?") '?)
+          (t                s1))))
+```
+
