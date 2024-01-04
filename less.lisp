@@ -7,22 +7,22 @@ USAGE:
     sbcl --script tiny.lisp [OPTIONS]
     clisp less.lisp [OPTIONS]")
 
-
 (defvar *options* '(
-  (BOOTSTRAPS "-b"  "number of bootstraps"                  256)
-  (BOOTCONF   "-B"  "bootstrap threshold"                   .05) 
-  (COHEN      "-d"  "Cohen delta"                           .35)
-  (EG         "-e"  "start up actions"                "nothing")
-  (FILE       "-f"  "data file"            "../data/auto93.csv")
-  (HELP       "-h"  "show help"                             nil)
-  (P          "-p"  "distance coeffecient"                    2)
-                    (SEED       "-s"  "random seed"                         10013)))
- 
-;; cli
+  (BOOTSTRAPS "-b"  "number of bootstraps"                   256)
+   (BOOTCONF   "-B"  "bootstrap threshold"                   .05) 
+   (COHEN      "-d"  "Cohen delta"                           .35)
+   (EG         "-e"  "start up actions"                "nothing")
+   (FILE       "-f"  "data file"            "../data/auto93.csv")
+   (HELP       "-h"  "show help"                             nil)
+   (P          "-p"  "distance coeffecient"                    2)
+   (SEED       "-s"  "random seed"                         10013)))
+
+;; argv
 (defun args ()
   "access argv (for both clisp and sbcl"
   #+clisp ext:*args*  #+sbcl sb-ext:*posix-argv*)
 
+;; coerce
 (defun str2thing (s &aux (s1 (string-trim '(#\Space #\Tab) s)))
   "from string extract a number, bool, string, or '? symbol"
   (let ((it (let ((*read-eval* nil)) (read-from-string s1 ""))))
@@ -32,8 +32,9 @@ USAGE:
           ((string= it "?") '?)
           (t                s1))))
 
+;; cli
 (defun cli (lst &aux it)
-  "replace the last item of each setting with details from CLI"
+  "CLI items that match `flag` can update items in `*settings`"
   (loop :for (key flag help b4) :in lst 
         :collect (list key flag help
                        (if (setf it (member flag (args) :test #'string=))
@@ -45,19 +46,20 @@ USAGE:
 ;; macros
 ; ## Macros 
 ; Option macros
-
-(defmacro ? (key) `(fourth (assoc ',key *options*)))
-
-; Print help                                        ;
+;; help
+(defmacro ? (key) 
+  "config items are in item four of the *options* sub-lists" 
+  `(fourth (assoc ',key *options*)))
 
 (defun print-help ()
+  "to show help,  print +about+ then loop over *options*"
   (format t "~a~%~%OPTIONS:~%" +about+)
   (loop :for (_ flag help value) :in *options* :do
     (format t "    ~4a ~3a ~22a = ~a~%" flag 
       (typecase value (integer "I") (number "F") (string "S")(t ""))
       help value)))
 
-; Nested slot accessors.
+;; Nested slot accessors.
 
 (defmacro o (struct f &rest fs)
   (if fs `(o (slot-value ,struct ',f) ,@fs) `(slot-value ,struct ',f)))  
@@ -141,7 +143,7 @@ USAGE:
     (if cols 
       (push (add cols row1) rows) 
       (setf cols (make-cols (row-cells row1))))))
-            
+      
 (defun make-cols (names)   
   (let (all x y (n -1))
     (dolist (col1 (loop :for s :in names :collect (make-col :at (incf n) :txt s)) 
