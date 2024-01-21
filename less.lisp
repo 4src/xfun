@@ -234,8 +234,7 @@ USAGE:
 ;---- examples
 (defun egs()
   (labels ((eg (s) (equalp "eg-" (subseq s 0 (min 3 (length s))))))
-    (loop :for x :being :the symbols :in *package*
-          :if (eg (down-name x)) :collect x)))
+    (loop :for x :being :the symbols :in *package* :if (eg (down-name x)) :collect x)))
 
 (defun run (sym &aux (b4 (copy-tree *options*)))
   (setf *seed* (? seed))
@@ -244,14 +243,12 @@ USAGE:
     (unless passed (format t "❌ FAIL : ~(~a~)~%" sym))
     passed))
 
-(defun run-p(x)
-  (member (? eg) `("all" ,(subseq (down-name x) 3)) :test #'string=))
-
-(defun main (&optional update)
-  (if update  (setf *options* (cli *options*)))
-  (if (? help)
-    (print-help)
-    (goodbye (1- (loop :for eg :in (egs) :if (run-p eg) :count (not (run eg)))))))
+(defun runs (&optional update)
+  (labels ((ok (x) (member (? eg) `("all" ,(subseq (down-name x) 3)) :test #'string=)))
+    (if update  (setf *options* (cli *options*)))
+    (if (? help)
+      (print-help)
+      (goodbye (1- (loop :for eg :in (egs) :if (ok eg) :count (not (run eg))))))))
 
 ; ---------------------------------------------------------------
 (defun eg-fail() nil)
@@ -297,4 +294,4 @@ USAGE:
   (print (stats (make-data (? file)))))
 
 ; -------------------------------------------------------------
-(main t)
+(runs t)
