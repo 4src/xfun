@@ -91,25 +91,14 @@ the Johnson–Lindenstrauss lemma [^john86] states that a set of points in a hig
 [^john86]: Johnson, W.B., Lindenstrauss, J. & Schechtman, G. Extensions of lipschitz maps into Banach spaces. Israel J. Math. 54, 129–138 (1986). https://doi.org/10.1007/BF02764938
 
 ```lisp <less cli>
-(defun args ()
-  "access argv (for both clisp and sbcl"
-  #+clisp ext:*args*  #+sbcl sb-ext:*posix-argv*)
-
-(defun str2thing (s &aux (s1 (string-trim '(#\Space #\Tab) s)))
-  "from string extract a number, bool, string, or '? symbol"
-  (let ((it (let ((*read-eval* nil)) (read-from-string s1 ""))))
-    (cond ((numberp it)     it)
-          ((eq it t)        t)
-          ((eq it nil)      nil)
-          ((string= it "?") '?)
-          (t                s1))))
-
-(defun cli (lst &aux it)
-  "replace the last item of each setting with details from CLI"
-  (loop :for (key flag help b4) :in lst 
+(defun cli (options &aux it)
+  "CLI items that match `flag` can update items in `*settings`. For non-boolean
+   settings, we expect a value after a flag. For boolean settings, flags do not
+   need value (we just flip toe old value)."
+  (loop :for (key flag help b4) :in options 
         :collect (list key flag help
                        (if (setf it (member flag (args) :test #'string=))
-                           (cond ((eq b4 t)   nil)
+                           (cond ((eq b4 t) nil)
                                  ((eq b4 nil) t)
                                  (t (str2thing (second it))))
                            b4))))

@@ -1,4 +1,34 @@
-;; about
+#| 
+
+AI and SE, just the important bits
+Tim Menzies
+timm@ieee.org
+
+March 3, 2024
+
+-----------------------------------------------------------------------------------------
+
+Introduction
+
+-----------------------------------------------------------------------------------------
+
+## Introduction
+### Copyright
+
+Attribution-NonCommercial-NoDerivs 4.0 International
+https://creativecommons.org/licenses/by-nc-nd/4.0/
+
+### Introduction 
+
+How to teach AI and SE?
+
+Contennts
+# This coode
+
+asd as as as  asd  asds
+asasas asdasdas asd as sa as sd as asd sa asd sd asd sad sad sad asas asdsadsa
+
+|#
 (defvar +about+ "
 LESS: less is more
 (c)2023 Tim Menzies <timm.ieee.org> BSD-2
