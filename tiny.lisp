@@ -61,7 +61,7 @@ sbcl --script tiny.lisp [OPTIONS] -e [ACTIONS]
 (defun rint (&optional (n 1) &aux (base 10000000000.0))
   (floor (* n (/ (rand base) base))))
 
-(defmethod sample ((a cons) &optional (n (length a))) 
+(defmetvhod sample ((a cons) &optional (n (length a))) 
   (sample (coerce a 'vector) n))
 
 (defmethod sample ((a vector) &optional (n (length a)))
