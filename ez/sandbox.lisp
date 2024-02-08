@@ -34,6 +34,8 @@
                     ((eq b4 nil) t)
                     (t (safe-read (second it)))))))))
 
+(defun lastchar (s) (char s (1- (length s))))
+
 (stuff 
   (defstruct my
     (file '("-f" "file" "../data/auto93.lisp")))
@@ -50,19 +52,18 @@
 
 (defvar *the* (cli (%make-my)))
 
-(defun make-num (txt at &aux (z (char txt (1- (length txt)))))
+(defun make-num (txt at &aux (z (lastchar txt)))
   (%make-num :txt txt :at at :w (if (eql z #\-) 0 1)))
   
-(defun make-col (s at)  
-  (funcall (if (upper-case-p (char s 0)) #'make-num #'%make-sym) :txt s :at at)) 
+(defun make-col (s at z)  
+  (if (upper-case-p (char s 0)) (make-num s at) (%make-sym :txt s :at at))) 
 
 (defun make-cols (data1 row &aux (at -1))
   (dolist (s row)
-    (let* ((z   (char s (1- (length s))))
-           (col (make-col s (incf at))))
-      (push col (o data1 cols))
-      (unless (eql z #\X)
-        (setf ( ocol goalp) (member z (list #\- #\+ #\!)))))))
+    (let ((col1 (make-col s (incf at))))
+      (push col1 (o data1 cols))
+      (unless (eql (lastchar s) #\X)
+        (setf (o col1 goalp) (member (lastchar s) (list #\- #\+ #\!)))))))
 
 (defun make-data (&optional rows order &aux (data1 (%make-data))
   (dolist (row rows) (add data1 row))
