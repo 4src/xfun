@@ -21,7 +21,7 @@
 (defun safe-read (s)
   (let ((*read-eval* nil)) (read-from-string s)))
 
-(defun slurp (file)
+(defun safe-slurp (file)
   (with-open-file (s txt) (safe-read s)))
 
 (defun cli (struct &optional (slots (slots-of struct))
@@ -36,34 +36,44 @@
 
 (stuff 
   (defstruct my
-    (file '("-f" "file" "../data/auto93.lisp"))))
+    (file '("-f" "file" "../data/auto93.lisp")))
+
+  (defstruct data rows cols all xs ys)
+
+  (defstruct sym
+    (at 0) (txt "") (n 0) goalp has)
+
+  (defstruct num
+    (at 0) (txt "") (n 0) (mu 0) (m2 0) (sd 0) goalp
+    (lo most-positive-fixnum)
+    (hi most-negative-fixnum)))
 
 (defvar *the* (cli (%make-my)))
 
-(defun make-col (s at)s  
-  (let* ((a (char s 0))
-         (z (char s (1- (length s))))
-         (w (if (eql z #\-) 0 1)))
-    (if (upper-case-p a) 
-      (make-num :txt s :at at :w w) 
-      (make-sym :txt s :at at :w w))))
+(defun make-num (txt at &aux (z (char txt (1- (length txt)))))
+  (%make-num :txt txt :at at :w (if (eql z #\-) 0 1)))
+  
+(defun make-col (s at)  
+  (funcall (if (upper-case-p (char s 0)) #'make-num #'%make-sym) :txt s :at at)) 
 
-(defun cols (names)
-  (let  (all xs ys (at 0)) 
-    (dolist (s txts)
-      (let* ((a (char s 0))
-             (z (char s (1- (length s))))
-             (w (if (eql z #\-) 0 1))
-             (col (if (upper-case-p a) 
-                    (make-num :txt s :at (incf at) :w w) 
-                    (make-sym :txt s :at (incf at) :w w))))
-        (push col all)
-        (unless (eql #\X z)
-          (if (member z (list #\- #\+ #\!))
-            (push col ys)
-            (push col xs)))))
-    (make-data :all all :xs xs :ys ys)))
+(defun make-cols (data1 row &aux (at -1))
+  (dolist (s row)
+    (let* ((z   (char s (1- (length s))))
+           (col (make-col s (incf at))))
+      (push col (o data1 cols))
+      (unless (eql z #\X)
+        (setf ( ocol goalp) (member z (list #\- #\+ #\!)))))))
 
+(defun make-data (&optional rows order &aux (data1 (%make-data))
+  (dolist (row rows) (add data1 row))
+  (if order (sort (o data1 rows) #'< :key (lambda (row) (d2h data1 row))))
+  data1)
+
+(defmethod add ((data1 data) row)
+  (with-slots (rows cols) data
+    (if cols
+      (push (mapc #'add cols row) rows)
+      (make-cols data1 row))))
     
 (print (slurp (o my file)))
 
