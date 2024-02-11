@@ -9,7 +9,7 @@
   `(let ((it ,test))
        (if it ,then ,else)))
 
-(defmacro stuff (&rest things)
+(defmacro structs (&rest things)
   (labels ((name  (s) (intern (format nil "~:@(~a~)" s)))
            (maker (s) (intern (format nil "%MAKE-~a" (name s)))))
     `(progn 
@@ -24,9 +24,8 @@
 (defun safe-slurp (file)
   (with-open-file (s txt) (safe-read s)))
 
-(defun cli (struct &optional (slots (slots-of struct))
-                   (args #+clisp ext:*args* #+sbcl sb-ext:*posix-argv*))
-  (dolist (slot slots struct)
+(defun cli (struct &optional (args #+clisp ext:*args* #+sbcl sb-ext:*posix-argv*))
+  (dolist (slot (slots-of struct)  struct)
     (destructuring-bind (flag _ b4) (slot-value struct slot)
       (aif (member flag args :test #'string=)
         (setf (third (slot-value struct slot))
@@ -36,11 +35,11 @@
 
 (defun lastchar (s) (char s (1- (length s))))
 
-(stuff 
+(structs 
   (defstruct my
     (file '("-f" "file" "../data/auto93.lisp")))
 
-  (defstruct data rows cols all xs ys)
+  (defstruct data rows cols)
 
   (defstruct sym
     (at 0) (txt "") (n 0) goalp has)
@@ -61,19 +60,19 @@
 (defun make-cols (data1 row &aux (at -1))
   (dolist (s row)
     (let ((col1 (make-col s (incf at))))
-      (push col1 (o data1 cols))
+      (push col1 (slot-value data1 'cols))
       (unless (eql (lastchar s) #\X)
-        (setf (o col1 goalp) (member (lastchar s) (list #\- #\+ #\!)))))))
+        (setf (slot-value col1 'goalp) (car (member (lastchar s) (list #\- #\+ #\!))))))))
 
 (defun make-data (&optional rows order &aux (data1 (%make-data))
   (dolist (row rows) (add data1 row))
-  (if order (sort (o data1 rows) #'< :key (lambda (row) (d2h data1 row))))
+  (if order (sort (slot-value data1 'rows) #'< :key (lambda (row) (d2h data1 row))))
   data1)
 
 (defmethod add ((data1 data) row)
   (with-slots (rows cols) data
     (if cols
-      (push (mapc #'add cols row) rows)
+      (push (mapcar #'add cols row) rows)
       (make-cols data1 row))))
     
 (print (slurp (o my file)))
