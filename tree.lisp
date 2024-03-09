@@ -770,6 +770,53 @@
   (1 126 60 0 0 30.1 0.349 47 "positive") 
   (1 93 70 31 0 30.4 0.315 23 "negative")))
 
-(defun stop(lst) (car (last lst)))
+(defmacro o (struct slot &rest slots) 
+  (if slots `(o (slot-value ,struct ',slot) ,@slots) 
+    `(slot-value ,struct ',slot)))   
 
-(print (stop (auto93)))
+(defmacro thing (it &rest has) 
+  (labels ((make (x) (intern (format nil "%MAKE-~a" x))) 
+           (name (x) (if (consp x) (car x) x))) 
+    `(progn (defstruct (,it (:constructor ,(make it))) ,@has)
+            (defmethod slots-of ((_ ,it)) ',(mapcar #'name has)))))
+
+(defmacro things (&rest defstructs)
+  `(progn ,@(loop for (defstruct . slots) in defstructs collect `(thing ,@slots))))
+
+(defmacro has (x lst &optional (init 0))      
+  `(cdr (or (assoc ,x ,lst :test #'equal)
+            (car (setf ,lst (cons (cons ,x ,init) ,lst))))))
+
+(things
+  (defstruct bin lo hi ys)
+  (defstruct data rows cols fun)
+  (defstruct cols x y all names klass)
+  (defstruct sym (n 0) (at 0) (txt " ") (has 0))
+  (defstruct num (n 0) (at 0) (txt " ") (mu 0) (m2 0) (sd 0)))
+
+
+(defun make-cols (lst &aux (n -1) (cols1 (%make-cols :name lst)))
+  (with-slots (x y all klass)
+    (dolist (name lst) cols1)
+      (let* ((a (symbol-name char name 0))
+             (z (symbol-name (char name (1- (length name)))))
+             (what (if (upper-case-p a) #'make-num #'make-sym))
+              (col (funcall what (incf n) name))) 
+        (push col all)
+        (when (not (eql z #\X))
+          
+            )))
+
+(defun make-data (lst &key ordered fun  &aux (data1 (%make-data :fun fun)))
+  (with-slots (rows) data1
+    (dolist (row lst) (add data1 row))
+    (if ordered
+      (setf rows (sort rows :key (lambda (row) (d2d data1 row)))))
+    data1))
+
+(defmethod add ((data1 data) row)
+  (with-slots (rows cols fun) data1
+    (cond (cols (if fun (funcall fun data1 row))
+                (push (add cols row) rows))
+          (t    (setf cols (make-cols row))))))
+          
