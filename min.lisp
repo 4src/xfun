@@ -1,32 +1,21 @@
+(defstruct bin lo hi ys)
 ;------------------------------------------------------------------------------
+(defstruct sym (n 0) (at 0) (txt " ") (has 0))
 
-
-(defmacro accessor (it &rest has) 
-  "Add constructors to defstructs. And a method to return all the slots."
-  (labels ((name (x) (if (consp x) (car x) x))) 
-    `(progn (defmethod slots-of ((_ ,it)) ',(mapcar #'name has))))
-
-(defmacro accessors (&rest defstructs)
-  "Apply `thing` to a list of defstructs." 
-  `(progn ,@(loop for (defstruct . slots) in defstructs collect `(accessor ,@slots))))
-;------------------------------------------------------------------------------
-(accessors
-  (defstruct bin lo hi ys)
-  (defstruct data rows cols fun)
-  (defstruct cols x y all names klass)
-  (defstruct sym (n 0) (at 0) (txt " ") (has 0))
-  (defstruct num (n 0) (at 0) (txt " ") (mu 0) (m2 0) (sd 0) (heaven 1)))
-;------------------------------------------------------------------------------
-(defun gen-sym (&optional (at 0) (s ""))
+(defun new-sym (&optional (at 0) (s ""))
   (make-num :at 0 :txt s))
+;------------------------------------------------------------------------------
+(defstruct num (n 0) (at 0) (txt " ") (mu 0) (m2 0) (sd 0) (heaven 1))
 
-(defun gen-num (&optional (at 0) (s " "))
-  (make-num :at 0 :txt s :heaven (if  (end s) #\-) 0 -1))
-  
-(defun gen-cols (lst &aux (n -1) (cols1 (make-cols :name lst)))
+(defun new-num (&optional (at 0) (s " "))
+  (make-num :at 0 :txt s :heaven (if  (end s) #\-) 0 1))
+;------------------------------------------------------------------------------
+(defstruct cols x y all names klass)
+
+(defun new-cols (lst &aux (n -1) (cols1 (make-cols :name lst)))
   (with-slots (x y all klass) cols1
     (dolist (s lst cols1) 
-      (let* ((col (if (upper-case-p (char s 0)) (gen-num at s) (gen-sym at s))))
+      (let* ((col (if (upper-case-p (char s 0)) (new-num at s) (new-sym at s))))
         (push col all)
         (unless (eql (end s) #\X)
           (if (eql (end s) #\!) (setf klass col))
@@ -34,9 +23,11 @@
 
 (defmethod add ((cols1 cols) lst)
    (mapcar #'(lambda (col x) (add col x)) cols lst))
+;------------------------------------------------------------------------------
+(defstruct data rows cols fun)
 
-(defun gen-data (lst &optional (fun (lambda (&rest _) _)) 
-                      &key rank &aux (data1 (make-data :fun fun)))
+(defun new-data (lst &optional (fun (lambda (&rest _) _)) 
+                     &key rank &aux (data1 (make-data :fun fun)))
   (with-slots (rows) data1
     (dolist (row lst) (add data1 row))
     (setf rows (if rank (sort rows :key (lambda (row) (d2d data1 row))) rows))
@@ -46,18 +37,23 @@
   (with-slots (rows cols fun) data1
     (cond (cols (funcall (data-fun data1) data1 row)
                 (push (add cols row) rows))
-          (t    (setf cols (gen-cols row))))))
+          (t    (setf cols (new-cols row))))))
 
 (defmethod d2h ((data1 data) lst)
-  (let* ((d 0) (ys (cols-y (data-cols data1))))
+  (let* ((d 0) 
+         (ys (cols-y (data-cols data1))))
     (dolist (col ys (expt (/ d (length ys)) .5)) 
       (with-slots (heaven at) col
         (incf d (expt (abs (- heaven (norm col (elt lst at)))) 2))))))
 ;------------------------------------------------------------------------------
+(defun end(s)
+  "Return last char in a string"
+  (char s (1- (length s))))
+
 (defun inc (x lst) 
   "Return `lst`'s  slot value for `x` (if missing, initialize x's slot to 0)."    
   (incf (cdr (or (assoc x  lst :test #'equal)
-            (car (setf lst (cons (cons x 0) lst)))))))
+                 (car (setf lst (cons (cons x 0) lst)))))))
             
 (defun goodbye (x)
   "Return a value to the operator system."
@@ -67,9 +63,11 @@
   "Access argv (for both clisp and sbcl"
   #+clisp ext:*args*  #+sbcl sb-ext:*posix-argv*)
 
-(defun str2thing (s &aux (s1 (string-trim '(#\Space #\Tab) s)))
+(defun str2thing (s)
   "From string extract a number, bool, string, or '? symbol"
-  (let ((*read-eval* nil)) (read-from-string s1 "")))
+  (let* ((s1 (string-trim '(#\Space #\Tab) s))
+         (*read-eval* nil)) 
+    (read-from-string s1 "")))
 
 (defun cli (options &aux it)
   "Update options from CLU. Booleans need no arg-- we just flip their old value."
