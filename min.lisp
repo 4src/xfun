@@ -1,14 +1,65 @@
+(defvar *options* '(
+  (k     "-k"  "kth value"        2)
+  (goal  "-g"  "start-up action"  "one")
+  (help  "-h"  "show help"        nil)))
+
+(defmacro ? (x) 
+  "access an option"
+  `(fourth (assoc ',x *options*)))
+
+(defmacro geta (x lst)
+  "association list access" 
+  `(cdr (assoc ,x ,lst)))
+
+(defmacro aif (test yes &optional no)
+  "anaphoric if"
+  `(let ((it ,test)) (if it ,yes ,no)))
+
+(defmacro has (x lst) 
+  "Return `lst`'s  slot value for `x` (if missing, initialize x's slot to 0)."    
+  `(cdr (or (assoc ,x ,lst :test #'equal)
+            (car (setf ,lst (cons (cons ,x 0) ,lst))))))
+
 (defstruct bin lo hi ys)
 ;------------------------------------------------------------------------------
-(defstruct sym (n 0) (at 0) (txt " ") (has 0))
+(defstruct sym (n 0) (at 0) (txt " ") (seen 0) most mode)
 
 (defun new-sym (&optional (at 0) (s ""))
   (make-num :at 0 :txt s))
+
+(defmethod add ((sym1 sym) x)
+  (with-slots (n seen most mode) sym1
+    (unless (eq x '?)
+      (incf n)
+      (let ((new (incf (has x has))))
+         (if (> new most)
+          (setf mode x 
+                most new))))))
+
+(defmethod mid ((sym1 sym)) (sym-mode sym1))
+
+(defmethod div ((sym1 sym))
+  (with-slots (seen n) sym1
+    (* -1 (loop :for (_ . v) :in seen :sum  (* (/ v n) (log (/ v n) 2))))))
 ;------------------------------------------------------------------------------
 (defstruct num (n 0) (at 0) (txt " ") (mu 0) (m2 0) (sd 0) (heaven 1))
 
 (defun new-num (&optional (at 0) (s " "))
-  (make-num :at 0 :txt s :heaven (if  (end s) #\-) 0 1))
+  (make-num :at 0 :txt s :heaven (if (end s) #\-) 0 1))
+
+(defmethod add ((num1 num) x)
+  (with-slots (lo hi n mu m2) num1
+    (unless (eq x '?)
+      (incf n)
+      (let ((d (- x mu)))
+        (incf mu (/ d n))
+        (incf m2 (* d (-  x mu)))
+        (setf lo (min x lo)
+              hi (max x hi))))))
+
+(defmethod mid ((num1 num)) (num-mu num1))
+
+(defmethod div ((num1 num)) (sqrt (/ (num-m2 num1) (- (num-n num1) 1))))
 ;------------------------------------------------------------------------------
 (defstruct cols x y all names klass)
 
@@ -40,21 +91,24 @@
           (t    (setf cols (new-cols row))))))
 
 (defmethod d2h ((data1 data) lst)
-  (let* ((d 0) 
-         (ys (cols-y (data-cols data1))))
+  (let ((d 0) 
+        (ys (cols-y (data-cols data1))))
     (dolist (col ys (expt (/ d (length ys)) .5)) 
       (with-slots (heaven at) col
         (incf d (expt (abs (- heaven (norm col (elt lst at)))) 2))))))
 ;------------------------------------------------------------------------------
+(defun adds (col1 lst)
+  "return col1 after add ing the items in `lst` to `cols1`"
+  (dolist (x lst col1) (add col1 x)))
+
+(defun slurp (file)
+  "Read one item from file."
+  (with-open-file (s file) (read s)))
+
 (defun end(s)
-  "Return last char in a string"
+  "Return last char in a string."
   (char s (1- (length s))))
 
-(defun inc (x lst) 
-  "Return `lst`'s  slot value for `x` (if missing, initialize x's slot to 0)."    
-  (incf (cdr (or (assoc x  lst :test #'equal)
-                 (car (setf lst (cons (cons x 0) lst)))))))
-            
 (defun goodbye (x)
   "Return a value to the operator system."
    #+clisp (ext:exit x) #+sbcl (sb-ext:exit :code x))
@@ -63,11 +117,9 @@
   "Access argv (for both clisp and sbcl"
   #+clisp ext:*args*  #+sbcl sb-ext:*posix-argv*)
 
-(defun str2thing (s)
+(defun str2thing (s &aux (s1 (string-trim '(#\Space #\Tab) s)))
   "From string extract a number, bool, string, or '? symbol"
-  (let* ((s1 (string-trim '(#\Space #\Tab) s))
-         (*read-eval* nil)) 
-    (read-from-string s1 "")))
+  (let ((*read-eval* nil)) (read-from-string s1 "")))
 
 (defun cli (options &aux it)
   "Update options from CLU. Booleans need no arg-- we just flip their old value."
@@ -90,8 +142,13 @@
     passed))
 
 (defun runs (&optional update)
-  (labels ((ok (x) (member (? eg) `("all" ,(subseq (down-name x) 3)) :test #'string=)))
+  (labels ((down (x) (string-downcase (symbol-name x)))
+           (ok   (x) (member (? goal) `("all" ,(subseq (down x) 3)) :test #'string=)))
     (if update  (setf *options* (cli *options*)))
     (if (? help)
       (print-help)
       (goodbye (1- (loop :for eg :in (egs) :if (ok eg) :count (not (run eg))))))))  
+;------------------------------------------------------------------------------
+(defun eg-one () (print 1))
+;------------------------------------------------------------------------------
+(runs) 
