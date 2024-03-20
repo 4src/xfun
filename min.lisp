@@ -73,7 +73,7 @@
           (if (member (end s) '(#\< #\> #\!)) (push col y) (push col x)))))))
 
 (defmethod add ((cols1 cols) lst)
-   (mapcar #'(lambda (col x) (add col x)) cols lst))
+   (mapcar #'(lambda (col x) (add col x) x) cols lst))
 ;------------------------------------------------------------------------------
 (defstruct data rows cols fun)
 
