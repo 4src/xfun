@@ -1,3 +1,6 @@
+(defpackage :min (:use :cl))
+(in-package :min)
+
 (defvar *options* '(
   (k     "-k"  "kth value"        2)
   (goal  "-g"  "start-up action"  "one")
@@ -96,22 +99,27 @@
   "Update come cols."
    (mapcar #'(lambda (col x) (add col x) x) cols lst))
 ;------------------------------------------------------------------------------
-(defstruct data rows cols fun)
+(defstruct data 
+  "Place to store rows of DATA, summarized in cols."
+  rows cols fun)
 
 (defun new-data (lst &optional (fun (lambda (&rest _) _)) 
                      &key rank &aux (data1 (make-data :fun fun)))
+  "Factory for making a DATA, and a function `fun` to run everytime we see new data."
   (with-slots (rows) data1
     (dolist (row lst) (add data1 row))
     (setf rows (if rank (sort rows :key (lambda (row) (d2d data1 row))) rows))
     data1))
 
 (defmethod add ((data1 data) row)
+  "Update a DATA."
   (with-slots (rows cols fun) data1
     (cond (cols (funcall (data-fun data1) data1 row)
                 (push (add cols row) rows))
           (t    (setf cols (new-cols row))))))
 
 (defmethod d2h ((data1 data) lst)
+  "Distance from heave to the goals of  `lst`."
   (let ((d 0) 
         (ys (cols-y (data-cols data1))))
     (dolist (col ys (expt (/ d (length ys)) .5)) 
@@ -152,17 +160,22 @@
                                          b4))))
 ;------------------------------------------------------------------------------
 (defun egs ()
+  "Find all the functions starting with `eg-`."
   (labels ((eg (x) (equal "eg-" (subseq (format nil "~(~a~)   " (symbol-name x)) 0 3))))
-    (loop :for x :being :the symbols :in *package* :if (eg x) :collect x)))
+    (loop :for x :being :the symbols :in (find-package :min) :if (eg x) :collect x)))
+
+(print (egs))
 
 (defun run (sym &aux (b4 (copy-tree *options*)))
+ "Run one example."
   (setf *seed* (? seed))
   (let ((passed (funcall sym)))
     (setf *options* (copy-tree b4))
     (unless passed (format t "❌ FAIL : ~(~a~)~%" sym))
     passed))
 
-(defun runs (&optional update)
+(defun min-main (&optional update)
+  "Update *options* from the CLI, maybe print `help`, run the `egs`, exit with count of failures." 
   (labels ((down (x) (string-downcase (symbol-name x)))
            (ok   (x) (member (? goal) `("all" ,(subseq (down x) 3)) :test #'string=)))
     (if update  (setf *options* (cli *options*)))
@@ -172,4 +185,4 @@
 ;------------------------------------------------------------------------------
 (defun eg-one () (print 1))
 ;------------------------------------------------------------------------------
-(runs) 
+(min-main) 
