@@ -20,14 +20,20 @@
   `(cdr (or (assoc ,x ,lst :test #'equal)
             (car (setf ,lst (cons (cons ,x 0) ,lst))))))
 
-(defstruct bin lo hi ys)
+(defstruct bin 
+  "`ys` counts the symbols seen (in one column) between `lo` and `hi` (in another column)."
+  lo hi ys)
 ;------------------------------------------------------------------------------
-(defstruct sym (n 0) (at 0) (txt " ") (seen 0) most mode)
+(defstruct sym 
+  "Incrementally summarizes a stream of symbols." 
+  (n 0) (at 0) (txt " ") (seen 0) most mode)
 
 (defun new-sym (&optional (at 0) (s ""))
-  (make-num :at 0 :txt s))
+  "Factory for making SYMs."
+  (make-sym :at 0 :txt s))
 
 (defmethod add ((sym1 sym) x)
+  "Update a SYM."
   (with-slots (n seen most mode) sym1
     (unless (eq x '?)
       (incf n)
@@ -36,18 +42,25 @@
           (setf mode x 
                 most new))))))
 
-(defmethod mid ((sym1 sym)) (sym-mode sym1))
+(defmethod mid ((sym1 sym)) 
+  "Return middle value expected in a SYM distribution."
+  (sym-mode sym1))
 
 (defmethod div ((sym1 sym))
+  "Return the variability expected in a SYM distribution."
   (with-slots (seen n) sym1
     (* -1 (loop :for (_ . v) :in seen :sum  (* (/ v n) (log (/ v n) 2))))))
 ;------------------------------------------------------------------------------
-(defstruct num (n 0) (at 0) (txt " ") (mu 0) (m2 0) (sd 0) (heaven 1))
+(defstruct num 
+  "Incrementally summarizes a stream of numbers." 
+  (n 0) (at 0) (txt " ") (mu 0) (m2 0) (sd 0) (heaven 1))
 
 (defun new-num (&optional (at 0) (s " "))
+  "Factory for making NUMs."
   (make-num :at 0 :txt s :heaven (if (end s) #\-) 0 1))
 
 (defmethod add ((num1 num) x)
+  "Update a NUM."
   (with-slots (lo hi n mu m2) num1
     (unless (eq x '?)
       (incf n)
@@ -57,13 +70,20 @@
         (setf lo (min x lo)
               hi (max x hi))))))
 
-(defmethod mid ((num1 num)) (num-mu num1))
+(defmethod mid ((num1 num)) 
+  "Return middle value expected in a NUM distribution."
+  (num-mu num1))
 
-(defmethod div ((num1 num)) (sqrt (/ (num-m2 num1) (- (num-n num1) 1))))
+(defmethod div ((num1 num)) 
+  "Return the variability expected in a NUM distribution."
+  (sqrt (/ (num-m2 num1) (- (num-n num1) 1))))
 ;------------------------------------------------------------------------------
-(defstruct cols x y all names klass)
+(defstruct cols 
+  "Factory for making and storing COLs."
+  x y all names klass)
 
 (defun new-cols (lst &aux (n -1) (cols1 (make-cols :name lst)))
+  "Factory for making a factory for COLS."
   (with-slots (x y all klass) cols1
     (dolist (s lst cols1) 
       (let* ((col (if (upper-case-p (char s 0)) (new-num at s) (new-sym at s))))
@@ -73,6 +93,7 @@
           (if (member (end s) '(#\< #\> #\!)) (push col y) (push col x)))))))
 
 (defmethod add ((cols1 cols) lst)
+  "Update come cols."
    (mapcar #'(lambda (col x) (add col x) x) cols lst))
 ;------------------------------------------------------------------------------
 (defstruct data rows cols fun)
