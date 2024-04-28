@@ -126,15 +126,16 @@
   (labels ((down (x) (string-downcase (symbol-name x)))
            (ok   (x) (member (? goal) `("all" ,(subseq (down x) 3)) :test #'string=)))
     (if update  (setf *options* (cli *options*)))
+    (print *options*)
     (if (? help)
       (print-help)
       (goodbye (1- (loop :for eg :in (egs) :if (ok eg) :count (not (run eg))))))))  
 
 ;------------------------------------------------------------------------------
-(defun eg-one () (print 1))
-(defun eg-ramd ()
+;(defun eg-one () (print 1))
+(defun eg-ramd () (print 2)
   (let ((n (new-num)))
-    (dolist (i 1000) (add n i))
+    (dotimes (i 1000) (print 0) (add n i))
     (print n)))
     
 ;------------------------------------------------------------------------------
