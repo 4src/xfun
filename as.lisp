@@ -1,26 +1,25 @@
-(defpackage :min (:use :cl))
-(in-package :min)
+(defpackage :och (:use :cl))
+(in-package :och)
 
-(defvars  *options* '(
+(defvar  *options* '(
   (k     "-k"  "kth value"        2)
   (goal  "-g"  "start-up action"  "one")
   (help  "-h"  "show help"        nil)))
 ; ---------------------------------------------------------------------------------------
-(defmacro ? (x)  `(fourth (assoc ',x *options*)))
-(defmacro aif (test yes &optional no)  `(let ((it ,test)) (if it ,yes ,no)))
+(defmacro ? (x) `(fourth (assoc ',x *options*)))
 (defmacro has (x lst)  `(cdr (or (assoc ,x ,lst :test #'equal)
                                  (car (setf ,lst (cons (cons ,x 0) ,lst))))))
 
 ; ---------------------------------------------------------------------------------------
 (defstruct bin lo hi ys)
-(defstruct sym  (n 0) (at 0) (txt " ") (seen 0) most mode)
+(defstruct sym  (n 0) (at 0) (txt " ") (has 0) most mode)
 (defstruct num  (n 0) (at 0) (txt " ") (mu 0) (m2 0) (sd 0) (heaven 1))
 (defstruct data  rows cols fun)
 (defstruct cols x y all names klass)
 
 ; ---------------------------------------------------------------------------------------
 (defmethod add ((sym1 sym) x)
-  (with-slots (n seen most mode) sym1  (unless (eq x '?)
+  (with-slots (n has most mode) sym1  (unless (eq x '?)
       (incf n)
       (let ((new (incf (has x has))))
         (if (> new most)
@@ -29,12 +28,12 @@
 
 (defmethod mid ((sym1 sym)) (sym-mode sym1))
 (defmethod div ((sym1 sym))
-  (with-slots (seen n) sym1
-    (* -1 (loop :for (_ . v) :in seen :sum  (* (/ v n) (log (/ v n) 2))))))
+  (with-slots (has n) sym1
+    (* -1 (loop :for (_ . v) :in has :sum  (* (/ v n) (log (/ v n) 2))))))
 
 ;-----------------------------------------------------------------------------------------
 (defun new-num (&optional (at 0) (s " "))
-  (make-num :at 0 :txt s :heaven (if (end s) #\-) 0 1))
+  (make-num :at 0 :txt s :heaven (if (end s #\-) 0 1)))
 
 (defmethod add ((num1 num) x)
   (with-slots (lo hi n mu m2) num1
@@ -50,10 +49,10 @@
 (defmethod div ((num1 num)) (sqrt (/ (num-m2 num1) (- (num-n num1) 1))))
 
 ;-----------------------------------------------------------------------------------------
-(defun new-cols (lst &aux (n -1) (cols1 (make-cols :name lst)))
+(defun new-cols (lst &aux (n -1) (cols1 (make-cols :names lst)))
   (with-slots (x y all klass) cols1
     (dolist (s lst cols1)
-      (let* ((col (if (upper-case-p (char s 0)) (new-num at s) (new-sym at s))))
+      (let* ((col (if (upper-case-p (char s 0)) (new-num at s) (make-sym :at at :txt s))))
         (push col all)
         (unless (eql (end s) #\X)
           (if (eql (end s) #\!) (setf klass col))
@@ -106,7 +105,7 @@
 ;------------------------------------------------------------------------------
 (defun egs ()
   (labels ((eg (x) (equal "eg-" (subseq (format nil "~(~a~)   " (symbol-name x)) 0 3))))
-    (loop :for x :being :the symbols :in (find-package :min) :if (eg x) :collect x)))
+    (loop :for x :being :the symbols :in (find-package :och) :if (eg x) :collect x)))
 
 (print (egs))
 
@@ -114,10 +113,10 @@
   (setf *seed* (? seed))
   (let ((passed (funcall sym)))
     (setf *options* (copy-tree b4))
-    (unless passed (format t "❌ FAIL : ~(~a~)~%" sym))
+    (unless passed (format t "❌ FAIL: ~(~a~)~%" sym))
     passed))
 
-(defun min-main (&optional update)
+(defun och-main (&optional update)
   (labels ((down (x) (string-downcase (symbol-name x)))
            (ok   (x) (member (? goal) `("all" ,(subseq (down x) 3)) :test #'string=)))
     (if update  (setf *options* (cli *options*)))
@@ -127,4 +126,4 @@
 ;------------------------------------------------------------------------------
 (defun eg-one () (print 1))
 ;------------------------------------------------------------------------------
-(min-main) 
+(och-main) 
