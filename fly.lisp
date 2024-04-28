@@ -6,47 +6,62 @@
   (goal  "-g"  "start-up action"  "one")
   (help  "-h"  "show help"        nil)))
 ; ---------------------------------------------------------------------------------------
-(defun goodbye (x)   #+clisp (ext:exit x) #+sbcl (sb-ext:exit :code x))
-
-(defmacro ? (x) `(fourth (assoc ',x *options*)))
-(defmacro has (x lst)  `(cdr (or (assoc ,x ,lst :test #'equal)
-                                 (car (setf ,lst (cons (cons ,x 0) ,lst))))))
-
-; ---------------------------------------------------------------------------------------
 (defstruct sym (n 0) (at 0) (txt " ") (has 0) most mode)
 (defstruct num (n 0) (at 0) (txt " ") (mu 0) (m2 0) (sd 0) (heaven 1))
 (defstruct data rows cols fun)
 (defstruct cols x y all names klass)
+; ---------------------------------------------------------------------------------------
+(defun goodbye (x)   #+clisp (ext:exit x) #+sbcl (sb-ext:exit :code x))
+
+(set-macro-character #\$ #'(lambda (s _) `(slot-value self ',(read s t nil t))))
+
+(defmacro ? (x) `(fourth (assoc ',x *options*)))
+(defmacro of (x lst)  `(cdr (or (assoc ,x ,lst :test #'equal)
+                                 (car (setf ,lst (cons (cons ,x 0) ,lst))))))
 
 ;-----------------------------------------------------------------------------------------
-(defun new-sym (&optional (at 0) (s " ")) (make-sym :at 0 :txt s ))
-(defun new-num (&optional (at 0) (s " ")) 
-  (make-num :at 0 :txt s :heaven (if (eq (end s) #\-) 0 1)))
+(defun sym+ (&optional (at 0) (s " ")) (make-sym :at 0 :txt s ))
+
+(defun num+ (&optional (at 0) (s " ")) (make-num :at 0 :txt s 
+                                                 :heaven (if (eq (end s) #\-) 0 1)))
+
+(defun cols+ (lst &aux (n -1) (self (make-cols :names lst)))
+  (dolist (s lst self)
+    (incf n)
+    (let* ((col (if (upper-case-p (char s 0)) (num+ n s) (sym+ :at n :txt s))))
+      (push col $all)
+      (unless (eql (end s) #\X)
+        (if (eql (end s) #\!) (setf $klass col))
+        (if (member (end s) '(#\< #\> #\!)) (push col $y) (push col $x))))))
+
+(defun data+ (lst &optional (fun (lambda (&rest _) _)) 
+                  &key rank &aux (self (make-data :fun fun)))
+  (dolist (row lst) (add data1 row))
+  (if rank (setf $rows (sort $rows #'< :key (lambda (row) (d2d self row)))))
+  self)
 
 ; ---------------------------------------------------------------------------------------
-(defmethod add ((sym1 sym) x)
-  (with-slots (n has most mode) sym1  (unless (eq x '?)
-      (incf n)
-      (let ((new (incf (has x has))))
-        (if (> new most)
-          (setf mode x 
-                most new))))))
+(defmethod add ((self sym) x)
+  (unless (eq x '?) 
+    (incf $n)
+    (let ((new (incf (of x $has))))
+      (if (> new $most)
+        (setf $mode x 
+              $most new)))))
 
-(defmethod add ((num1 num) x)
-  (with-slots (lo hi n mu m2) num1
-    (unless (eq x '?)
-      (incf n)
-      (let ((d (- x mu)))
-        (incf mu (/ d n))
-        (incf m2 (* d (-  x mu)))
-        (setf lo (min x lo)
-              hi (max x hi))))))
+(defmethod add ((self num) x)
+  (unless (eq x '?)
+    (incf $n)
+    (let ((d (- x $mu)))
+      (incf $mu (/ d $n))
+      (incf $m2 (* d (-  x $mu)))
+      (setf $lo (min x $lo)
+            $hi (max x $hi)))))
 
-(defmethod add ((data1 data) row)
-  (with-slots (rows cols fun) data1
-    (cond (cols (funcall (data-fun data1) data1 row)
-                (push (add cols row) rows))
-          (t    (setf cols (new-cols row))))))
+(defmethod add ((self data) row)
+  (cond ($cols (funcall $fun self row)
+               (push (add $cols row) $rows))
+        (t    (setf $cols (cols+ row)))))
 
 ; ---------------------------------------------------------------------------------------
 (defmethod mid ((num1 num)) (num-mu num1))
@@ -58,27 +73,10 @@
     (* -1 (loop :for (_ . v) :in has :sum  (* (/ v n) (log (/ v n) 2))))))
 
 ;-----------------------------------------------------------------------------------------
-(defun new-cols (lst &aux (n -1) (cols1 (make-cols :names lst)))
-  (with-slots (x y all klass) cols1
-    (dolist (s lst cols1)
-      (incf n)
-      (let* ((col (if (upper-case-p (char s 0)) (new-num n s) (make-sym :at n :txt s))))
-        (push col all)
-        (unless (eql (end s) #\X)
-          (if (eql (end s) #\!) (setf klass col))
-          (if (member (end s) '(#\< #\> #\!)) (push col y) (push col x)))))))
-
 (defmethod add ((cols1 cols) lst) 
   (mapcar #'(lambda (c x) (add c x) x) (cols-all cols1) lst))
 
 ;-----------------------------------------------------------------------------------------
-(defun new-data (lst &optional (fun (lambda (&rest _) _)) 
-                     &key rank &aux (data1 (make-data :fun fun)))
-  (with-slots (rows) data1
-    (dolist (row lst) (add data1 row))
-    (if rank (setf rows (sort rows #'< :key (lambda (row) (d2d data1 row)))))
-    data1))
-
 (defmethod d2h ((data1 data) lst)
   (let ((d 0) 
         (ys (cols-y (data-cols data1))))
@@ -134,7 +132,7 @@
 ;------------------------------------------------------------------------------
 ;(defun eg-one () (print 1))
 (defun eg-ramd () (print 2)
-  (let ((n (new-num)))
+  (let ((n (num+)))
     (dotimes (i 1000) (print 0) (add n i))
     (print n)))
     
