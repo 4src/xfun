@@ -18,7 +18,7 @@
 (defmacro ? (x) `(fourth (assoc ',x *options*)))
 (defmacro of (x lst)  `(cdr (or (assoc ,x ,lst :test #'equal)
                                  (car (setf ,lst (cons (cons ,x 0) ,lst))))))
-
+#
 ;-----------------------------------------------------------------------------------------
 (defun sym+ (&optional (at 0) (s " ")) (make-sym :at 0 :txt s ))
 
