@@ -8,11 +8,13 @@ spy.lisp: sequential model optimization
 (c) 2024 Tim Menzies <timm@ieee.org> BSD-2")
 
 (defvar  *options* '(
-  (k     "-k"  "kth value"          2)
-  (f     "-f"  "csv data file"      "data/auto93.lisp")
-  (goal  "-g"  "start-up action"    one)
-  (seed  "-s"  "random number seed" 1234567891)
-  (help  "-h"  "show help"          nil)))
+  ;tag   cliFlag  help text            default
+  ;---   -------  ---------            -------
+  (k     "-k"     "kth value"          2)
+  (f     "-f"     "csv data file"      "data/auto93.lisp")
+  (goal  "-g"     "start-up action"    one)
+  (seed  "-s"     "random number seed" 1234567891)
+  (help  "-h"     "show help"          nil)))
 
 ; ---------------------------------------------------------------------------------------
 (defstruct data rows cols fun)
@@ -40,7 +42,7 @@ spy.lisp: sequential model optimization
 (defun cols+ (lst &aux (n -1) (self (make-cols :names lst)))
   (dolist (s lst self)
     (incf n)
-    (let ((col (if (upper-case-p (char s 0)) (num+ n s) (sym n s))))
+    (let ((col (if (upper-case-p (char s 0)) (num+ n s) (sym+ n s))))
       (push col $all)
       (unless (end s #\X)
         (if   (end s #\!)         (setf $klass col))
@@ -109,6 +111,11 @@ spy.lisp: sequential model optimization
                                                ((eq b4 nil) t)
                                                 (t (str2thing (second it))))
                                          b4))))
+
+(defun csv (file fun)
+  (with-open-file (str file)
+    (loop (funcall fun  (str2thing (or (read-line str nil) (return-from csv)))))))
+
 
 (defun print-help ()
   (format t "~a~%~%OPTIONS:~%" *help*)
