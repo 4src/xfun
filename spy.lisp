@@ -11,7 +11,7 @@ spy.lisp: sequential model optimization
   ;tag   cliFlag  help text            default
   ;---   -------  ---------            -------
   (k     "-k"     "kth value"          2)
-  (f     "-f"     "csv data file"      "data/auto93.lisp")
+  (file  "-f"     "csv data file"      "data/auto93.lisp")
   (goal  "-g"     "start-up action"    one)
   (seed  "-s"     "random number seed" 1234567891)
   (help  "-h"     "show help"          nil)))
@@ -33,20 +33,24 @@ spy.lisp: sequential model optimization
 (defun num+ (&optional (at 0) (s " ")) (make-num :at 0 :txt s :want (if (end s #\-) 0 1)))
 (defun sym+ (&optional (at 0) (s " ")) (make-sym :at 0 :txt s ))
 
-(defun data+ (lst &optional (fun (lambda (&rest _) _)) 
+(defun data+ (&optional src (fun (lambda (&rest _) _)) 
                   &key rank &aux (self (make-data :fun fun)))
-  (dolist (row lst) (add self row))
+  (if (stringp src)
+    (csv src (lambda (row) (add self row)))
+    (dolist (row src) (add self row)))
   (if rank (setf $rows (sort $rows #'< :key (lambda (row) (d2d self row)))))
   self)
 
 (defun cols+ (lst &aux (n -1) (self (make-cols :names lst)))
-  (dolist (s lst self)
+  (dolist (s lst)
     (incf n)
     (let ((col (if (upper-case-p (char s 0)) (num+ n s) (sym+ n s))))
       (push col $all)
       (unless (end s #\X)
         (if   (end s #\!)         (setf $klass col))
-        (if   (end s #\< #\> #\!) (push col $y) (push col $x))))))
+        (if   (end s #\- #\+ #\!) (push col $y) (push col $x)))))
+  (setf $all (reverse $all))
+  self)
 
 ; ---------------------------------------------------------------------------------------
 (defmethod add ((self sym) x)
@@ -71,7 +75,7 @@ spy.lisp: sequential model optimization
 
 (defmethod add ((self data) row)
   (if $cols
-    (push (add $cols (funcall $fun self row)) $rows)
+    (push (add $cols row) $rows)
     (setf $cols (cols+ row))))
 
 ; ---------------------------------------------------------------------------------------
@@ -112,10 +116,9 @@ spy.lisp: sequential model optimization
                                                 (t (str2thing (second it))))
                                          b4))))
 
-(defun csv (file fun)
+(defun csv (file &optional (fun #'print))
   (with-open-file (str file)
-    (loop (funcall fun  (str2thing (or (read-line str nil) (return-from csv)))))))
-
+    (loop (funcall fun (str2thing (or (read-line str nil) (return-from csv)))))))
 
 (defun print-help ()
   (format t "~a~%~%OPTIONS:~%" *help*)
@@ -130,7 +133,7 @@ spy.lisp: sequential model optimization
 ; ---------------------------------------------------------------------------------------
 (defvar *egs* nil)
 
-(defmacro eg (tag &rest code) `(push (list ',tag (lambda () ,@code)) (cdr (last *egs*))))
+(defmacro eg (tag &rest code) `(push (list ',tag (lambda () ,@code)) *egs*))
 
 (defun run (flag fun &aux (b4 (copy-tree *options*)))
   (setf *seed* (? seed))
@@ -144,7 +147,7 @@ spy.lisp: sequential model optimization
     (if update (setf *options* (cli *options*)))
     (if (? help)
       (print-help)
-      (goodbye  (loop :for (flag fun) :in *egs* 
+      (goodbye  (loop :for (flag fun) :in (reverse *egs*) 
                       :if (ok flag) :count (not (run flag fun)))))))  
 
 ; ---------------------------------------------------------------------------------------
@@ -159,6 +162,13 @@ spy.lisp: sequential model optimization
            (dotimes (i 1000) (add n (expt (rand) 2)))
            (format t "~a~%" (mid n))
            t))
+
+(eg csv (csv (? file)) t)
+
+(eg cols 
+  (print (cols+ '("Clndrs"  "Volume"  "HpX" "Lbs-" "Acc+" "Model" "origin" "Mpg+"))) t)
+
+(eg data (data+ (? file)))
 
 ; ---------------------------------------------------------------------------------------
 (main t) 
