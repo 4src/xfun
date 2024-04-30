@@ -40,7 +40,7 @@ spy.lisp: sequential model optimization
 (defun cols+ (lst &aux (n -1) (self (make-cols :names lst)))
   (dolist (s lst self)
     (incf n)
-    (let* ((col (if (upper-case-p (char s 0)) (num+ n s) (sym+ :at n :txt s))))
+    (let ((col (if (upper-case-p (char s 0)) (num+ n s) (sym n s))))
       (push col $all)
       (unless (end s #\X)
         (if   (end s #\!)         (setf $klass col))
@@ -65,7 +65,7 @@ spy.lisp: sequential model optimization
             $hi (max x $hi)))))
 
 (defmethod add ((self cols) lst) 
-  (mapcar #'(lambda (col x) (add col x) x) $all lst))
+  (mapcar (lambda (col x) (add col x) x) $all lst))
 
 (defmethod add ((self data) row)
   (if $cols
@@ -123,7 +123,7 @@ spy.lisp: sequential model optimization
 ; ---------------------------------------------------------------------------------------
 (defvar *egs* nil)
 
-(defmacro eg (tag &rest code) `(push (list ',tag (lambda () ,@code)) *egs*))
+(defmacro eg (tag &rest code) `(push (list ',tag (lambda () ,@code)) (cdr (last *egs*))))
 
 (defun run (flag fun &aux (b4 (copy-tree *options*)))
   (setf *seed* (? seed))
@@ -137,8 +137,8 @@ spy.lisp: sequential model optimization
     (if update (setf *options* (cli *options*)))
     (if (? help)
       (print-help)
-      (goodbye  (loop :for (flag fun) :in (reverse *egs*) 
-                  :if (ok flag) :count (not (run flag fun)))))))  
+      (goodbye  (loop :for (flag fun) :in *egs* 
+                      :if (ok flag) :count (not (run flag fun)))))))  
 
 ; ---------------------------------------------------------------------------------------
 (eg one (print *options*))
