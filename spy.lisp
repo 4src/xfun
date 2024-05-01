@@ -17,7 +17,7 @@ spy.lisp: sequential model optimization
   (help  "-h"     "show help"          nil)))
 
 ; ---------------------------------------------------------------------------------------
-(defstruct data rows cols fun)
+(defstruct data rows cols (fun #(lambda (&rest _) _)))
 (defstruct cols x y all names klass)
 (defstruct sym (n 0) (at 0) (txt " ") (has 0) most mode)
 (defstruct num (n 0) (at 0) (txt " ") (mu 0) (m2 0) (sd 0) (lo 1E30) (hi -1E30) (want 0))
@@ -25,40 +25,37 @@ spy.lisp: sequential model optimization
 ; ---------------------------------------------------------------------------------------
 (set-macro-character #\$ #'(lambda (s _) `(slot-value self ',(read s t nil t))))
 
+; in sym change has ==> seen
 (defmacro ? (x) `(fourth (assoc ',x *options*)))
-(defmacro of (x lst)  `(cdr (or (assoc ,x ,lst :test #'equal)
+(defmacro has (x lst)  `(cdr (or (assoc ,x ,lst :test #'equal)
                                  (car (setf ,lst (cons (cons ,x 0) ,lst))))))
 
 ; ----------------------------------------------------------------------------------------
-(defun num+ (&optional (at 0) (s " ")) (make-num :at 0 :txt s :want (if (end s #\-) 0 1)))
-(defun sym+ (&optional (at 0) (s " ")) (make-sym :at 0 :txt s ))
+(defmethod initialize-instance :after ((self num) &key)
+  (setf $want (if (end $txt #\-) 0 1)))
 
-(defun data+ (&optional src (fun (lambda (&rest _) _)) 
-                  &key rank &aux (self (make-data :fun fun)))
+(defmethod initialize-instance :after ((self data) &key src rank)
   (if (stringp src)
     (csv src (lambda (row) (add self row)))
     (dolist (row src) (add self row)))
-  (if rank (setf $rows (sort $rows #'< :key (lambda (row) (d2d self row)))))
-  self)
+  (if rank (setf $rows (sort $rows #'< :key (lambda (row) (d2d self row))))))
 
-(defun cols+ (lst &aux (n -1) (self (make-cols :names lst)))
-  (dolist (s lst)
-    (incf n)
-    (print `(s ,s n ,n))
-    (let ((col (if (upper-case-p (char s 0)) (num+ n s) (sym+ n s))))
-      (push col $all)
-      (unless (end s #\X)
-        (if   (end s #\!)         (setf $klass col))
-        (if   (end s #\- #\+ #\!) (push col $y) (push col $x)))))
-  (setf $all (reverse $all))
-  (print 21)
-  self)
+(defmethod initialize-instance :after ((self cols) &key)
+  (let ((n 0))
+    (dolist (s $names)
+      (incf n)
+      (let ((col (if (upper-case-p (char s 0)) (num+ n s) (sym+ n s))))
+        (push col $all)
+        (unless (end s #\X)
+          (if   (end s #\!)         (setf $klass col))
+          (if   (end s #\- #\+ #\!) (push col $y) (push col $x)))))
+    (setf $all (reverse $all))))
 
 ; ---------------------------------------------------------------------------------------
 (defmethod add ((self sym) x)
   (unless (eq x '?) 
     (incf $n)
-    (let ((new (incf (of x $has))))
+    (let ((new (incf (== x $has))))
       (if (> new $most)
         (setf $mode x 
               $most new)))))
@@ -113,12 +110,12 @@ spy.lisp: sequential model optimization
   (let ((*read-eval* nil)) (read-from-string s1 "")))
 
 (defun cli (options &aux it)
-  (loop :for (key flag help b4) :in options 
-        :collect (list key flag help (if (setf it (member flag (args) :test #'string=))
-                                         (cond ((eq b4 t) nil)
-                                               ((eq b4 nil) t)
-                                                (t (str2thing (second it))))
-                                         b4))))
+  (loop :for (key flag help b4) :in options :collect ; maybe swap b4 for a new value
+        (list key flag help (if (setf it (member flag (args) :test #'string=))
+                              (cond ((eq b4 t) nil)
+                                    ((eq b4 nil) t)
+                                    (t (str2thing (second it))))
+                              b4))))
 
 (defun csv (file &optional (fun #'print))
   (with-open-file (str file)
