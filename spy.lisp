@@ -44,12 +44,14 @@ spy.lisp: sequential model optimization
 (defun cols+ (lst &aux (n -1) (self (make-cols :names lst)))
   (dolist (s lst)
     (incf n)
+    (print `(s ,s n ,n))
     (let ((col (if (upper-case-p (char s 0)) (num+ n s) (sym+ n s))))
       (push col $all)
       (unless (end s #\X)
         (if   (end s #\!)         (setf $klass col))
         (if   (end s #\- #\+ #\!) (push col $y) (push col $x)))))
   (setf $all (reverse $all))
+  (print 21)
   self)
 
 ; ---------------------------------------------------------------------------------------
@@ -71,12 +73,14 @@ spy.lisp: sequential model optimization
             $hi (max x $hi)))))
 
 (defmethod add ((self cols) lst) 
-  (mapcar (lambda (col x) (add col x) x) $all lst))
+  (print 100)
+  (mapcar (lambda (col x) (add col x) x) $all lst)
+  lst)
 
 (defmethod add ((self data) row)
   (if $cols
-    (push (add $cols row) $rows)
-    (setf $cols (cols+ row))))
+    (progn (print 11) (add $cols row) );(push row $rows) (print 12))
+    (progn (print 13) (setf $cols (cols+ row)) (print 14))))
 
 ; ---------------------------------------------------------------------------------------
 (defmethod mid ((self num)) (num-mu self))
