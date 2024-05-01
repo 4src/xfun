@@ -17,45 +17,46 @@ spy.lisp: sequential model optimization
   (help  "-h"     "show help"          nil)))
 
 ; ---------------------------------------------------------------------------------------
-(defstruct data rows cols (fun #(lambda (&rest _) _)))
-(defstruct cols x y all names klass)
-(defstruct sym (n 0) (at 0) (txt " ") (has 0) most mode)
-(defstruct num (n 0) (at 0) (txt " ") (mu 0) (m2 0) (sd 0) (lo 1E30) (hi -1E30) (want 0))
+(defstruct (data (:constructor %data)) rows cols (fun #(lambda (&rest _) _)))
+(defstruct (cols (:constructor %cols)) (ncols -1) x y all names klass)
+(defstruct (sym (:constructor %sym)) (n 0) (at 0) (txt " ") (seen 0) most mode)
+(defstruct (num (:constructor %num)) 
+  (n 0) (at 0) (txt " ") (mu 0) (m2 0) (sd 0) (lo 1E30) (hi -1E30) (want 0)))
 
 ; ---------------------------------------------------------------------------------------
 (set-macro-character #\$ #'(lambda (s _) `(slot-value self ',(read s t nil t))))
 
-; in sym change has ==> seen
 (defmacro ? (x) `(fourth (assoc ',x *options*)))
 (defmacro has (x lst)  `(cdr (or (assoc ,x ,lst :test #'equal)
                                  (car (setf ,lst (cons (cons ,x 0) ,lst))))))
 
 ; ----------------------------------------------------------------------------------------
-(defmethod initialize-instance :after ((self num) &key)
-  (setf $want (if (end $txt #\-) 0 1)))
+(defun make-num (&optional s n &aux (self (%num :txt s :at n)))
+  (setf $want (if (end $txt #\-) 0 1))
+  self)
 
-(defmethod initialize-instance :after ((self data) &key src rank)
+(defun make-data (src &key fun rankp &aux (self (%data :fun fun)))
   (if (stringp src)
     (csv src (lambda (row) (add self row)))
     (dolist (row src) (add self row)))
-  (if rank (setf $rows (sort $rows #'< :key (lambda (row) (d2d self row))))))
+  (if rankp (setf $rows (sort $rows #'< :key (lambda (row) (d2d self row)))))
+  self)
 
-(defmethod initialize-instance :after ((self cols) &key)
-  (let ((n 0))
-    (dolist (s $names)
-      (incf n)
-      (let ((col (if (upper-case-p (char s 0)) (num+ n s) (sym+ n s))))
-        (push col $all)
-        (unless (end s #\X)
-          (if   (end s #\!)         (setf $klass col))
-          (if   (end s #\- #\+ #\!) (push col $y) (push col $x)))))
-    (setf $all (reverse $all))))
-
+(defun make-cols (names &key (self (%cols :name names)))
+  (dolist (s names)
+    (incf $ncols)
+    (let ((col (if (upper-case-p (char s 0)) (make-num s $ncols) (make-sym s $ncols))))
+      (push col $all)
+      (unless (end s #\X)
+        (if   (end s #\!)         (setf $klass col))
+        (if   (end s #\- #\+ #\!) (push col $y) (push col $x)))))
+  (setf $all (reverse $all))
+  self)
 ; ---------------------------------------------------------------------------------------
 (defmethod add ((self sym) x)
   (unless (eq x '?) 
     (incf $n)
-    (let ((new (incf (== x $has))))
+    (let ((new (incf (has x $seen))))
       (if (> new $most)
         (setf $mode x 
               $most new)))))
@@ -70,14 +71,13 @@ spy.lisp: sequential model optimization
             $hi (max x $hi)))))
 
 (defmethod add ((self cols) lst) 
-  (print 100)
   (mapcar (lambda (col x) (add col x) x) $all lst)
   lst)
 
 (defmethod add ((self data) row)
   (if $cols
     (progn (print 11) (add $cols row) );(push row $rows) (print 12))
-    (progn (print 13) (setf $cols (cols+ row)) (print 14))))
+    (progn (print 13) (setf $cols (new (make-cols :names row))) (print 14))))
 
 ; ---------------------------------------------------------------------------------------
 (defmethod mid ((self num)) (num-mu self))
@@ -85,7 +85,7 @@ spy.lisp: sequential model optimization
 
 (defmethod div ((self num)) (sqrt (/ $m2  (- $n 1))))
 (defmethod div ((self sym)) 
-  (* -1 (loop :for (_ . v) :in $has :sum  (* (/ v $n) (log (/ v $n) 2)))))
+  (* -1 (loop :for (_ . v) :in $seen :sum  (* (/ v $n) (log (/ v $n) 2)))))
 
 ;-----------------------------------------------------------------------------------------
 (defmethod d2h ((self num)  lst) (abs (- $want (norm self (elt lst $at)))))
@@ -154,12 +154,12 @@ spy.lisp: sequential model optimization
 ; ---------------------------------------------------------------------------------------
 (eg one (print *options*))
 
-(eg norms (let ((n (num+)))
+(eg norms (let ((n (make-num)))
             (dotimes (i 1000) (add n (normal 20 2)))
             (format t "~a ~a~%" (mid n) (div n))
             t))
 
-(eg rand (let ((n (num+)))
+(eg rand (let ((n (make-num)))
            (dotimes (i 1000) (add n (expt (rand) 2)))
            (format t "~a~%" (mid n))
            t))
@@ -167,7 +167,7 @@ spy.lisp: sequential model optimization
 (eg csv (csv (? file)) t)
 
 (eg cols 
-  (print (cols+ '("Clndrs"  "Volume"  "HpX" "Lbs-" "Acc+" "Model" "origin" "Mpg+"))) t)
+  (print (make-cols :names '("Clndrs"  "Volume"  "HpX" "Lbs-" "Acc+" "Model" "origin" "Mpg+"))) t)
 
 (eg data (data+ (? file)))
 
