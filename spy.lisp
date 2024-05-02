@@ -24,21 +24,19 @@ spy.lisp: sequential model optimization
                                  (car (setf ,lst (cons (cons ,x 0) ,lst))))))
 
 ; ---------------------------------------------------------------------------------------
-(defstruct col (n 0) (at 0) (txt " "))
+(defstruct (sym (:constructor %sym)) (n 0) (at 0) (txt " ") (seen 0) most mode)
 
-(defstruct (sym  (:include col) (:constructor %sym)) (seen 0) most mode)
-
-(defstruct (num  (:include col) (:constructor %num)) 
-  (mu 0) (m2 0) (sd 0) (lo 1E30) (hi -1E30) (want 0))
+(defstruct (num (:constructor %num)) 
+  (n 0) (at 0) (txt " ") (mu 0) (m2 0) (sd 0) (lo 1E30) (hi -1E30) (want 0))
 
 (defstruct (cols (:constructor %cols)) (ncols -1) x y all names klass)
 
 (defstruct (data (:constructor %data)) rows cols (fun #(lambda (&rest _) _)))
 
 ; ----------------------------------------------------------------------------------------
-(defun make-sym (&optional s n &aux (self (%sym :txt s :at n))) self)
+(defun make-sym (&optional (s " ") (n 0)  &aux (self (%sym :txt s :at n))) self)
 
-(defun make-num (&optional s n &aux (self (%num :txt s :at n)))
+(defun make-num (&optional (s " ")  (n 0) &aux (self (%num :txt s :at n)))
   (setf $want (if (end $txt #\-) 0 1))
   self)
 
@@ -169,7 +167,8 @@ spy.lisp: sequential model optimization
             t))
 
 (eg rand (let ((n (make-num)))
-           (dotimes (i 1000) (add n (expt (rand) 2)))
+           (print 300)
+           (dotimes (i 1000) (add n (rand) 2))
            (format t "~a~%" (mid n))
            t))
 
