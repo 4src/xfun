@@ -83,7 +83,7 @@ spy.lisp: sequential model optimization
 (defmethod add ((self data) row)
   (if $cols
     (progn (print 11) (add $cols row) );(push row $rows) (print 12))
-    (progn (print 13) (setf $cols (new (make-cols row))) (print 14))))
+    (progn (print 13) (setf $cols (make-cols row)) (print 14))))
 
 ; ---------------------------------------------------------------------------------------
 (defmethod mid ((self num)) (num-mu self))
@@ -161,23 +161,23 @@ spy.lisp: sequential model optimization
 (eg one (print *options*))
 
 (eg norms (let ((n (make-num)))
-            (print 20)
-            (dotimes (i 1000) (add n (normal 20 2)))
-            (format t "~a ~a~%" (mid n) (div n))
+            (dotimes (i 100000) (add n (normal 20 2)))
+            (format t "~,3f ~,3f~%" (mid n) (div n))
             t))
 
 (eg rand (let ((n (make-num)))
-           (print 300)
-           (dotimes (i 1000) (add n (rand) 2))
-           (format t "~a~%" (mid n))
+           (dotimes (i 1000) (add n (rand)))
+           (format t "~,3f~%" (mid n))
            t))
 
 (eg csv (csv (? file)) t)
 
 (eg cols 
-  (print (make-cols :names '("Clndrs"  "Volume"  "HpX" "Lbs-" "Acc+" "Model" "origin" "Mpg+"))) t)
+    (print
+      (make-cols '("Clndrs"  "Volume"  "HpX" "Lbs-" "Acc+" "Model" "origin" "Mpg+")))
+    t)
 
-(eg data (data+ (? file)))
+(eg data (make-data (? file)))
 
 ; ---------------------------------------------------------------------------------------
 (main t) 
