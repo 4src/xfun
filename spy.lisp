@@ -44,7 +44,7 @@ spy.lisp: sequential model optimization
   (if (stringp src)
     (csv src (lambda (row) (add self row)))
     (dolist (row src) (add self row)))
-  (if rankp (setf $rows (sort $rows #'< :key (lambda (row) (d2d self row)))))
+  (if rankp (setf $rows (sort $rows #'< :key (lambda (row) (d2h self row)))))
   self)
 
 (defun make-cols (names &aux (self (%cols :names names)))
