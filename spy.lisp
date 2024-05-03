@@ -24,10 +24,10 @@ spy.lisp: sequential model optimization
                                  (car (setf ,lst (cons (cons ,x 0) ,lst))))))
 
 ; ---------------------------------------------------------------------------------------
-(defstruct (sym (:constructor %sym)) (n 0) (at 0) (txt " ") (seen 0) most mode)
+(defstruct (sym (:constructor %sym)) (n 0) (at 0) (txt " ") seen (most 0) mode)
 
 (defstruct (num (:constructor %num)) 
-  (n 0) (at 0) (txt " ") (mu 0) (m2 0) (sd 0) (lo 1E30) (hi -1E30) (want 0))
+  (n 0) (at 0) (txt " ") (mu 0) (m2 0) (lo 1E30) (hi -1E30) (want 0))
 
 (defstruct (cols (:constructor %cols)) (ncols -1) x y all names klass)
 
@@ -82,8 +82,8 @@ spy.lisp: sequential model optimization
 
 (defmethod add ((self data) row)
   (if $cols
-    (progn (print 11) (add $cols row) );(push row $rows) (print 12))
-    (progn (print 13) (setf $cols (make-cols row)) (print 14))))
+    (push (add $cols row) $rows)
+    (setf $cols (make-cols row))))
 
 ; ---------------------------------------------------------------------------------------
 (defmethod mid ((self num)) (num-mu self))
@@ -170,6 +170,10 @@ spy.lisp: sequential model optimization
            (format t "~,3f~%" (mid n))
            t))
 
+(eg sym (let ((n (adds (make-sym) '(a a a a b b c))))
+           (format t "~,3f~%" (mid n))
+           t))
+
 (eg csv (csv (? file)) t)
 
 (eg cols 
@@ -177,7 +181,9 @@ spy.lisp: sequential model optimization
       (make-cols '("Clndrs"  "Volume"  "HpX" "Lbs-" "Acc+" "Model" "origin" "Mpg+")))
     t)
 
-(eg data (make-data (? file)))
+(eg data 
+    (let ((d (make-data (? file))))
+      (print (cols-x (data-cols d)))))
 
 ; ---------------------------------------------------------------------------------------
 (main t) 
