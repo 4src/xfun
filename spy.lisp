@@ -103,25 +103,26 @@ spy.lisp: sequential model optimization
 (defmethod like ((self num) x &key prior)
   (let ((sd (+ (div self) 1E-30)))
     (/ (exp (- (/ (expt (- x $mu) 2) (* 2 (expt sd 2)))))
-       (* sd (sqrt (* 2 pi)))))
+       (* sd (sqrt (* 2 pi))))))
 
 (defmethod like ((self data) row &key nall nh)
   (let* ((prior (/ (+ (length $rows) (? k)) 
                    (+ nall (* nh (? k))))))
-    (+ (log prior) (loop :for c :in (cols-x $cols) :sum (or (_like row c prior) 0)))))
+    (+ (log prior) (loop :for col :in (cols-x $cols) :sum (loglike row col prior)))))
 
-(defun _like (row col prior &aux (x (elt row (col-at col))))
+(defun loglike (row col prior &aux (out 0) (x (elt row (col-at col))))
   (unless (eql x '?)
     (let ((inc (like col x :prior prior)))
       (unless (zerop inc) 
-        (log inc))))
+        (setf out (log inc)))))
+  out)
 
 ; ---------------------------------------------------------------------------------------
 (defmethod d2h ((self num)  lst) (abs (- $want (norm self (elt lst $at)))))
 
 (defmethod d2h ((self data) lst)
   (let* ((ys (cols-y (data-cols self)))
-         (d  (loop for col in ys sum (expt (d2h col lst) 2))))
+         (d  (loop :for col :in ys :sum (expt (d2h col lst) 2))))
     (expt (/ d (length ys)) 0.5)))
 
 ; ---------------------------------------------------------------------------------------
@@ -152,7 +153,8 @@ spy.lisp: sequential model optimization
 
 (defun print-help ()
   (format t "~a~%~%OPTIONS:~%" *help*)
-  (loop for (_ flg txt is) in *options* do (format t "  ~4a ~20a = ~a~%" flg txt is)))
+  (loop :for (_ flg txt is) :in *options* 
+        :do (format t "  ~4a ~20a = ~a~%" flg txt is)))
 
 (defvar *seed* 10013)
 (defun rint (&optional (n 1) &aux (base 1E10)) (floor (* n (/ (rand base) base))))
