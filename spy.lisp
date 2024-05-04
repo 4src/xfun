@@ -1,4 +1,5 @@
 #!/usr/bin/env sbcl --script
+; vim: ts=2 sw=2 et :
 
 (defpackage :spy (:use :cl))
 (in-package :spy)
@@ -93,7 +94,28 @@ spy.lisp: sequential model optimization
 (defmethod div ((self sym)) 
   (* -1 (loop :for (_ . v) :in $seen :sum  (* (/ v $n) (log (/ v $n) 2)))))
 
-;-----------------------------------------------------------------------------------------
+; ---------------------------------------------------------------------------------------
+(defmethod like ((self sym) x &key prior)
+  (/ (+ (or (cdr (assoc x $seen)) 0) 
+        (* (? m) prior)) 
+     (+ $n (? m))))
+
+(defmethod like ((self num) x &key)
+  (let ((sd (+ (div self) 1E-30)))
+    (/ (exp (- (/ (expt (- x $mu) 2) (* 2 (expt sd 2)))))
+       (* sd (sqrt (* 2 pi)))))
+
+(defmethod like ((self data) row &key nall nh)
+  (let* ((prior (/ (+ (? k m) (length $rows)) (+ nall (* (? k) nh))))
+         (out 0))
+    (dolist (col (cols-x $cols) (+ out (log prior)))
+      (let ((x (elt row (col-at col))))
+        (unless (eql x '?)
+          (let ((inc (like col x :prior prior)))
+            (unless (zerop inc)
+              (incf out (log inc)))))))))
+ 
+; ---------------------------------------------------------------------------------------
 (defmethod d2h ((self num)  lst) (abs (- $want (norm self (elt lst $at)))))
 
 (defmethod d2h ((self data) lst)
