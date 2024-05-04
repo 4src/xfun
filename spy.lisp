@@ -100,21 +100,22 @@ spy.lisp: sequential model optimization
         (* (? m) prior)) 
      (+ $n (? m))))
 
-(defmethod like ((self num) x &key)
+(defmethod like ((self num) x &key prior)
   (let ((sd (+ (div self) 1E-30)))
     (/ (exp (- (/ (expt (- x $mu) 2) (* 2 (expt sd 2)))))
        (* sd (sqrt (* 2 pi)))))
 
 (defmethod like ((self data) row &key nall nh)
-  (let* ((prior (/ (+ (? k m) (length $rows)) (+ nall (* (? k) nh))))
-         (out 0))
-    (dolist (col (cols-x $cols) (+ out (log prior)))
-      (let ((x (elt row (col-at col))))
-        (unless (eql x '?)
-          (let ((inc (like col x :prior prior)))
-            (unless (zerop inc)
-              (incf out (log inc)))))))))
- 
+  (let* ((prior (/ (+ (length $rows) (? k)) 
+                   (+ nall (* nh (? k))))))
+    (+ (log prior) (loop :for c :in (cols-x $cols) :sum (or (_like row c prior) 0)))))
+
+(defun _like (row col prior &aux (x (elt row (col-at col))))
+  (unless (eql x '?)
+    (let ((inc (like col x :prior prior)))
+      (unless (zerop inc) 
+        (log inc))))
+
 ; ---------------------------------------------------------------------------------------
 (defmethod d2h ((self num)  lst) (abs (- $want (norm self (elt lst $at)))))
 
