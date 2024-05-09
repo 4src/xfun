@@ -15,6 +15,9 @@ spy.lisp: sequential model optimization
   (file  "-f"     "csv data file"      "data/auto93.lisp")
   (goal  "-g"     "start-up action"    one)
   (seed  "-s"     "random number seed" 1234567891)
+  (top   "-t"     "keep top items"     0.8)
+  (start "-n"     "initial budget"     4)
+  (stop  "-N"     "total budget"       20)
   (help  "-h"     "show help"          nil)))
 
 ; ---------------------------------------------------------------------------------------
@@ -41,13 +44,6 @@ spy.lisp: sequential model optimization
   (setf $want (if (end $txt #\-) 0 1))
   self)
 
-(defun make-data (src &key fun rankp &aux (self (%data :fun fun)))
-  (if (stringp src)
-    (csv src (lambda (row) (add self row)))
-    (dolist (row src) (add self row)))
-  (if rankp (setf $rows (sort $rows #'< :key (lambda (row) (d2h self row)))))
-  self)
-
 (defun make-cols (names &aux (self (%cols :names names)))
   (dolist (s names)
     (incf $ncols)
@@ -58,6 +54,16 @@ spy.lisp: sequential model optimization
         (if   (end s #\- #\+ #\!) (push col $y) (push col $x)))))
   (setf $all (reverse $all))
   self)
+
+(defun make-data (src &key fun rankp &aux (self (%data :fun fun)))
+  (if (stringp src)
+    (csv src (lambda (row) (add self row)))
+    (dolist (row src) (add self row)))
+  (if rankp (setf $rows (sort $rows #'< :key (lambda (row) (d2h self row)))))
+  self)
+
+(defun clone-data (data &optional inits rankp)
+  (make-data (cons (cols-names (data-cols data)) inits) :rankp rankp))
 
 ; ---------------------------------------------------------------------------------------
 (defmethod add ((self sym) x)
@@ -126,6 +132,27 @@ spy.lisp: sequential model optimization
     (expt (/ d (length ys)) 0.5)))
 
 ; ---------------------------------------------------------------------------------------
+(defmethod smo ((self data) &optional (score (lambda (b r) (- b e))))
+  (labels ((like    (row data) (like data row :nall (length (data-rows data)) :nh 2))
+           (likes   (row best rest) (funcall score (like row best) (like row rest)))
+           (acquire (best rest rows)
+                    (subseq (sort rows #'> :key (lambda (r) (likes r best rest))) 
+                            0 (floor (* (length rows) (? top))))))
+    (nshuffle $rows)
+    (let* ((done (subseq $rows 0  (? start)))
+           (todo (subseq $rows (? stop)))
+           (tmp  (clone self done t)))
+      (loop for i from 0 below (- (? stop) (? start))
+        until (<= (length todo) 3)
+        do (let ((n (floor (expt (length (data-rows done)) (? best)))))
+             (setf todo (acquire (clone self (subseq (data-rows tmp) 0 n) t)
+                                 (clone self (subseq (data-rows tmp) n)   t)
+                                 todo))
+             (push (pop todo) done)
+             (setf tmp (clone self done t))))
+      (car (data-rows tmp))))
+
+; ---------------------------------------------------------------------------------------
 (defun end   (s &rest lst) (member (char s (1- (length s))) lst))
 (defun adds  (col1 lst)    (dolist (x lst col1) (add col1 x)))
 (defun slurp (file)        (with-open-file (s file) (read s)))
@@ -161,6 +188,12 @@ spy.lisp: sequential model optimization
 (defun rand (&optional (n 1))
   (setf *seed* (mod (* 16807.0d0 *seed*) 2147483647.0d0))
   (* n (- 1.0d0 (/ *seed* 2147483647.0d0))))
+
+(defun nshuffle (sequence)
+  (loop for i from (length sequence) downto 2
+    do (rotatef (elt sequence (rint i))
+                (elt sequence (1- i))))
+  sequence)
 
 ; ---------------------------------------------------------------------------------------
 (defvar *egs* nil)
