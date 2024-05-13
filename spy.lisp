@@ -22,8 +22,8 @@ spy.lisp: sequential model optimization
 
 ; ---------------------------------------------------------------------------------------
 (set-macro-character #\$ #'(lambda (s _) `(slot-value self ',(read s t nil t))))
+(set-macro-character #\! #'(lambda (s _) `(fourth (assoc ',(read s t nil t) *options*))))
 
-(defmacro ? (x) `(fourth (assoc ',x *options*)))
 (defmacro has (x lst)  `(cdr (or (assoc ,x ,lst :test #'equal)
                                  (car (setf ,lst (cons (cons ,x 0) ,lst))))))
 
@@ -103,8 +103,8 @@ spy.lisp: sequential model optimization
 ; ---------------------------------------------------------------------------------------
 (defmethod like ((self sym) x &key prior)
   (/ (+ (or (cdr (assoc x $seen)) 0) 
-        (* (? m) prior)) 
-     (+ $n (? m))))
+        (* !m prior)) 
+     (+ $n !m)))
 
 (defmethod like ((self num) x &key prior)
   (let ((sd (+ (div self) 1E-30)))
@@ -112,8 +112,8 @@ spy.lisp: sequential model optimization
        (* sd (sqrt (* 2 pi))))))
 
 (defmethod like ((self data) row &key nall nh)
-  (let* ((prior (/ (+ (length $rows) (? k)) 
-                   (+ nall (* nh (? k))))))
+  (let* ((prior (/ (+ (length $rows) !k) 
+                   (+ nall (* nh !k)))))
     (+ (log prior) (loop :for col :in (cols-x $cols) :sum (loglike row col prior)))))
 
 (defun loglike (row col prior &aux (out 0) (x (elt row (col-at col))))
@@ -133,26 +133,24 @@ spy.lisp: sequential model optimization
 
 ; ---------------------------------------------------------------------------------------
 (defmethod smo ((self data) &optional (score (lambda (b r) (- b r))))
-  (labels ((like  (row data nall) (like data row :nall nall :nh 2))
-           (likes (row best rest) 
-                  (let ((nall (+ (data-rows best) (data-rows rest))))
-                    (funcall score (like row best nall) (like row rest nall))))
-           (acquire (best rest rows)
-                    (subseq (sort rows #'> :key (lambda (r) (likes r best rest ))) 
-                            0 (floor (* (length rows) (? top))))))
-    (nshuffle $rows)
-    (let* ((done (subseq $rows 0  (? start)))
-           (todo (subseq $rows (? stop)))
-           (tmp  (clone self done t)))
-      (loop :for i :from 0 :below (- (? stop) (? start))
-        :until (<= (length todo) 3)
-        :do (let ((n (floor (expt (length (data-rows done)) (? best)))))
-              (setf todo (acquire (clone self (subseq (data-rows tmp) 0 n) t)
-                                  (clone self (subseq (data-rows tmp) n)   t)
-                                  todo))
-              (push (pop todo) done)
-              (setf tmp (clone self done t))))
-      (car (data-rows tmp))))
+  (labels
+    ((rank  (rows) (clone-data self rows t))
+     (like1 (row data nall) (like data row :nall nall :nh 2))
+     (likes (row best rest) 
+            (let ((nall (+ (data-rows best) (data-rows rest))))
+              (funcall score (like1 row best nall) (like row rest nall))))
+     (acquire (todo best rest)
+              (subseq (sort todo #'> :key (lambda (r) (likes r best rest ))) 
+                      0 (floor (* (length todo) !top))))
+     (_smo (n todo done &aux (ok (data-rows (rank done))))
+           (if (or (< (decf n) 1) (<= (length todo) 3))
+             (return-from smo (first ok))
+             (let* ((i (floor (expt (length ok) !best)))
+                    (todo (acquire todo (rank (subseq ok 0 i)) (rank (subseq ok i)))))
+               (push (pop todo) done)
+               (_smo n todo done)))))
+     (nshuffle $rows)
+     (_smo (- !stop !start) (subseq $rows !start) (subseq $rows 0 !start))))
 
 ; ---------------------------------------------------------------------------------------
 (defun end   (s &rest lst) (member (char s (1- (length s))) lst))
@@ -203,16 +201,16 @@ spy.lisp: sequential model optimization
 (defmacro eg (tag &rest code) `(push (list ',tag (lambda () ,@code)) *egs*))
 
 (defun run (flag fun &aux (b4 (copy-tree *options*)))
-  (setf *seed* (? seed))
+  (setf *seed* !seed)
   (let ((passed (funcall fun)))
     (setf *options* (copy-tree b4))
     (unless passed (format t "❌ FAIL: ~(~a~)~%" flag))
     passed))
 
 (defun main (&optional update)
-  (labels ((ok   (x) (member (? goal) (list 'all x))))
+  (labels ((ok   (x) (member !goal (list 'all x))))
     (if update (setf *options* (cli *options*)))
-    (if (? help)
+    (if !help
       (print-help)
       (goodbye  (loop :for (flag fun) :in (reverse *egs*) 
                       :if (ok flag) :count (not (run flag fun)))))))  
@@ -234,7 +232,7 @@ spy.lisp: sequential model optimization
            (format t "~,3f~%" (mid n))
            t))
 
-(eg csv (csv (? file)) t)
+(eg csv (csv !file) t)
 
 (eg cols 
     (print
@@ -242,7 +240,7 @@ spy.lisp: sequential model optimization
     t)
 
 (eg data 
-    (let ((d (make-data (? file))))
+    (let ((d (make-data !file)))
       (print (cols-x (data-cols d)))))
 
 ; ---------------------------------------------------------------------------------------
