@@ -62,8 +62,8 @@ spy.lisp: sequential model optimization
   (if rankp (setf $rows (sort $rows #'< :key (lambda (row) (d2h self row)))))
   self)
 
-(defmethod clone ((self data) &optional inits rankp)
-  (make-data (cons (cols-names $cols) inits) :rankp rankp))
+(defmethod clone ((self data)  inits &key rankp)
+  (make-data (cons (cols-names $cols) inits) :rankp sort))
 
 ; ---------------------------------------------------------------------------------------
 (defmethod add ((self sym) x)
@@ -133,23 +133,24 @@ spy.lisp: sequential model optimization
 
 ; ---------------------------------------------------------------------------------------
 (defmethod smo ((self data) &optional (score (lambda (b r) (- b r))))
-  (labels ((rank (row best rest n)
-                  (funcall score (like best row :nall n :nh 2) 
-                                 (like rest row :nall n :nh 2)))
+  (labels ((score1 (row best rest n)
+                   (funcall score (like best row :nall n :nh 2) 
+                                  (like rest row :nall n :nh 2)))
            (find-top-todos (todo sorted-done)
                (let* ((n    (length sorted-done))
-                      (cut  (floor (expt n !best)))
-                      (top  (floor (* n !top)))
-                      (best (clone self (subseq sorted-done 0 cut)))
-                      (rest (clone self (subseq sorted-done cut))))
-                 (subseq (sort todo #'> :key (lambda (r) (rank r best rest n))) 0 top)))
+                      (cut  (floor (expt n !best))) ; where to cut done into best/rest
+                      (top  (floor (* n !top)))     ; only keep top items
+                      (best (clone self (subseq sorted-done 0 cut))) ; no sort needed
+                      (rest (clone self (subseq sorted-done cut)))   ; no sort needed
+                      (todo (sort todo #'> :key (lambda (row) (score1 row best rest n)))))
+                 (subseq todo 0 top)))
            (run (budget todo done) 
-                 (let ((sorted-done (data-rows (clone self done t))))
-                   (if (or (< budget 1) (<= (length todo) 3))
-                     (first sorted-done)
-                     (let ((todo (find-top-todos todo sorted-done)))
-                       (push (pop todo) done)
-                       (run (1- budget) todo done))))))
+                (let ((sorted-done (data-rows (clone self done :rankp t))))
+                  (if (or (< budget 1) (<= (length todo) 3))
+                    (first sorted-done)
+                    (let ((todo (find-top-todos todo sorted-done)))
+                      (push (pop todo) done)
+                      (run (1- budget) todo done))))))
     (nshuffle $rows)
     (run (- !stop !start) (subseq $rows !start) 
                           (subseq $rows 0 !start))))
