@@ -1,5 +1,5 @@
 
-(load (expand-file-name "~/.quicklisp/slime-helper.el"))
+;;(load (expand-file-name "~/quicklisp/slime-helper.el"))
   ;; Replace "sbcl" with the path to your implementation
     (setq inferior-lisp-program "sbcl")
 
@@ -9,7 +9,7 @@
 (setq column-number-mode t)
 ;(menu-bar-mode 0) 
 (tool-bar-mode 0)
-(scroll-bar-mode 0)
+;(scroll-bar-mode 0)
 
 (progn
   (setq inhibit-startup-message t)

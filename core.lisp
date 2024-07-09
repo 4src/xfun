@@ -9,12 +9,21 @@
 (defmacro aif (test yes &optional no) 
   `(let ((it ,test)) (if it ,yes ,no)))
 
-(defmacro has (x lst &optional (init 0))
+(defmacro has (lst x &optional (init 0))
   `(cdr (or (assoc ,x ,lst :test #'equal) 
             (car (setf ,lst (cons (cons ,x ,init) ,lst))))))
 ;---------- --------- --------- --------- --------- --------- --------- ---------
-(defstruct stats (boostraps 1234567891) (cohen 0.35))
+;---------- --------- --------- --------- --------- --------- --------- ---------
+(defstruct data rows cols)
 
+(defstruct (cols (:constructor %make-cols)) all x y names)
+
+(defstruct sym (pos 0) (txt " ") (n 0)  seen mode (most 0))
+
+(defstruct (num (:constructor %make-num))
+               (pos 0) (txt " ") (n 0) (lo 1e30) (hi -1e30) (mu 0) (m2 0) (goal 1))
+
+(defstruct stats   (boostraps 1234567891) (cohen 0.35))
 (defstruct options (stats (make-stats)))
 
 (defvar our (make-options))
@@ -39,12 +48,9 @@
 (defun with-csv (file &optional (fun #'print) (filter #'split))
   (with-open-file (s (or file *standard-input*))
     (loop (funcall fun (funcall filter (or (read-line s nil) (return file)))))))
-;---------- --------- --------- --------- --------- --------- --------- ---------
-(defstruct sym (pos 0) (txt " ") (n 0)  seen mode (most 0))
-(defstruct num (pos 0) (txt " ") (n 0) (lo 1e30) (hi -1e30) (mu 0) (m2 0) (goal 1))
 
-(defun makeNum (&key txt (pos 0))
-  (make-num :pos pos :txt txt :goal (if (eq #\- (last-char txt)) 0 1)))
+(defun make-num (&key txt (pos 0))
+  (%make-num :pos pos :txt txt :goal (if (eq #\- (last-char txt)) 0 1)))
 
 (defmethod add ((self num) x)
   (unless (eq #\? x)
@@ -58,7 +64,7 @@
 (defmethod add ((self sym) x)
   (unless (eq x '?)
     (incf $n)
-    (let ((new (incf (has x $seen))))
+    (let ((new (incf (has $seen x))))
       (if (> new $most)
           (setf $mode x 
                 $most new)))))
@@ -70,38 +76,38 @@
 (defmethod div ((self sym))
   (* -1 (loop :for (_ . v) :in $has :sum  (* (/ v $n) (log (/ v $n) 2)))))
 ;---------- --------- --------- --------- --------- --------- --------- ---------
-(defstruct data rows cols)
-(defstruct cols all x y names)
+
 
 (defmethod clone ((self data) &optional inits)
-  (slurp (make-data) (cons (data-cols (cols-name self)) inits)))
+  (slurp (make-data) (cons (o self cols names) inits)))
   
 (defmethod slurp ((self data) (file string))
   (with-csv file (lambda (row) (add self row))))
 
-(defmethod slurp ((self data) (lst cons))
-    (dolist (row lst self) (add self row)))
+(defmethod slurp ((self data) row)
+  (if $cols 
+      (push (add $cols row) row) 
+      (setf $cols (make-cols row))))
 
-(defmethod add ((self data) row)
-  (if cols 
-      (push (add cols row) $rows) 
-      (setf $cols (make-cols (row-cells row1)))))
-      
-(defun makeCols (names)   
+(defun make-col (&key pos txt)
+  (if (upper-case-p (char txt 0))
+      (make-num :pos pos :txt txt)
+      (make-sym :pos pos :txt txt)))
+
+(defun make-cols (names)   
   (let (all x y (n -1))
-    (dolist (col1 (loop :for s :in names :collect (make-col :at (incf n) :txt s)) 
-                  (make-cols :names names :all all :x x :y y))
+    (dolist (col1 (loop :for s :in names :collect (make-col :pos (incf n) :txt s)) 
+                  (%make-cols :names names :all all :x x :y y))
       (push col1 all)
       (when (not (eq #\X (last-char (o col1 txt))))
         (if (member (last-char (o col1 txt)) '(#\+ #\-))
           (push col1 y)
           (push col1 x))))))
 
-(defmethod add ((cols1 cols) (row1 row))
-  (with-slots (x y) cols1
-    (dolist (tmp (list x y) row1)
-      (dolist (col tmp) 
-        (add col (elt (row-cells row1) (o col at)))))))
+(defmethod add ((self cols) row)
+  (dolist (tmp (list $x $y) row)
+    (dolist (col tmp) 
+      (add col (elt row $pos)))))
 
 ;---------- --------- --------- --------- --------- --------- --------- ---------
 (defun egs()

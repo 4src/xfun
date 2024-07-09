@@ -1,1 +1,1 @@
-alias emacs="/opt/homebrew/bin/emacs-28.2 -nw -l etc/dotemacs"
+alias emacs="/opt/homebrew/bin/emacs-29.4 -nw -l etc/dotemacs"
