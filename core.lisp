@@ -87,10 +87,10 @@
       (push (add cols row) $rows) 
       (setf $cols (make-cols (row-cells row1)))))
       
-(defun make-cols (names)   
+(defun makeCols (names)   
   (let (all x y (n -1))
     (dolist (col1 (loop :for s :in names :collect (make-col :at (incf n) :txt s)) 
-                  (%make-cols :names names :all all :x x :y y))
+                  (make-cols :names names :all all :x x :y y))
       (push col1 all)
       (when (not (eq #\X (last-char (o col1 txt))))
         (if (member (last-char (o col1 txt)) '(#\+ #\-))
