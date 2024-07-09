@@ -82,15 +82,13 @@
       (push (add $cols row) $rows) 
       (setf $cols (make-cols row))))
 
-(defun make-cols (names)   
-  (let (all x y (n -1))
-    (dolist (col (loop :for s :in names :collect (make-col :pos (incf n) :txt s)))
-      (push col all)
-      (when (not (eq #\X (last-char (o col txt))))
-        (if (member (last-char (o col txt)) '(#\+ #\-))
-            (push col y)
-            (push col x))))
-    (%make-cols :names names :all all :x x :y y)))
+(defun make-cols (names  &aux (self (%make-cols :name names)))   
+  (dolist (name names self)
+    (let ((col (make-col :pos (length $all) :txt name))
+          (z   (char name (1- (length name)))))
+      (push col $all)
+      (when (not (eq #\X z))
+        (if (member z '(#\+ #\-)) (push col $y) (push col $x))))))
 
 (defmethod add ((self cols) row)
   (dolist (cs (list $x $y) row)
@@ -99,9 +97,6 @@
 
 ;---------- --------- --------- --------- --------- --------- --------- ---------
 ; misc
-(defmethod last-char ((s string)) (char s (1- (length s))))
-(defmethod last-char ((s symbol)) (last-char (symbol-name s)))
-
 (defun thing (s &aux (s1 (string-trim '(#\Space #\Tab) s)))
   (let ((it (let ((*read-eval* nil))
               (read-from-string s1 ""))))
