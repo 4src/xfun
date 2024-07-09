@@ -3,7 +3,8 @@
   ;; Replace "sbcl" with the path to your implementation
     (setq inferior-lisp-program "sbcl")
 
-
+(global-set-key (kbd "C-M-(") 'mwheel-scroll)
+(global-set-key (kbd "C-M-)") 'mwheel-scroll)
 
 (load-theme 'deeper-blue t)
 (setq column-number-mode t)
