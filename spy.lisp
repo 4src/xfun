@@ -63,7 +63,7 @@ spy.lisp: sequential model optimization
   self)
 
 (defmethod clone ((self data)  inits &key rankp)
-  (make-data (cons (cols-names $cols) inits) :rankp sort))
+  (make-data (cons (cols-names $cols) inits) :rankp rankp))
 
 ; ---------------------------------------------------------------------------------------
 (defmethod add ((self sym) x)
@@ -216,7 +216,7 @@ spy.lisp: sequential model optimization
     (if !help
       (print-help)
       (goodbye  (loop :for (flag fun) :in (reverse *egs*) 
-                      :if (ok flag) :count (not (run flag fun)))))))  
+                      :if  (ok flag) :count (not (run flag fun)))))))  
 
 ; ---------------------------------------------------------------------------------------
 (eg one (print *options*))
