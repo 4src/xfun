@@ -84,11 +84,16 @@
 
 (defun make-cols (names  &aux (self (%make-cols :name names)))   
   (dolist (name names self)
-    (let ((col (make-col :pos (length $all) :txt name))
-          (z   (char name (1- (length name)))))
-      (push col $all)
-      (when (not (eq #\X z))
-        (if (member z '(#\+ #\-)) (push col $y) (push col $x))))))
+    (make-col self name (if (upper-case-p (char name 0)) #'make-num #'make-sym))))
+
+(defmethod make-col ((self cols) name maker)
+  (let ((col (funcall maker :txt name :pos (length $all)))
+        (z   (char name (1- (length name)))))
+    (when (not (eq #\X z))
+      (if (member z '(#\+ #\-))
+          (push col $y)
+          (push col $x)))
+    (push col $all)))
 
 (defmethod add ((self cols) row)
   (dolist (cs (list $x $y) row)
