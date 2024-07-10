@@ -82,18 +82,18 @@
       (push (add $cols row) $rows) 
       (setf $cols (make-cols row))))
 
-(defun make-cols (names  &aux (self (%make-cols :name names)))   
+(defun make-cols (names  &aux (self (%make-cols :names names)))   
   (dolist (name names self)
-    (make-col self name (if (upper-case-p (char name 0)) #'make-num #'make-sym))))
+    (make-cols1 self name (if (upper-case-p (char name 0)) #'make-num #'make-sym)
+                          
 
-(defmethod make-col ((self cols) name maker)
-  (let ((col (funcall maker :txt name :pos (length $all)))
-        (z   (char name (1- (length name)))))
+(defmethod make-cols1 ((self cols) name ako z)
+  (let ((col (funcall ako :txt name :pos (length $all))))
+    (push col $all)
     (when (not (eq #\X z))
       (if (member z '(#\+ #\-))
           (push col $y)
-          (push col $x)))
-    (push col $all)))
+          (push col $x)))))
 
 (defmethod add ((self cols) row)
   (dolist (cs (list $x $y) row)
@@ -101,7 +101,12 @@
       (add col (elt row $pos)))))
 
 ;---------- --------- --------- --------- --------- --------- --------- ---------
-; misc
+                                        ; misc
+
+(defun lastchar (s) (char name (1- (length s))))
+
+(defun args() #+clisp ext:*args*  #+sbcl sb-ext:*posix-argv*)
+
 (defun thing (s &aux (s1 (string-trim '(#\Space #\Tab) s)))
   (let ((it (let ((*read-eval* nil))
               (read-from-string s1 ""))))
@@ -120,11 +125,31 @@
   (with-open-file (s (or file *standard-input*))
     (loop (funcall fun (funcall filter (or (read-line s nil) (return)))))))
 
+(defun string-prefix-p (pre str &aux (n (length pre)))
+  (and (<= n (length str)) (string= pre (subseq str 0 n))))
+
 ;---------- --------- --------- --------- --------- --------- --------- ---------
 ; start up
-(defun egs()
-  (labels ((down (x) (string-downcase (symbol-name x)))
-           (eg   (s) (equalp "eg-" (subseq s 0 (min 3 (length s))))))
-    (loop :for x :being :the symbols :in *package* :if (eg (down x)) :collect x)))
+(defun egp(s)
+  (let ((fun (intern (format nil "EG~:@(~a~)" s))))
+    (if (fboundp fun) fun)))
 
-(defun eg-o () (o our stats cohen))
+(defun eg--fred(_)
+  "fredericks"
+  (print "fred"))
+
+(defun eg-h (_)
+  "show help"
+  (format t "core.lisp : simple optimizer~%(c)2024 Tim Menzies BSD-2~%~%OPTIONS:~%")
+  (do-symbols (sym *package*)
+    (if (and (fboundp sym) (string-prefix-p "EG-" (symbol-name sym)))
+        (format t " ~(~7a~) ~a~%" (subseq (symbol-name sym) 2)
+                (documentation sym 'function)))))
+
+(defun eg-num(_)
+  (let ((num (make-num)))
+    (print (mid (dotimes (i 1000 num) (add num (sqrt i)))))))
+
+(loop :for (flag arg) :on (args) :by #'cdr :do
+  (aif (egp flag) (funcall it (thing arg))))
+
