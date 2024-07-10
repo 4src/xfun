@@ -21,12 +21,12 @@
 
 (defstruct (cols (:constructor %make-cols)) all x y names)
 
-(defstruct sym (pos 0) (txt " ") (n 0)  seen mode (most 0))
+(defstruct sym (pos 0) (txt " ") (n 0) seen mode (most 0))
 
 (defstruct (num (:constructor %make-num))
-               (pos 0) (txt " ") (n 0) (lo 1e30) (hi -1e30) (mu 0) (m2 0) (goal 1))
+  (pos 0) (txt " ") (n 0) (lo 1e30) (hi -1e30) (mu 0) (m2 0) (goal 1))
 
-(defstruct stats   (boostraps 1234567891) (cohen 0.35))
+(defstruct stats (boostraps 1234567891) (cohen 0.35))
 (defstruct options (stats (make-stats)))
 
 (defvar our (make-options))
@@ -36,7 +36,7 @@
 (defun make-col (&key pos txt)
   (funcall (if (upper-case-p (char txt 0)) #'make-num #'make-sym) :pos pos :txt txt))
 
-(defun make-num (&key txt (pos 0))
+(defun make-num (&key (txt " ") (pos 0))
   (%make-num :pos pos :txt txt :goal (if (eq #\- (last-char txt)) 0 1)))
 
 (defmethod add ((self num) x)
@@ -63,7 +63,7 @@
 
 (defmethod div ((self num)) (if (< $n 2) 0 (sqrt (/ $m2 (- $n 1)))))
 (defmethod div ((self sym))
-  (* -1 (loop :for (_ . v) :in $has :sum  (* (/ v $n) (log (/ v $n) 2)))))
+  (* -1 (loop :for (_ . v) :in $seen :sum (* (/ v $n) (log (/ v $n) 2)))))
 
 ;---------- --------- --------- --------- --------- --------- --------- ---------
 ; data and cols
@@ -84,10 +84,10 @@
 
 (defun make-cols (names  &aux (self (%make-cols :names names)))   
   (dolist (name names self)
-    (make-cols1 self name (if (upper-case-p (char name 0)) #'make-num #'make-sym)
+    (make-cols1 self name (last-char name)
+                (if (upper-case-p (char name 0)) #'make-num #'make-sym))))
                           
-
-(defmethod make-cols1 ((self cols) name ako z)
+(defmethod make-cols1 ((self cols) name z ako)
   (let ((col (funcall ako :txt name :pos (length $all))))
     (push col $all)
     (when (not (eq #\X z))
@@ -101,9 +101,8 @@
       (add col (elt row $pos)))))
 
 ;---------- --------- --------- --------- --------- --------- --------- ---------
-                                        ; misc
-
-(defun lastchar (s) (char name (1- (length s))))
+; misc
+(defun last-char (s) (char s (1- (length s))))
 
 (defun args() #+clisp ext:*args*  #+sbcl sb-ext:*posix-argv*)
 
@@ -134,11 +133,11 @@
   (let ((fun (intern (format nil "EG~:@(~a~)" s))))
     (if (fboundp fun) fun)))
 
-(defun eg--fred(_)
+(defun eg--fred(&rest _)
   "fredericks"
   (print "fred"))
 
-(defun eg-h (_)
+(defun eg-h (&rest _)
   "show help"
   (format t "core.lisp : simple optimizer~%(c)2024 Tim Menzies BSD-2~%~%OPTIONS:~%")
   (do-symbols (sym *package*)
@@ -146,9 +145,14 @@
         (format t " ~(~7a~) ~a~%" (subseq (symbol-name sym) 2)
                 (documentation sym 'function)))))
 
-(defun eg-num(_)
+(defun eg-num(&rest _)
   (let ((num (make-num)))
-    (print (mid (dotimes (i 1000 num) (add num (sqrt i)))))))
+    (print (div (dotimes (i 1000 num) (add num (sqrt i)))))))
+
+(defun eg-sym(&rest _)
+  (let* ((sym (make-sym)))
+    (dolist (char '("a" "a" "a" "a" "b" "b" "c")) (add sym char))
+    (assert (< 1.37 (div sym) 1.38))))
 
 (loop :for (flag arg) :on (args) :by #'cdr :do
   (aif (egp flag) (funcall it (thing arg))))
