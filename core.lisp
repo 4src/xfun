@@ -25,27 +25,34 @@
                               "turn `$x` into `(slot-value i 'x)"
                               `(slot-value i ',(read s t nil t))))
 
-(defmacro ? (&rest fs) `(o *config* ,@fs))
+(defmacro ? (&rest fs) 
+  "access nested fields within `*config*`"
+  `(o *config* ,@fs))
 
 (defmacro o (struct f &rest fs)
   "access nested slots; e.g. `(o *settings* stats cohen)`"
   (if fs `(o (slot-value ,struct ',f) ,@fs) `(slot-value ,struct ',f)))
 
 (defmacro aif (test yes &optional no)
-  "anaphoic if; results of `test` available to sub-form as the variable `it`"
+  "anaphoric if; results of `test` available to sub-form as the variable `it`"
   `(let ((it ,test)) (if it ,yes ,no)))
 
 (defmacro inc (lst x &optional (init 0))
-  "simple symbol counter memory; not recommended for more than 50 unique symbols)"
+  "simple symbol counter memory; self initializing (don't use for more than 50 symbols)"
   `(incf (cdr (or (assoc ,x ,lst :test #'equal) 
               (car (setf ,lst (cons (cons ,x ,init) ,lst)))))))
 
 ;;; misc utils
-(defun last-char (s) (char s (1- (length s))))
+(defun last-char (s) 
+  "return last character in a string"
+  (char s (1- (length s))))
 
-(defun args() #+clisp ext:*args*  #+sbcl sb-ext:*posix-argv*)
+(defun args() 
+  "return the command line"
+  #+clisp ext:*args*  #+sbcl sb-ext:*posix-argv*)
 
 (defun thing (s &aux (s1 (string-trim '(#\Space #\Tab) s)))
+  "coerce `s` to a number, string, t, nil or '? (if `s` is "?")"
   (let ((it (let ((*read-eval* nil))
               (read-from-string s1 ""))))
     (cond ((numberp it)     it)
@@ -55,11 +62,13 @@
           (t                s1))))
 
 (defun split (s &optional (here 0))
+  "split a string on commas"
   (let ((there (position #\, s :start here)))
     (cons (thing (subseq s here there))
           (if there (split s (1+ there))))))
 
 (defun with-csv (&optional file (fun #'print) (filter #'split))
+  "call `fun` on all lines in `file`, after running lines through `filter`"
   (with-open-file (s (or file *standard-input*))
     (loop (funcall fun (funcall filter (or (read-line s nil) (return)))))))
 
