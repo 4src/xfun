@@ -124,7 +124,7 @@
     (cons (thing (subseq s here there))
           (if there (split s (1+ there))))))
 
-(defun with-csv (file &optional (fun #'print) (filter #'split))
+(defun with-csv (&optional file (fun #'print) (filter #'split))
   (with-open-file (s (or file *standard-input*))
     (loop (funcall fun (funcall filter (or (read-line s nil) (return)))))))
 
