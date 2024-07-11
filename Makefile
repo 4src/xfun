@@ -42,3 +42,27 @@ HEAD='BEGIN {RS=""; FS="\n"} NR==1 { print($$0 "\n"); exit }'
 	gawk --source $(BODY) $@                  >> _in
 	gawk -f etc/snips.awk PASS=1 *.lisp  PASS=2 _in > _out
 	mv _out $@; rm _in
+
+
+
+
+
+~/tmp/%.pdf: %.lisp  ## .lua ==> .pdf
+	mkdir -p ~/tmp
+	echo "pdf-ing $@ ... "
+	a2ps                 \
+		-Br                 \
+		-l 100                 \
+		--file-align=fill      \
+		--line-numbers=1        \
+		--pro=color               \
+		--left-title=""            \
+		--borders=no             \
+		--pretty-print="etc/clisp.ssh" \
+		--columns 3                  \
+		-M letter                     \
+		--footer=""                    \
+		--right-footer=""               \
+	  -o	 $@.ps $<
+	ps2pdf $@.ps $@; rm $@.ps
+	open $@

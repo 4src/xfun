@@ -42,3 +42,11 @@
           (regexp-quote (getenv "HOME")) "~"
           (convert-standard-filename buffer-file-name)))
       (buffer-name))))
+
+
+(use-package ergoemacs-mode
+  :config
+  (setq ergoemacs-theme nil
+        ergoemacs-keyboard-layout "us")
+  (ergoemacs-mode 1))
+  
