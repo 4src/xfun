@@ -1,9 +1,21 @@
+;;;; fast optimizer
 ; vim : set ts=2 sw=2 sts=2
-(defun make ()
-  #+sbcl (setf sb-ext:*muffled-warnings* 'style-warning)
-  (load "core"))
+;;; main options
+(defstruct about
+  (what "core.lisp")
+  (why  "find independent values that select for best dependent values")
+  (when 2024)
+  (who "Tim Menzies")
+  (copyright "BSD-2"))
 
-;---------- --------- --------- --------- --------- --------- --------- ---------
+(defstruct stats (boostraps 1234567891) (cohen 0.35))
+(defstruct options (stats (make-stats)) (about (make-about)))
+
+(defvar our (make-options))
+
+(defun make () #+sbcl (setf sb-ext:*muffled-warnings* 'style-warning) (load "core"))
+
+;;; macros
 (set-macro-character #\$ #'(lambda (s _) `(slot-value self ',(read s t nil t))))
 
 (defmacro o (struct f &rest fs)
@@ -16,7 +28,7 @@
   `(cdr (or (assoc ,x ,lst :test #'equal) 
             (car (setf ,lst (cons (cons ,x ,init) ,lst))))))
 
-;---------- --------- --------- --------- --------- --------- --------- ---------
+;;; structs
 (defstruct data rows cols)
 
 (defstruct (cols (:constructor %make-cols)) all x y names)
@@ -26,13 +38,7 @@
 (defstruct (num (:constructor %make-num))
   (pos 0) (txt " ") (n 0) (lo 1e30) (hi -1e30) (mu 0) (m2 0) (goal 1))
 
-(defstruct stats (boostraps 1234567891) (cohen 0.35))
-(defstruct options (stats (make-stats)))
-
-(defvar our (make-options))
-
-;---------- --------- --------- --------- --------- --------- --------- ---------
-; nums and syms
+;;; nums and syms
 (defun make-col (&key pos txt)
   (funcall (if (upper-case-p (char txt 0)) #'make-num #'make-sym) :pos pos :txt txt))
 
@@ -65,8 +71,7 @@
 (defmethod div ((self sym))
   (* -1 (loop :for (_ . v) :in $seen :sum (* (/ v $n) (log (/ v $n) 2)))))
 
-;---------- --------- --------- --------- --------- --------- --------- ---------
-; data and cols
+;;; data and cols
 (defmethod clone ((self data) &optional inits)
   (from (make-data) (cons (o self cols names) inits)))
   
@@ -100,8 +105,7 @@
     (dolist (col cs)
       (add col (elt row $pos)))))
 
-;---------- --------- --------- --------- --------- --------- --------- ---------
-; misc
+;;; misc utils
 (defun last-char (s) (char s (1- (length s))))
 
 (defun args() #+clisp ext:*args*  #+sbcl sb-ext:*posix-argv*)
@@ -127,29 +131,29 @@
 (defun string-prefix-p (pre str &aux (n (length pre)))
   (and (<= n (length str)) (string= pre (subseq str 0 n))))
 
-;---------- --------- --------- --------- --------- --------- --------- ---------
-; start up
+;;; start up
+(defmethod help ((self about))
+  (format t "~a : ~a~%(c)~a ~a ~a~%~%OPTIONS:~%" $what $why $when $who $copyright))
+          
 (defun egp(s)
-  (let ((fun (intern (format nil "EG~:@(~a~)" s))))
-    (if (fboundp fun) fun)))
+  "teturns the example function for `s` (if it exists)."
+  (fboundp (intern (format nil "EG~:@(~a~)" s))))
+           
+(defun eg-h (_ &aux tmp)
+  "show about help and the doco from the eg functions"
+  (help (o our about))
+  (do-symbols (sym *package*) (push (list sym (symbol-name sym))  tmp))
+  (loop :for (sym name) :in (sort tmp #'string< :key #'first)
+        :if  (string-prefix-p "EG-" name)
+        :do  (format t " ~(~7a~) ~a~%" (subseq name 2) (documentation sym 'function))))
 
-(defun eg--fred(&rest _)
-  "fredericks"
-  (print "fred"))
-
-(defun eg-h (&rest _)
-  "show help"
-  (format t "core.lisp : simple optimizer~%(c)2024 Tim Menzies BSD-2~%~%OPTIONS:~%")
-  (do-symbols (sym *package*)
-    (if (and (fboundp sym) (string-prefix-p "EG-" (symbol-name sym)))
-        (format t " ~(~7a~) ~a~%" (subseq (symbol-name sym) 2)
-                (documentation sym 'function)))))
-
-(defun eg-num(&rest _)
+(defun eg-num(_)
+  "test NUMs"
   (let ((num (make-num)))
-    (print (div (dotimes (i 1000 num) (add num (sqrt i)))))))
+    (assert (< 0.46 (div (dotimes (i 1000 num) (add num (sqrt i)))) 0.47))))
 
-(defun eg-sym(&rest _)
+(defun eg-sym(_)
+  "test SYMs"
   (let* ((sym (make-sym)))
     (dolist (char '("a" "a" "a" "a" "b" "b" "c")) (add sym char))
     (assert (< 1.37 (div sym) 1.38))))
