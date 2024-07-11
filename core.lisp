@@ -138,14 +138,12 @@
 
 (defmethod help ((self options))
   (help $about)
-  (let (tmp)
-    (do-symbols (sym *package*) (push (list sym (symbol-name sym))  tmp))
-    (dolist (pre (o $about egs))
-      (loop :for (sym name) :in (sort tmp #'string< :key #'first)
-            :if  (and (fboundp sym) (string-prefix-p pre name))
-            :do  (format t " ~(~7a~) ~a~%" (subseq name (length pre))
-                                           (documentation sym 'function))))))
- 
+  (let ((tmp (loop for s being the symbols of *package* collect (list s (symbol-name s)))))
+        (dolist (pre (o $about egs))
+          (loop :for (sym name) :in (sort tmp #'string< :key #'first)
+                :if  (and (fboundp sym) (string-prefix-p pre name))
+                :do  (format t " ~(~7a~) ~a~%" (subseq name (length pre))
+                                               (documentation sym 'function))))))
 
 (defmethod main((self options))  
   (loop :for (flag arg) :on (args) :by #'cdr :do
