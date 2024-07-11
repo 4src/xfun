@@ -2,18 +2,17 @@
 ; vim : set ts=2 sw=2 sts=2
 ;;; main options
 (defstruct about
-  (what "core.lisp")
-  (why  "find independent values that select for best dependent values")
-  (when 2024)
-  (who "Tim Menzies")
-  (copyright "BSD-2"))
+  (what      "core.lisp")
+  (why       "find independent values that select for best dependent values")
+  (when      2024)
+  (who       "Tim Menzies")
+  (copyright "BSD-2")
+  (egs       '("EG")))
 
 (defstruct stats (boostraps 1234567891) (cohen 0.35))
 (defstruct options (stats (make-stats)) (about (make-about)))
 
 (defvar our (make-options))
-
-(defun make () #+sbcl (setf sb-ext:*muffled-warnings* 'style-warning) (load "core"))
 
 ;;; macros
 (set-macro-character #\$ #'(lambda (s _) `(slot-value self ',(read s t nil t))))
@@ -131,21 +130,34 @@
 (defun string-prefix-p (pre str &aux (n (length pre)))
   (and (<= n (length str)) (string= pre (subseq str 0 n))))
 
-;;; start up
+;;; start-up support
+(defun make () #+sbcl (setf sb-ext:*muffled-warnings* 'style-warning) (load "core"))
+
 (defmethod help ((self about))
   (format t "~a : ~a~%(c)~a ~a ~a~%~%OPTIONS:~%" $what $why $when $who $copyright))
-          
-(defun egp(s)
-  "teturns the example function for `s` (if it exists)."
-  (fboundp (intern (format nil "EG~:@(~a~)" s))))
-           
+
+(defmethod help ((self options))
+  (help $about)
+  (let (tmp)
+    (do-symbols (sym *package*) (push (list sym (symbol-name sym))  tmp))
+    (dolist (pre (o $about egs))
+      (loop :for (sym name) :in (sort tmp #'string< :key #'first)
+            :if  (and (fboundp sym) (string-prefix-p pre name))
+            :do  (format t " ~(~7a~) ~a~%" (subseq name (length pre))
+                                           (documentation sym 'function))))))
+ 
+
+(defmethod main((self options))  
+  (loop :for (flag arg) :on (args) :by #'cdr :do
+    (dolist (pre (o $about egs))
+      (aif (fboundp (intern (format nil "~a~:@(~a~)" pre flag)))
+           (funcall it (thing arg))))))
+
+;;; start up
+;; Every function eg-x enables a command line flag -x with one optional argument
 (defun eg-h (_ &aux tmp)
   "show about help and the doco from the eg functions"
-  (help (o our about))
-  (do-symbols (sym *package*) (push (list sym (symbol-name sym))  tmp))
-  (loop :for (sym name) :in (sort tmp #'string< :key #'first)
-        :if  (string-prefix-p "EG-" name)
-        :do  (format t " ~(~7a~) ~a~%" (subseq name 2) (documentation sym 'function))))
+  (help our))
 
 (defun eg-num(_)
   "test NUMs"
@@ -158,6 +170,4 @@
     (dolist (char '("a" "a" "a" "a" "b" "b" "c")) (add sym char))
     (assert (< 1.37 (div sym) 1.38))))
 
-(loop :for (flag arg) :on (args) :by #'cdr :do
-  (aif (egp flag) (funcall it (thing arg))))
-
+(main our)
