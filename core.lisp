@@ -25,7 +25,7 @@
 
 ;;; macros
 (set-macro-character #\$  #'(lambda (s _)
-                              "turn `$x` into `(slot-value i 'x)"
+                              "turn `$x` into `(slot-value i 'x)`"
                               `(slot-value i ',(read s t nil t))))
 
 (defmacro ? (&rest fs) 
@@ -45,41 +45,7 @@
   `(cdr (or (assoc ,x ,lst :test #'equal) 
             (car (setf ,lst (cons (cons ,x ,init) ,lst))))))
 
-;;; misc utils
-(defun last-char (s) ; --> char
-  "return last character in a string"
-  (char s (1- (length s))))
-
-(defun args()  ; --> list[str]
-  "return the command line"
-  #+clisp ext:*args*  #+sbcl sb-ext:*posix-argv*)
-
-(defun thing (s &aux (s1 (string-trim '(#\Space #\Tab) s))) ; --> atom
-  "coerce `s` to a number, string, t, nil or '? (if `s` is '?')"
-  (let ((it (let ((*read-eval* nil))
-              (read-from-string s1 ""))))
-    (cond ((numberp it)     it)
-          ((eq it t)        t)
-          ((eq it nil)      nil)
-          ((string= it "?") '?)
-          (t                s1))))
-
-(defun things (s &optional (sep #\,) (here 0)) ; --> list
-  "split string to items, divided on some `sep` character; then coerce each item"
-  (let ((there (position sep s :start here)))
-    (cons (thing (subseq s here there))
-          (if there (things s sep (1+ there))))))
-
-(defun with-csv (&optional file (fun #'print) (filter #'things)) ; --> nil
-  "call `fun` on all lines in `file`, after running lines through `filter`"
-  (with-open-file (s (or file *standard-input*))
-    (loop (funcall fun (funcall filter (or (read-line s nil) (return)))))))
-
-(defun string-prefix-p (pre str &aux (n (length pre))) ; --> bool
-  "true if `pre` is the start of `str`"
-  (and (<= n (length str)) (string= pre (subseq str 0 n))))
-
-;;; nums and syms
+;;; column
 (defstruct col
   "superclass of SYM and NUM"
   (pos 0) (txt " ") (n 0))
@@ -127,34 +93,10 @@
   "SYMbols have entropy"
   (* -1 (loop :for (_ . v) :in $has :sum (* (/ v $n) (log (/ v $n) 2)))))
 
-(defgeneric like (col x &key))
-
- (defmethod like ((i sym) x &key prior) ; --> float
-  (/ (+ (count $seen x) (* (? bayes m) prior)) 
-     (+ $n (? bayes m))))
-
-(defmethod like ((i num) x &key prior)) ; --> float
-  (let ((sd (+ (div i) 1E-30)))
-    (/ (exp (- (/ (expt (- x $mu) 2) (* 2 (expt sd 2)))))
-       (* sd (sqrt (* 2 pi))))))
-
-(defmethod like ((self data) row &key nall nh) ; --> float
-  (let* ((prior (/ (+ (length $rows) !k) 
-                   (+ nall (* nh !k)))))
-    (+ (log prior) (loop :for col :in (cols-x $cols) :sum (_loglike row col prior)))))
-
-(defun _loglike (row col prior &aux (out 0) (x (elt row (col-at col)))) ; --> float
-  (unless (eql x '?)
-    (let ((inc (like col x :prior prior)))
-      (unless (zerop inc) 
-        (setf out (log inc)))))
-  out)
-  
-
-;;; data and cols
+;;; data
 (defstruct data
-  "stores `rows`, summarized in `cols`"
-  rows cols)
+  "stores `rows`, summarized in `cols`" 
+  rows cols) 
 
 (defstruct (cols (:constructor %make-cols))
   "factory that makes and stores columns"
@@ -165,13 +107,13 @@
   (adds (make-data) (cons (o i cols names) inits)))
   
 (defmethod adds ((i data) (file string)) ; --> data
-  "add contents of csv file data into `data`"
-  (with-csv file (lambda (row) (add i row)))
-  i)
+"add contents of csv file data into `data`"
+(with-csv file (lambda (row) (add i row)))
+i)
 
-(defmethod adds (x (lst cons)) ; --> x
+(defmethod adds (receiver (lst cons)) ; --> receiver
   "add contents of a list"
-  (dolist (item lst i) (add i items)))
+  (dolist (x lst receiver) (add receiver x)))
 
 (defmethod add ((i data) row) ; --> nil
   "first `row` creates a new `cols`, other rows get stored and summarized in `cols`"
@@ -200,9 +142,70 @@
     (dolist (col cs)
       (add col (elt row (o col pos))))))
 
-;;; start-up support
+;;; bayes
+(defmethod like ((i data) row &key nall nh) ; --> float
+  "return likelihood of a row"
+  (let* ((prior (/ (+ (length $rows) (? bayes k)) 
+                   (+ nall (* nh (? bayes k))))))
+    (+ (log prior) (loop :for col :in (o $cols x)
+                         :sum (_loglike row col prior)))))
+
+(defun _loglike (row col prior &aux (x (elt row (o col pos)))) ; --> float
+  "usually, return log of likelihood (but for dontknow and zero, return 0)"
+  (unless (eql x '?)
+    (let ((tmp (like col x :prior prior)))
+      (unless (zerop tmp) 
+        (return-from _loglike (log tmp)))))
+  0)
+
+(defmethod like ((i sym) x &key prior) ; --> float
+  "return likelhood of a SYMbol"
+  (/ (+ (count $seen x) (* (? bayes m) prior)) 
+     (+ $n (? bayes m))))
+
+(defmethod like ((i num) x &key prior) ; --> float
+    "return likelhood of a NUMber"
+  (let ((sd (+ (div i) 1E-30)))
+    (/ (exp (- (/ (expt (- x $mu) 2) (* 2 (expt sd 2)))))
+       (* sd (sqrt (* 2 pi))))))
+
+;;; misc
+(defun last-char (s) ; --> char
+  "return last character in a string"
+  (char s (1- (length s))))
+
+(defun args()  ; --> list[str]
+  "return the command line"
+  #+clisp ext:*args*  #+sbcl sb-ext:*posix-argv*)
+
+(defun thing (s &aux (s1 (string-trim '(#\Space #\Tab) s))) ; --> atom
+  "coerce `s` to a number, string, t, nil or '? (if `s` is '?')"
+  (let ((it (let ((*read-eval* nil))
+              (read-from-string s1 ""))))
+    (cond ((numberp it)     it)
+          ((eq it t)        t)
+          ((eq it nil)      nil)
+          ((string= it "?") '?)
+          (t                s1))))
+
+(defun things (s &optional (sep #\,) (here 0)) ; --> list
+  "split string to items, divided on some `sep` character; then coerce each item"
+  (let ((there (position sep s :start here)))
+    (cons (thing (subseq s here there))
+          (if there (things s sep (1+ there))))))
+
+(defun with-csv (&optional file (fun #'print) (filter #'things)) ; --> nil
+  "call `fun` on all lines in `file`, after running lines through `filter`"
+  (with-open-file (s (or file *standard-input*))
+    (loop (funcall fun (funcall filter (or (read-line s nil) (return)))))))
+
+(defun string-prefix-p (pre str &aux (n (length pre))) ; --> bool
+  "true if `pre` is the start of `str`"
+  (and (<= n (length str)) (string= pre (subseq str 0 n))))
+
+;;; starting
 (defun make () ;-> nil
-  "short cut for loading (does not complain about functions out of order)"
+  "short cut for loading (turns off complaints like 'functions out of order')"
   #+sbcl (setf sb-ext:*muffled-warnings* 'style-warning) (load "core"))
 
 (defmethod help ((i about)) ; --> nil
@@ -212,9 +215,10 @@
 (defmethod help ((i config)) ; --> nil
 "show the config help, then the doco of all the example functions"
   (help $about)
-  (let ((tmp (loop :for s :being :the symbols :of *package* :collect (list s (symbol-name s)))))
+  (let ((tmp (loop :for s :being :the symbols :of *package*
+                   :collect (list s (symbol-name s)))))
     (dolist (pre (o $about egs))
-      (loop :for (sym name) :in (sort a #'string< :key #'first)
+      (loop :for (sym name) :in (sort tmp #'string< :key #'first)
             :if  (and (fboundp sym) (string-prefix-p pre name))
             :do  (format t " ~(~7a~) ~a~%" (subseq name (length pre))
                                            (documentation sym 'function))))))
@@ -226,8 +230,7 @@
       (aif (fboundp (intern (format nil "~a~:@(~a~)" pre flag)))
            (funcall it (if arg (thing arg)))))))
 
-;;; start up
-;; Every function eg-x enables a command line flag -x with one optional argument
+;;; main
 (defun eg-h (_ &aux tmp) ; --> nil
   "show about help and the doco from the eg functions"
   (help *config*))

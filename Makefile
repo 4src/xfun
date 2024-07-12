@@ -51,18 +51,17 @@ HEAD='BEGIN {RS=""; FS="\n"} NR==1 { print($$0 "\n"); exit }'
 	mkdir -p ~/tmp
 	echo "pdf-ing $@ ... "
 	a2ps                 \
-		-BR                 \
-		-l 100                \
+		-Br                \
 		--file-align=fill      \
 		--line-numbers=1        \
+ --lines-per-page=80 \
 		--pro=color               \
-		--left-title=""            \
+		--left-footer="$<"            \
 		--borders=no             \
-		--pretty-print="etc/clisp.ssh" \
 		--columns 2                  \
 		-M letter                     \
 		--footer=""                    \
-		--right-footer=""               \
+                --right-footer="%s. of %s#"               \
 	  -o	 $@.ps $<
 	ps2pdf $@.ps $@; rm $@.ps
 	open $@
