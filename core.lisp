@@ -12,7 +12,7 @@
 
 (defstruct config
   (seed  1234567891)
-  (train "data/diabetes.csv")
+  (train "data/auto93.csv")
   (stats (make-stats))
   (about (make-about)))
 
@@ -170,7 +170,7 @@
   "summarize a row into my columns"
   (dolist (cs (list $x $y) row)
     (dolist (col cs)
-      (add col (elt row $pos)))))
+      (add col (elt row (o col pos))))))
 
 ;;; start-up support
 (defun make ()
@@ -219,6 +219,6 @@
   (with-csv (or file (? train)) #'identity))
 
 (defun eg--train(file)
-  (? (from (make-data) (or file (? train))) cols y))
+  (print (o (from (make-data) (or file (? train))) cols y)))
 
 (main *config*)
