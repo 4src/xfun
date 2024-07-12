@@ -51,15 +51,15 @@ HEAD='BEGIN {RS=""; FS="\n"} NR==1 { print($$0 "\n"); exit }'
 	mkdir -p ~/tmp
 	echo "pdf-ing $@ ... "
 	a2ps                 \
-		-Br                 \
-		-l 90                 \
+		-BR                 \
+		-l 100                \
 		--file-align=fill      \
 		--line-numbers=1        \
 		--pro=color               \
 		--left-title=""            \
 		--borders=no             \
 		--pretty-print="etc/clisp.ssh" \
-		--columns 3                  \
+		--columns 2                  \
 		-M letter                     \
 		--footer=""                    \
 		--right-footer=""               \
