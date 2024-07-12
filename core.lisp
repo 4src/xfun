@@ -7,12 +7,17 @@
   (egs       '("EG"))) ; list example function prefixes
 
 (defstruct stats
-  (bootstraps 512 )
+  (bootstraps 512)
   (cohen      0.35))
+
+(defstruct bayes
+  (m 2)
+  (k 1))
 
 (defstruct config
   (seed  1234567891)
   (train "data/auto93.csv")
+  (bayes (make-bayes))
   (stats (make-stats))
   (about (make-about)))
 
@@ -35,10 +40,10 @@
   "anaphoric if; results of `test` available to sub-form as the variable `it`"
   `(let ((it ,test)) (if it ,yes ,no)))
 
-(defmacro inc (lst x &optional (init 0))
+(defmacro seen (lst x &optional (init 0))
   "increment symbol counts; self initializing (don't use for more than 50 symbols)"
-  `(incf (cdr (or (assoc ,x ,lst :test #'equal) 
-              (car (setf ,lst (cons (cons ,x ,init) ,lst)))))))
+  `(cdr (or (assoc ,x ,lst :test #'equal) 
+            (car (setf ,lst (cons (cons ,x ,init) ,lst))))))
 
 ;;; misc utils
 (defun last-char (s) 
@@ -106,7 +111,7 @@
 
 (defmethod add1 ((i sym) x)
   "increment a SYMbol"
-  (let ((new (inc $has x)))
+  (let ((new (incf (seen $has x))))
     (if (> new $most)
       (setf $mode x 
             $most new))))
@@ -121,6 +126,30 @@
 (defmethod div ((i sym))
   "symbols have entropy"
   (* -1 (loop :for (_ . v) :in $has :sum (* (/ v $n) (log (/ v $n) 2)))))
+
+(defgeneric like (col x &key))
+
+ (defmethod like ((i sym) x &key prior)
+  (/ (+ (count $seen x) (* (? bayes m) prior)) 
+     (+ $n (? bayes m))))
+
+(defmethod like ((i num) x &key prior))
+  (let ((sd (+ (div i) 1E-30)))
+    (/ (exp (- (/ (expt (- x $mu) 2) (* 2 (expt sd 2)))))
+       (* sd (sqrt (* 2 pi))))))
+
+(defmethod like ((self data) row &key nall nh)
+  (let* ((prior (/ (+ (length $rows) !k) 
+                   (+ nall (* nh !k)))))
+    (+ (log prior) (loop :for col :in (cols-x $cols) :sum (_loglike row col prior)))))
+
+(defun _loglike (row col prior &aux (out 0) (x (elt row (col-at col))))
+  (unless (eql x '?)
+    (let ((inc (like col x :prior prior)))
+      (unless (zerop inc) 
+        (setf out (log inc)))))
+  out)
+  
 
 ;;; data and cols
 (defstruct data
