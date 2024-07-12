@@ -74,15 +74,7 @@
   "true if `pre` is the start of `str`"
   (and (<= n (length str)) (string= pre (subseq str 0 n))))
 
-;;; structs
-(defstruct data
-  "stores `rows`, summarized in `cols`"
-  rows cols)
-
-(defstruct (cols (:constructor %make-cols))
-  "factory that makes and stores columns"
-  all x y names)
-
+;;; nums and syms
 (defstruct col
   "superclass of SYM and NUM"
   (pos 0) (txt " ") (n 0))
@@ -95,7 +87,6 @@
    "place to incrementally summarize NUMbers"
   (lo 1e30) (hi -1e30) (mu 0) (m2 0) (goal 1))
 
-;;; nums and syms
 (defun make-num (&key (txt " ") (pos 0))
   "make a number, set goals to 0,1 when minimizing/maximize"
   (%make-num :pos pos :txt txt :goal (if (eq #\- (last-char txt)) 0 1)))
@@ -131,7 +122,15 @@
   "symbols have entropy"
   (* -1 (loop :for (_ . v) :in $has :sum (* (/ v $n) (log (/ v $n) 2)))))
 
-;;; data and cols
+;;; data and cols
+(defstruct data
+  "stores `rows`, summarized in `cols`"
+  rows cols)
+
+(defstruct (cols (:constructor %make-cols))
+  "factory that makes and stores columns"
+  all x y names)
+
 (defmethod clone ((i data) &optional inits)
   "make a new `data`, based on the column structure of this `data`"
   (from (make-data) (cons (o i cols names) inits)))
