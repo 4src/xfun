@@ -52,7 +52,7 @@ HEAD='BEGIN {RS=""; FS="\n"} NR==1 { print($$0 "\n"); exit }'
 	echo "pdf-ing $@ ... "
 	a2ps                 \
 		-Br                 \
-		-l 100                 \
+		-l 90                 \
 		--file-align=fill      \
 		--line-numbers=1        \
 		--pro=color               \
