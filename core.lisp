@@ -23,7 +23,7 @@
 
 (defvar *config* (make-config))
 
-;;; macros
+;;; Macros
 (set-macro-character #\$  #'(lambda (s _)
                               "turn `$x` into `(slot-value i 'x)`"
                               `(slot-value i ',(read s t nil t))))
@@ -146,7 +146,7 @@
     (dolist (col cs)
       (add col (cell col row)))))
 
-;;; bayes
+;;; Bayes
 (defmethod like ((i data) row &key nall nh) ; --> float
   "return likelihood of a row"
   (let* ((prior (/ (+ (length $rows) (? bayes k)) 

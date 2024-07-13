@@ -1,0 +1,45 @@
+\documentclass{article}
+\usepackage{listings}
+\usepackage{xcolor}
+
+% Define colors
+\definecolor{keywordcolor}{rgb}{0.5,0,0.5}
+\definecolor{commentcolor}{rgb}{0.25,0.5,0.35}
+\definecolor{stringcolor}{rgb}{0.6,0.1,0.1}
+
+% Set listings options
+\lstset{
+  language=Lisp,
+  basicstyle=\ttfamily\small,        % Set font type and size
+  keywordstyle=\color{keywordcolor}\bfseries, % Style for keywords
+  commentstyle=\color{commentcolor}\itshape,  % Style for comments
+  stringstyle=\color{stringcolor},   % Style for strings
+  numbers=left,                      % Line numbers on the left
+  numberstyle=\tiny\color{gray},     % Line number style
+  stepnumber=1,                      % Step between line numbers
+  numbersep=5pt,                     % Distance between line numbers and code
+  backgroundcolor=\color{white},     % Background color
+  showspaces=false,                  % Show spaces as underscores
+  showstringspaces=false,            % Do not show spaces in strings
+  showtabs=false,                    % Do not show tabs
+  frame=single,                      % Add a frame around the code
+  tabsize=2,                         % Set tab size
+  captionpos=b,                      % Caption position (b for bottom)
+  breaklines=true,                   % Automatic line breaking
+  breakatwhitespace=false,           % Automatic breaks only at whitespace
+  escapeinside={(*@}{@*)},           % Escape to LaTeX between (*@ and @*)
+  morekeywords={defun, defparameter, defvar, let, loop, if, cond, lambda}, % Add more keywords
+}
+
+\begin{document}
+
+\begin{lstlisting}[caption={Example of Common Lisp code}]
+(defun factorial (n)
+  "Compute the factorial of n."
+  (if (<= n 1)
+      1
+      (* n (factorial (- n 1)))))
+\end{lstlisting}
+
+
+\end{document}
