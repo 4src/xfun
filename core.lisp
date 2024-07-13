@@ -15,7 +15,7 @@
   (k 1))
 
 (defstruct config
-  (seed  1234567891)
+  (seed  10013)
   (train "data/auto93.csv")
   (bayes (make-bayes))
   (stats (make-stats))
@@ -170,6 +170,12 @@ i)
        (* sd (sqrt (* 2 pi))))))
 
 ;;; misc
+(defvar *seed* (? seed))
+(defun rint (&optional (n 1) &aux (base 1E10)) (floor (* n (/ (rand base) base))))
+(defun rand (&optional (n 1))
+  (setf *seed* (mod (* 16807.0d0 *seed*) 2147483647.0d0))
+    (* n (- 1.0d0 (/ *seed* 2147483647.0d0))))
+
 (defun last-char (s) ; --> char
   "return last character in a string"
   (char s (1- (length s))))
@@ -234,6 +240,12 @@ i)
 (defun eg-h (_ &aux tmp) ; --> nil
   "show about help and the doco from the eg functions"
   (help *config*))
+
+(defun eg--seed(s) ; --> nil
+  (setf *seed* s) 
+  (let ((one (loop for _ upto 10 collect (rint 100))))
+    (setf *seed* s) 
+    (equalp one (loop for _ upto 10 collect (rint 100)))))
 
 (defun eg--num(_) ; --> nil
   "test NUMs"
