@@ -50,6 +50,10 @@
   "superclass of SYM and NUM"
   (pos 0) (txt " ") (n 0))
 
+(defmethod cell ((i col) (row cons)) ; --> atom
+  "return the value in this column of `row`"
+  (elt row $pos))
+
 (defstruct (sym (:include col))
   "place to incrementally summarize SYMbols"
   has mode (most 0))
@@ -107,9 +111,9 @@
   (adds (make-data) (cons (o i cols names) inits)))
   
 (defmethod adds ((i data) (file string)) ; --> data
-"add contents of csv file data into `data`"
-(with-csv file (lambda (row) (add i row)))
-i)
+  "add contents of csv file data into `data`"
+  (with-csv file (lambda (row) (add i row)))
+  i)
 
 (defmethod adds (receiver (lst cons)) ; --> receiver
   "add contents of a list"
@@ -140,7 +144,7 @@ i)
   "summarize a row into my columns"
   (dolist (cs (list $x $y) row)
     (dolist (col cs)
-      (add col (elt row (o col pos))))))
+      (add col (cell col row)))))
 
 ;;; bayes
 (defmethod like ((i data) row &key nall nh) ; --> float
@@ -150,7 +154,7 @@ i)
     (+ (log prior) (loop :for col :in (o $cols x)
                          :sum (_loglike row col prior)))))
 
-(defun _loglike (row col prior &aux (x (elt row (o col pos)))) ; --> float
+(defun _loglike (row col prior &aux (x (cell col row))) ; --> float
   "usually, return log of likelihood (but for dontknow and zero, return 0)"
   (unless (eql x '?)
     (let ((tmp (like col x :prior prior)))
