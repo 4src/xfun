@@ -209,7 +209,8 @@
   (with-open-file (s (or file *standard-input*))
     (loop (funcall fun
              (funcall filter
-                (or (read-line s nil) (return)))))))
+                (or (read-line s nil) 
+                    (return)))))))
 
 (defun string-prefix-p (pre str &aux (n (length pre))) ; --> bool
   "true if `pre` is the start of `str`"
