@@ -67,7 +67,7 @@
   (%make-num :pos pos :txt txt :goal (if (eq #\- (last-char txt)) 0 1)))
 
 (defmethod add ((i col) x) ; --> col
-  "if not don't know, increment `n` then call `add`"
+  "if not don't know, increment `n` then do `add1`"
   (unless (eq #\? x) (incf $n) (add1 i x))
   x)
 
@@ -151,8 +151,7 @@
   "return likelihood of a row"
   (let* ((prior (/ (+ (length $rows) (? bayes k)) 
                    (+ nall (* nh (? bayes k))))))
-    (+ (log prior) (loop :for col :in (o $cols x)
-                         :sum (_loglike row col prior)))))
+    (+ (log prior) (loop :for col :in (o $cols x) :sum (_loglike row col prior)))))
 
 (defun _loglike (row col prior &aux (x (cell col row))) ; --> float
   "usually, return log of likelihood (but for dontknow and zero, return 0)"
