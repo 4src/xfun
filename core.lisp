@@ -74,10 +74,10 @@
 (defmethod add1 ((i num) x) ; --> nil
   "increment a NUMber"
   (let ((d (- x $mu)))
-    (incf $mu  (/ d $n))
-    (incf $m2  (* d (-  x $mu)))
-    (setf $lo  (min x $lo)
-          $hi  (max x $hi))))
+    (incf $mu (/ d $n))
+    (incf $m2 (* d (-  x $mu)))
+    (setf $lo (min x $lo)
+          $hi (max x $hi))))
 
 (defmethod add1 ((i sym) x) ; --> nil
   "increment a SYMbol"
@@ -175,10 +175,15 @@
 
 ;;; misc
 (defvar *seed* (? seed))
-(defun rint (&optional (n 1) &aux (base 1E10)) (floor (* n (/ (rand base) base))))
-(defun rand (&optional (n 1))
+
+(defun rint (&optional (n 100) &aux (base 1E10)) ; --> int
+  "return a random int between and `n-1` (default = 100)"
+  (floor (* n (/ (rand base) base))))
+
+(defun rand (&optional (n 1)) ; --> float
+  "return a random float between 1 and `n`"
   (setf *seed* (mod (* 16807.0d0 *seed*) 2147483647.0d0))
-    (* n (- 1.0d0 (/ *seed* 2147483647.0d0))))
+  (* n (- 1.0d0 (/ *seed* 2147483647.0d0))))
 
 (defun last-char (s) ; --> char
   "return last character in a string"
