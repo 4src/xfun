@@ -4,7 +4,9 @@
   (when      2024)
   (who       "Tim Menzies")
   (copyright "BSD-2")
-  (egs       '("EG"))) ; list example function prefixes
+  (go        '(go eg))); go-x command are available on the command line as -x [arg]
+
+;; todo: note load sequestion to go and flag go-x and eg--xxx
 
 (defstruct stats
   (bootstraps 512)
