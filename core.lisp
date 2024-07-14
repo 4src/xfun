@@ -208,9 +208,8 @@
   "call `fun` on all lines in `file`, after running lines through `filter`"
   (with-open-file (s (or file *standard-input*))
     (loop (funcall fun
-             (funcall filter
-                (or (read-line s nil) 
-                    (return)))))))
+            (funcall filter
+              (or (read-line s nil) (return)))))))
 
 (defun string-prefix-p (pre str &aux (n (length pre))) ; --> bool
   "true if `pre` is the start of `str`"
@@ -243,32 +242,32 @@
       (aif (fboundp (intern (format nil "~a~:@(~a~)" pre flag)))
            (funcall it (if arg (thing arg)))))))
 
-;;; main
+;; ## main
 (defun eg-h (_ &aux tmp) ; --> nil
   "show about help and the doco from the eg functions"
   (help *config*))
-
+     
 (defun eg--seed(s) ; --> nil
   (setf *seed* s) 
   (let ((one (loop for _ upto 10 collect (rint 100))))
     (setf *seed* s) 
     (equalp one (loop for _ upto 10 collect (rint 100)))))
-
+     
 (defun eg--num(_) ; --> nil
   "test NUMs"
   (let ((num (make-num)))
     (assert (< 0.46 (div (dotimes (n 1000 num) (add num (sqrt n)))) 0.47))))
-
+     
 (defun eg--sym(_) ; --> nil
   "test SYMs"
   (let* ((sym (make-sym)))
     (dolist (char '("a" "a" "a" "a" "b" "b" "c")) (add sym char))
     (assert (< 1.37 (div sym) 1.38))))
-
+    
 (defun eg--csv(file) ; --> nil
   (with-csv (or file (? train)) #'identity))
-
+    
 (defun eg--train(file) ; --> nil
   (print (o (adds (make-data) (or file (? train))) cols y)))
-
+   
 (main *config*)
