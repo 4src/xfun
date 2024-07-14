@@ -65,3 +65,49 @@ HEAD='BEGIN {RS=""; FS="\n"} NR==1 { print($$0 "\n"); exit }'
 	  -o	 $@.ps $<
 	ps2pdf $@.ps $@; rm $@.ps
 	open $@
+
+.SILENT:
+lispspaces:
+	sudo add-apt-repository -y ppa:ubuntuhandbook1/emacs
+	sudo apt update
+	sudo apt install -y emacs emacs-common rlwrap  sbcl
+	@echo "$$DOT_COM" > dot
+	@echo "$$ISP" > isp1; chmod +x isp1
+	printf "\n\n\n-----------------------\n"
+	echo "got to via: emacs -l dot"
+	echo "M-x package-install<RET>slime<RET>"
+	echo call emacs using "emacs -l dot"
+
+define DOT_COM
+;-----------------------
+(require 'package)
+(add-to-list 'package-archives '("melpa" . "https://melpa.org/packages/") t)
+(add-to-list 'package-archives '("melpa-stable" . "https://stable.melpa.org/packages/") t)
+(package-initialize)
+(setq inferior-lisp-program "sbcl")
+(global-set-key (kbd "C-M-(") 'mwheel-scroll)
+(global-set-key (kbd "C-M-)") 'mwheel-scroll)
+(setq column-number-mode t) 
+(tool-bar-mode 0) 
+(setq inhibit-startup-message t)
+(setq make-backup-files nil) 
+(global-font-lock-mode t)
+(xterm-mouse-mode t)
+(mouse-wheel-mode t)
+(show-paren-mode t)
+(transient-mark-mode t)
+(setq scroll-step 1)
+(global-hl-line-mode 1)
+(setq-default indent-tabs-mode nil)
+(setq-default fill-column 52)
+endef
+export DOT_COM
+
+define ISP
+#!/usr/bin/env bash
+f=$$1.lisp
+shift
+$$(which sbcl) --noinform --script $$f  $$* \
+  2> >( gawk '/^Backtrace / {exit} 1' ) 
+endef
+export ISP
