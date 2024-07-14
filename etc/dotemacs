@@ -1,4 +1,3 @@
-
 ;;(load (expand-file-name "~/quicklisp/slime-helper.el"))
   ;; Replace "sbcl" with the path to your implementation
     (setq inferior-lisp-program "sbcl")
@@ -6,7 +5,7 @@
 (global-set-key (kbd "C-M-(") 'mwheel-scroll)
 (global-set-key (kbd "C-M-)") 'mwheel-scroll)
 
-(load-theme 'deeper-blue t)
+
 (setq column-number-mode t)
 ;(menu-bar-mode 0) 
 (tool-bar-mode 0)
@@ -44,9 +43,18 @@
       (buffer-name))))
 
 
-(use-package ergoemacs-mode
-  :config
-  (setq ergoemacs-theme nil
-        ergoemacs-keyboard-layout "us")
-  (ergoemacs-mode 1))
-  
+;; Define custom faces for menu elements
+(defface my-menu-face
+  '((t (:background "#333333" :foreground "#ffffff")))
+  "Face for menu background and foreground colors.")
+
+(defface my-region-face
+  '((t (:background "#666666" :foreground "#ffffff")))
+  "Face for selected menu items.")
+
+;; Apply custom faces to menu elements
+(set-face-attribute 'menu nil :inherit 'my-menu-face)
+(set-face-attribute 'region nil :inherit 'my-region-face)
+
+(load-theme 'deeper-blue t)
+
