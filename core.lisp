@@ -204,18 +204,16 @@
           ((string= it "?") '?)
           (t                s1))))
 
-(defun things (s &optional (sep #\,) (here 0)) ; --> list
+(defun string2things (s &optional (sep #\,) (here 0)) ; --> list
   "split string to items, divided on some `sep` character; then coerce each item"
   (let ((there (position sep s :start here)))
     (cons (thing (subseq s here there))
           (if there (things s sep (1+ there))))))
 
-(defun with-csv (&optional file (fun #'print) (filter #'things)) ; --> nil
+(defun with-csv (&optional file (fun #'print) (filter #'string2things)) ; --> nil
   "call `fun` on all lines in `file`, after running lines through `filter`"
   (with-open-file (s (or file *standard-input*))
-    (loop (funcall fun
-            (funcall filter
-              (or (read-line s nil) (return)))))))
+    (loop (funcall fun (funcall filter (or (read-line s nil) (return)))))))
 
 (defun string-prefix-p (pre str &aux (n (length pre))) ; --> bool
   "true if `pre` is the start of `str`"
