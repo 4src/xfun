@@ -93,7 +93,7 @@
 ;; num
 (defun make-num (&key (txt " ") (pos 0)) ; --> NUM
   "make a number, set goals to 0,1 when minimizing/maximize"
-  (%make-num :pos pos :txt txt :goal (if (eq #\- (last-char txt)) 0 1)))
+  (%make-num :pos pos :txt txt :goal (if (eq #\- (last-char txt)) 0 1))) 
 
 (defmethod add1 ((i num) x) ; --> nil
   "increment a NUMber"
@@ -180,7 +180,8 @@
                           
 (defmethod chebyshev((i data) row &aux (most 0))
   (dolist (col (o $cols y) most)
-    (setf most (max most (abs (- (o cols goal) (norm col (cell i row))))))))
+    (print col)
+    (setf most (max most (abs (- (o col goal) (norm col (cell col row))))))))
   
 ;;; Bins
 (defmethod add-xy ((i bin) x y)
@@ -303,7 +304,7 @@
 
 (defmethod help ((i about)) ; --> nil
   "show help"
-  (format t "~%~a : ~a~%(c)~a ~a ~a~%~%OPTIONS:~%" $what $why $when $who $copyright))
+  (format t "~%~a : ~a~%(~a ~a ~a~%~%OPTIONS:~%" $what $why $when $who $copyright))
 
 (defmethod help ((i config)) ; --> nil
 "show the config help, then the doco of all the example functions"
@@ -355,7 +356,15 @@
 (defun eg--train(file) ; --> nil
   "train on some csv data"
   (print (o (adds (make-data) (or file (? train))) cols y)))
-
+    
+(defun eg--ranked(file) ; --> nil
+  "train on some csv data"
+  (let ((data (adds (make-data) (or file (? train)))))
+    (loop :for j :from 0
+          :for row :in (sort (o data rows) #'< :key (lambda (row) (first row)))
+          :if  (or (eql j 1)  (zerop (mod j 40)))
+          :do (print row))))
+    
 ;;XXX 
 ;; (defun eg--bins(file) ; --> nil
 ;;   "train on some csv data"
