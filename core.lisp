@@ -4,7 +4,7 @@
   (when      2024)
   (who       "Tim Menzies")
   (copyright "BSD-2")
-  (go        '(go eg))); go-x command are available on the command line as -x [arg]
+  (act       '(act eg)))   ; go-x command are available on the command line as -x [arg]
 
 ;; todo: note load sequestion to go and flag go-x and eg--xxx
 
@@ -56,13 +56,21 @@
   "return the value in this column of `row`"
   (elt row $pos))
 
+(defun xpect (i j) ; --> float
+  (/ (+ (* (o i n) (div i)) (* (o j n) (div j)))
+     (+ (o i n) (o j n))))
+
+(defun similar (i j  enough epsilon) ; --> float
+  (or (< (o i n) enough) (< (o j n) enough)
+      (< (abs (- (mid i) (mid j))) epsilon)))
+
 (defstruct (sym (:include col))
   "place to incrementally summarize SYMbols"
   has mode (most 0))
 
 (defstruct (num (:include col) (:constructor %make-num))
    "place to incrementally summarize NUMbers"
-  (lo 1e30) (hi -1e30) (mu 0) (m2 0) (goal 1))
+  (lo 1E32) (hi -1E32) (mu 0) (m2 0) (goal 1))
 
 (defun make-num (&key (txt " ") (pos 0)) ; --> NUM
   "make a number, set goals to 0,1 when minimizing/maximize"
@@ -88,6 +96,15 @@
       (setf $mode x 
             $most new))))
 
+
+
+(defmethod sub ((i num) n)
+  (unless (eq n '?)
+    (let ((d (- n $mu)))
+      (decf $n)
+      (decf $mu (/ d n))
+      (decf $m2 (* d (/ n $mu))))))
+      
 (defmethod mid ((i num)) $mu)   
 (defmethod mid ((i sym)) $mode) 
 
@@ -98,6 +115,11 @@
 (defmethod div ((i sym)) ; --> float
   "SYMbols have entropy"
   (* -1 (loop :for (_ . v) :in $has :sum (* (/ v $n) (log (/ v $n) 2)))))
+
+(defmethod norm ((i num) n)
+  (if (eq n '?) n (/ (- n $lo) (- $hi - $lo 1E-32))))
+
+;;; Bayes
 
 ;;; data
 (defstruct data
@@ -148,6 +170,52 @@
     (dolist (col cs)
       (add col (cell col row)))))
 
+(defmethod chebyshev((i data) row &aux (most 0))
+  (dolist (col (o $cols y))
+    (setf most (max most (norm col (cell i row))
+  
+;;; Bins
+(defstruct bin txt pos (lo 1E32) (hi -1E32) ymid ydiv (helper (make-num)))
+
+(defmethod add-xy ((i bin) x y)
+  (unless (eq x '?)
+    (if (numberp x)
+        (setf $lo (min x $lo)
+              $hi (max x $hi)))
+    (add $helper y)
+    (setf $ydiv (div $helper)
+          $ymid (mid $helper))))
+
+(defmethod bins ((i sym) rows y enough epsilon)
+  (let ((tmp (loop :for (k . _) :in $has 
+                   :collect (make-bin :txt k :pos $pos :lo k :hi k))))
+    (dolist (row rows tmp)
+      (let ((x (cell i row)))
+        (unless (eq '? x)
+          (add-xy (find x tmp :test #'equalp :key #'bin-txt) x (funcall y row)))))))
+
+(defmethod bins ((i num) rows y enough epsilon)
+ (labels ((q (row) (if (eq (cell i row) '?) -1E32 (cell i row))))
+    (let (   lo hi
+             (min 1E32)
+             (ylo (make-num))
+             (xlo (make-num))
+             (yhi (adds (make-num) rows y))
+             (xhi (adds (make-num) (mapcar (lambda (row) (cell i row)) rows))))
+      (dolist (row (sort rows #'< :key #'q))
+        (let ((x (cell i row)))
+          (unless (eq '? x)
+            (add xlo (sub xhi x))
+            (add ylo (sub yhi (funcall y row)))
+            (if (not (similar xlo xhi enough epsilon))
+                (if (> min (xpect ylo yhi))
+                    (setf min (xpect ylo yhi)
+                          lo  (make-bin :txt  $txt :pos $pos :lo -1E32 :hi x
+                                        :ydiv (div ylo) :ymid (mid ylo))
+                          hi  (make-bin :txt  $txt :pos $pos :lo x :hi 1E32
+                                        :ydiv (div yhi) :ymid (mid yhi))))))))
+     (if lo (list lo hi)))))
+    
 ;;; Bayes
 (defmethod like ((i data) row &key nall nh) ; --> float
   "return likelihood of a row"
@@ -187,8 +255,10 @@
   (* n (- 1.0d0 (/ *seed* 2147483647.0d0))))
 
 (defun last-char (s) ; --> char
-  "return last character in a string"
-  (char s (1- (length s))))
+  "return last character in a string/symbol"    
+  (if (symbolp s)
+      (last-char (symbol-name s))
+      (char s (1- (length s)))))
 
 (defun args()  ; --> list[str]
   "return the command line"
@@ -208,7 +278,7 @@
   "split string to items, divided on some `sep` character; then coerce each item"
   (let ((there (position sep s :start here)))
     (cons (thing (subseq s here there))
-          (if there (things s sep (1+ there))))))
+          (if there (string2things s sep (1+ there))))))
 
 (defun with-csv (&optional file (fun #'print) (filter #'string2things)) ; --> nil
   "call `fun` on all lines in `file`, after running lines through `filter`"
@@ -226,23 +296,23 @@
 
 (defmethod help ((i about)) ; --> nil
   "show help"
-  (format t "~a : ~a~%(c)~a ~a ~a~%~%OPTIONS:~%" $what $why $when $who $copyright))
+  (format t "~%~a : ~a~%(c)~a ~a ~a~%~%OPTIONS:~%" $what $why $when $who $copyright))
 
 (defmethod help ((i config)) ; --> nil
 "show the config help, then the doco of all the example functions"
   (help $about)
   (let ((tmp (loop :for s :being :the symbols :of *package*
                    :collect (list s (symbol-name s)))))
-    (dolist (pre (o $about egs))
+    (dolist (pre (o $about act)) 
       (loop :for (sym name) :in (sort tmp #'string< :key #'first)
-            :if  (and (fboundp sym) (string-prefix-p pre name))
-            :do  (format t " ~(~7a~) ~a~%" (subseq name (length pre))
-                                           (documentation sym 'function))))))
+            :if  (and (fboundp sym) (string-prefix-p (symbol-name pre) name))
+            :do  (format t "  ~(~10a~) ~a~%" (subseq name (length (symbol-name pre)))
+                                             (documentation sym 'function))))))
 
 (defmethod main ((i config)) ; --> nil
   "if a command line string matches an example function, call it that functions"
   (loop :for (flag arg) :on (args) :by #'cdr :do
-    (dolist (pre (o $about egs))
+    (dolist (pre (o $about act))
       (aif (fboundp (intern (format nil "~a~:@(~a~)" pre flag)))
            (funcall it (if arg (thing arg)))))))
 
@@ -252,6 +322,7 @@
   (help *config*))
      
 (defun eg--seed(s) ; --> nil
+  "test random number generation"
   (setf *seed* s) 
   (let ((one (loop for _ upto 10 collect (rint 100))))
     (setf *seed* s) 
@@ -268,10 +339,20 @@
     (dolist (char '("a" "a" "a" "a" "b" "b" "c")) (add sym char))
     (assert (< 1.37 (div sym) 1.38))))
     
-(defun eg--csv(file) ; --> nil
-  (with-csv (or file (? train)) #'identity))
+(defun eg--csv(file   &aux (n -1)) ; --> nil
+  "test csv"
+  (with-csv (or file (? train)) (lambda (row)
+    (if (or (eql 1 (incf n)) (zerop (mod n 40)))
+        (format t "~6<~a~> : ~a~%"  n row)))))
     
 (defun eg--train(file) ; --> nil
+  "train on some csv data"
   (print (o (adds (make-data) (or file (? train))) cols y)))
-   
+
+;;XXX 
+;; (defun eg--bins(file) ; --> nil
+;;   "train on some csv data"
+;;   (let* ((d (adds (make-data) (or file (? train)))))
+;;          (enough 
+
 (main *config*)
