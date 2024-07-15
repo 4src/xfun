@@ -1,3 +1,4 @@
+;; config
 (defstruct about
   (what      "core.lisp")
   (why       "find independent values that select for best dependent values")
@@ -5,8 +6,6 @@
   (who       "Tim Menzies")
   (copyright "BSD-2")
   (act       '(act eg)))   ; go-x command are available on the command line as -x [arg]
-
-;; todo: note load sequestion to go and flag go-x and eg--xxx
 
 (defstruct stats
   (bootstraps 512)
@@ -25,7 +24,7 @@
 
 (defvar *config* (make-config))
 
-;;; Macros
+;; Macros
 (set-macro-character #\$  #'(lambda (s _)
                               "turn `$x` into `(slot-value i 'x)`"
                               `(slot-value i ',(read s t nil t))))
@@ -47,14 +46,41 @@
   `(cdr (or (assoc ,x ,lst :test #'equal) 
             (car (setf ,lst (cons (cons ,x ,init) ,lst))))))
 
-;;; column
+;; structs
+(defstruct data
+  "stores `rows`, summarized in `cols`" 
+  rows cols)
+
+(defstruct (cols (:constructor %make-cols))
+  "factory that makes and stores columns"
+  all x y names)
+
 (defstruct col
-  "superclass of SYM and NUM"
+  "superclass of SYMbolic and NUMeric columns"
   (pos 0) (txt " ") (n 0))
 
+(defstruct (sym (:include col))
+  "place to incrementally summarize SYMbolic columns"
+  has mode (most 0))
+
+(defstruct (num (:include col) (:constructor %make-num))
+   "place to incrementally summarize NUMbers"
+   (lo 1E32) (hi -1E32) (mu 0) (m2 0) (goal 1))
+
+(defstruct bin
+  "in column `pos`, between `lo` and `hi`, what y values were seen?"
+  txt pos (lo 1E32) (hi -1E32) ymid ydiv (helper (make-num)))
+
+;;; column
+;;col
 (defmethod cell ((i col) (row cons)) ; --> atom
   "return the value in this column of `row`"
   (elt row $pos))
+
+(defmethod add ((i col) x) ; --> col
+  "if not don't know, increment `n` then do `add1`"
+  (unless (eq #\? x) (incf $n) (add1 i x))
+  x)
 
 (defun xpect (i j) ; --> float
   (/ (+ (* (o i n) (div i)) (* (o j n) (div j)))
@@ -64,22 +90,10 @@
   (or (< (o i n) enough) (< (o j n) enough)
       (< (abs (- (mid i) (mid j))) epsilon)))
 
-(defstruct (sym (:include col))
-  "place to incrementally summarize SYMbols"
-  has mode (most 0))
-
-(defstruct (num (:include col) (:constructor %make-num))
-   "place to incrementally summarize NUMbers"
-  (lo 1E32) (hi -1E32) (mu 0) (m2 0) (goal 1))
-
+;; num
 (defun make-num (&key (txt " ") (pos 0)) ; --> NUM
   "make a number, set goals to 0,1 when minimizing/maximize"
   (%make-num :pos pos :txt txt :goal (if (eq #\- (last-char txt)) 0 1)))
-
-(defmethod add ((i col) x) ; --> col
-  "if not don't know, increment `n` then do `add1`"
-  (unless (eq #\? x) (incf $n) (add1 i x))
-  x)
 
 (defmethod add1 ((i num) x) ; --> nil
   "increment a NUMber"
@@ -89,6 +103,17 @@
     (setf $lo (min x $lo)
           $hi (max x $hi))))
 
+(defmethod sub ((i num) n)
+  (unless (eq n '?)
+    (let ((d (- n $mu)))
+      (decf $n)
+      (decf $mu (/ d n))
+      (decf $m2 (* d (/ n $mu))))))
+
+(defmethod norm ((i num) n)
+  (if (eq n '?) n (/ (- n $lo) (- $hi - $lo 1E-32))))
+
+;; sym
 (defmethod add1 ((i sym) x) ; --> nil
   "increment a SYMbol"
   (let ((new (incf (seen $has x))))
@@ -96,13 +121,7 @@
       (setf $mode x 
             $most new))))
 
-(defmethod sub ((i num) n)
-  (unless (eq n '?)
-    (let ((d (- n $mu)))
-      (decf $n)
-      (decf $mu (/ d n))
-      (decf $m2 (* d (/ n $mu))))))
-      
+;; middle and diversity of a distribution
 (defmethod mid ((i num)) $mu)   
 (defmethod mid ((i sym)) $mode) 
 
@@ -114,19 +133,25 @@
   "SYMbols have entropy"
   (* -1 (loop :for (_ . v) :in $has :sum (* (/ v $n) (log (/ v $n) 2)))))
 
-(defmethod norm ((i num) n)
-  (if (eq n '?) n (/ (- n $lo) (- $hi - $lo 1E-32))))
-
-;;; Bayes
-
 ;;; data
-(defstruct data
-  "stores `rows`, summarized in `cols`" 
-  rows cols) 
+;; col
+(defmethod make-cols1 ((i cols) name z ako) ; --> nil
+  "make one NUM or SYM; store it in `all` and one of `x` or `y`"
+  (let ((col (funcall ako :txt name :pos (length $all))))
+    (push col $all)
+    (when (not (eq z #\X))
+      (if (member z '(#\+ #\-))
+          (push col $y)
+          (push col $x)))))
 
-(defstruct (cols (:constructor %make-cols))
-  "factory that makes and stores columns"
-  all x y names)
+(defmethod add ((i cols) row) ; --> nil
+  "summarize a row into my columns"
+  (dolist (cs (list $x $y) row)
+    (dolist (col cs)
+      (add col (cell col row)))))
+
+;; data
+
 
 (defmethod clone ((i data) &optional inits) ; --> data
   "make a new `data`, based on the column structure of this `data`"
@@ -153,28 +178,11 @@
     (make-cols1 i name (last-char name)
                 (if (upper-case-p (char name 0)) #'make-num #'make-sym))))
                           
-(defmethod make-cols1 ((i cols) name z ako) ; --> nil
-  "make one NUM or SYM; store it in `all` and one of `x` or `y`"
-  (let ((col (funcall ako :txt name :pos (length $all))))
-    (push col $all)
-    (when (not (eq z #\X))
-      (if (member z '(#\+ #\-))
-          (push col $y)
-          (push col $x)))))
-
-(defmethod add ((i cols) row) ; --> nil
-  "summarize a row into my columns"
-  (dolist (cs (list $x $y) row)
-    (dolist (col cs)
-      (add col (cell col row)))))
-
 (defmethod chebyshev((i data) row &aux (most 0))
-  (dolist (col (o $cols y))
-    (setf most (max most (norm col (cell i row))
+  (dolist (col (o $cols y) most)
+    (setf most (max most (abs (- (o cols goal) (norm col (cell i row))))))))
   
 ;;; Bins
-(defstruct bin txt pos (lo 1E32) (hi -1E32) ymid ydiv (helper (make-num)))
-
 (defmethod add-xy ((i bin) x y)
   (unless (eq x '?)
     (if (numberp x)
@@ -183,7 +191,7 @@
     (add $helper y)
     (setf $ydiv (div $helper)
           $ymid (mid $helper))))
-
+           
 (defmethod bins ((i sym) rows enough epsilon yfun)
   (let ((out (loop :for (k . _) :in $has 
                    :collect (make-bin :txt k :pos $pos :lo k :hi k))))
@@ -193,26 +201,27 @@
           (add-xy (find x out :test #'string= :key #'bin-txt) x (funcall yfun row)))))))
 
 (defmethod bins ((i num) rows enough epsilon yfun)
-  (labels ((handle? (row) (if (eq (cell i row) '?) -1E32 (cell i row))))
-    (let (out
-           (min 1E32)
-           (xlo (make-num)) (xhi (make-num))
-           (ylo (make-num)) (yhi (make-num)))
-      (dolist (row rows) (add xhi (cell i row)) (add yhi (funcall yfun row)))
-      (loop :for (row after) :on (sort rows #'< :key #'handle?) :by #'cdr :do 
-            (let ((x (cell i row)))
-              (unless (eq x '?)
-                (add xlo (sub xhi x))
-                (add ylo (sub yhi (funcall yfun row)))
-                (unless (string= x (cell i after))
-                  (if (not (similar xlo xhi enough epsilon))
-                    (if (> min (xpect ylo yhi))
-                      (setf min (xpect ylo yhi)
-                            out (list (make-bin :txt  $txt :pos $pos :lo -1E32 :hi x
-                                                :ydiv (div ylo) :ymid (mid ylo))
-                                      (make-bin :txt  $txt :pos $pos :lo x :hi 1E32
-                                                :ydiv (div yhi) :ymid (mid yhi))))))))))
-      out)))
+  (let (out
+        (min 1E32)
+        (xlo (make-num)) (xhi (make-num))
+        (ylo (make-num)) (yhi (make-num)))
+    (dolist (row rows) (add xhi (cell i row)) (add yhi (funcall yfun row)))
+    (loop :for (row after) :on (sorted i rows) :by #'cdr :return out :do
+      (let ((x (cell i row)))
+        (unless (eq x '?)
+          (add xlo (sub xhi x))
+          (add ylo (sub yhi (funcall yfun row)))
+          (unless (string= x (cell i after))
+            (if (not (similar xlo xhi enough epsilon))
+                (if (> min (xpect ylo yhi))
+                    (setf min (xpect ylo yhi)
+                          out (list (make-bin :txt  $txt :pos $pos :lo -1E32 :hi x
+                                              :ydiv (div ylo) :ymid (mid ylo))
+                                    (make-bin :txt  $txt :pos $pos :lo x :hi 1E32
+                                              :ydiv (div yhi) :ymid (mid yhi))))))))))))
+
+(defmethod sorted ((i col) rows)
+  (sort rows #'< :key (lambda (row) (let ((x (cell i row))) (if (eq x '?) -1E32 x)))))
 
 ;;; Bayes
 (defmethod like ((i data) row &key nall nh) ; --> float
