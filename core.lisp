@@ -96,8 +96,6 @@
       (setf $mode x 
             $most new))))
 
-
-
 (defmethod sub ((i num) n)
   (unless (eq n '?)
     (let ((d (- n $mu)))
@@ -186,36 +184,36 @@
     (setf $ydiv (div $helper)
           $ymid (mid $helper))))
 
-(defmethod bins ((i sym) rows y enough epsilon)
-  (let ((tmp (loop :for (k . _) :in $has 
+(defmethod bins ((i sym) rows enough epsilon yfun)
+  (let ((out (loop :for (k . _) :in $has 
                    :collect (make-bin :txt k :pos $pos :lo k :hi k))))
-    (dolist (row rows tmp)
+    (dolist (row rows out)
       (let ((x (cell i row)))
         (unless (eq '? x)
-          (add-xy (find x tmp :test #'equalp :key #'bin-txt) x (funcall y row)))))))
+          (add-xy (find x out :test #'string= :key #'bin-txt) x (funcall yfun row)))))))
 
-(defmethod bins ((i num) rows y enough epsilon)
- (labels ((q (row) (if (eq (cell i row) '?) -1E32 (cell i row))))
-    (let (   lo hi
-             (min 1E32)
-             (ylo (make-num))
-             (xlo (make-num))
-             (yhi (adds (make-num) rows y))
-             (xhi (adds (make-num) (mapcar (lambda (row) (cell i row)) rows))))
-      (dolist (row (sort rows #'< :key #'q))
-        (let ((x (cell i row)))
-          (unless (eq '? x)
-            (add xlo (sub xhi x))
-            (add ylo (sub yhi (funcall y row)))
-            (if (not (similar xlo xhi enough epsilon))
-                (if (> min (xpect ylo yhi))
-                    (setf min (xpect ylo yhi)
-                          lo  (make-bin :txt  $txt :pos $pos :lo -1E32 :hi x
-                                        :ydiv (div ylo) :ymid (mid ylo))
-                          hi  (make-bin :txt  $txt :pos $pos :lo x :hi 1E32
-                                        :ydiv (div yhi) :ymid (mid yhi))))))))
-     (if lo (list lo hi)))))
-    
+(defmethod bins ((i num) rows enough epsilon yfun)
+  (labels ((handle? (row) (if (eq (cell i row) '?) -1E32 (cell i row))))
+    (let (out
+           (min 1E32)
+           (xlo (make-num)) (xhi (make-num))
+           (ylo (make-num)) (yhi (make-num)))
+      (dolist (row rows) (add xhi (cell i row)) (add yhi (funcall yfun row)))
+      (loop :for (row after) :on (sort rows #'< :key #'handle?) :by #'cdr :do 
+            (let ((x (cell i row)))
+              (unless (eq x '?)
+                (add xlo (sub xhi x))
+                (add ylo (sub yhi (funcall yfun row)))
+                (unless (string= x (cell i after))
+                  (if (not (similar xlo xhi enough epsilon))
+                    (if (> min (xpect ylo yhi))
+                      (setf min (xpect ylo yhi)
+                            out (list (make-bin :txt  $txt :pos $pos :lo -1E32 :hi x
+                                                :ydiv (div ylo) :ymid (mid ylo))
+                                      (make-bin :txt  $txt :pos $pos :lo x :hi 1E32
+                                                :ydiv (div yhi) :ymid (mid yhi))))))))))
+      out)))
+
 ;;; Bayes
 (defmethod like ((i data) row &key nall nh) ; --> float
   "return likelihood of a row"

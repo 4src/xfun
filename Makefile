@@ -54,7 +54,7 @@ HEAD='BEGIN {RS=""; FS="\n"} NR==1 { print($$0 "\n"); exit }'
 		-Br                \
 		--file-align=fill      \
 		--line-numbers=1        \
- --lines-per-page=80 \
+ --lines-per-page=100 \
 		--pro=color               \
 		--left-footer="$<"            \
 		--borders=no             \
