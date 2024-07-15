@@ -17,7 +17,7 @@
 
 (defstruct config
   (seed  10013)
-  (train "data/auto93.csv")
+  (train "data/misc/auto93.csv")
   (bayes (make-bayes))
   (stats (make-stats))
   (about (make-about)))
@@ -111,7 +111,7 @@
       (decf $m2 (* d (/ n $mu))))))
 
 (defmethod norm ((i num) n)
-  (if (eq n '?) n (/ (- n $lo) (- $hi - $lo 1E-32))))
+  (if (eq n '?) n (/ (- n $lo) (- $hi $lo 1E-32))))
 
 ;; sym
 (defmethod add1 ((i sym) x) ; --> nil
@@ -151,8 +151,6 @@
       (add col (cell col row)))))
 
 ;; data
-
-
 (defmethod clone ((i data) &optional inits) ; --> data
   "make a new `data`, based on the column structure of this `data`"
   (adds (make-data) (cons (o i cols names) inits)))
@@ -179,9 +177,8 @@
                 (if (upper-case-p (char name 0)) #'make-num #'make-sym))))
                           
 (defmethod chebyshev((i data) row &aux (most 0))
-  (dolist (col (o $cols y) most)
-    (print col)
-    (setf most (max most (abs (- (o col goal) (norm col (cell col row))))))))
+  (dolist (num (o $cols y) most)
+    (setf most (max most (abs (- (o num goal) (norm num (cell num row))))))))
   
 ;;; Bins
 (defmethod add-xy ((i bin) x y)
@@ -346,7 +343,7 @@
   (let* ((sym (make-sym)))
     (dolist (char '("a" "a" "a" "a" "b" "b" "c")) (add sym char))
     (assert (< 1.37 (div sym) 1.38))))
-    
+
 (defun eg--csv(file   &aux (n -1)) ; --> nil
   "test csv"
   (with-csv (or file (? train)) (lambda (row)
@@ -361,9 +358,9 @@
   "train on some csv data"
   (let ((data (adds (make-data) (or file (? train)))))
     (loop :for j :from 0
-          :for row :in (sort (o data rows) #'< :key (lambda (row) (first row)))
-          :if  (or (eql j 1)  (zerop (mod j 40)))
-          :do (print row))))
+          :for row :in (sort (o data rows) #'< :key (lambda (row) (chebyshev data row)))
+          :if  (or (eql j 1)  (zerop (mod j 30)))
+          :do (format t "~6<~a~> : ~a~%" j row))))
     
 ;;XXX 
 ;; (defun eg--bins(file) ; --> nil
