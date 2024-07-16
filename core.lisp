@@ -7,17 +7,14 @@
   (copyright "BSD-2")
   (act       '(act eg)))   ; go-x command are available on the command line as -x [arg]
 
-(defstruct stats
-  (bootstraps 512)
-  (cohen      0.35))
-
-(defstruct bayes
-  (m 2)
-  (k 1))
+(defstruct bayes (m 2) (k 1))
+(defstruct bins  (enough     0.5) (epsilon 0.35))
+(defstruct stats (bootstraps 512) (cohen   0.35))
 
 (defstruct config
   (seed  10013)
   (train "data/misc/auto93.csv")
+  (bins  (make-bins))
   (bayes (make-bayes))
   (stats (make-stats))
   (about (make-about)))
@@ -69,7 +66,7 @@
 
 (defstruct bin
   "in column `pos`, between `lo` and `hi`, what y values were seen?"
-  txt pos (lo 1E32) (hi -1E32) ymid ydiv (helper (make-num)))
+  txt pos (n 0) (lo 1E32) (hi -1E32) ymid ydiv (helper (make-num)))
 
 ;;; column
 ;;col
@@ -82,11 +79,13 @@
   (unless (eq #\? x) (incf $n) (add1 i x))
   x)
 
-(defun xpect (i j) ; --> float
-  (/ (+ (* (o i n) (div i)) (* (o j n) (div j)))
-     (+ (o i n) (o j n))))
+(defun xpect (&rest lst) ; --> float
+  (let ((ndiv 0) (n 0))
+    (dolist (num lst (/ ndiv n))
+      (incf ndiv (* (o num n) (div num)))
+      (incf n (o num n)))))
 
-(defun similar (i j  enough epsilon) ; --> float
+(defun similar (i j enough epsilon) ; --> float
   (or (< (o i n) enough) (< (o j n) enough)
       (< (abs (- (mid i) (mid j))) epsilon)))
 
@@ -187,28 +186,38 @@
         (setf $lo (min x $lo)
               $hi (max x $hi)))
     (add $helper y)
-    (setf $ydiv (div $helper)
+    (setf $n    (1+ $n)
+          $ydiv (div $helper)
           $ymid (mid $helper))))
-           
+
+(defmethod div ((i bin)) $ydiv)
+
 (defmethod bins ((i sym) rows enough epsilon yfun)
   (let ((out (loop :for (k . _) :in $has 
                    :collect (make-bin :txt k :pos $pos :lo k :hi k))))
     (dolist (row rows out)
       (let ((x (cell i row)))
         (unless (eq '? x)
-          (add-xy (find x out :test #'string= :key #'bin-txt) x (funcall yfun row)))))))
+          (add-xy (find x out :test #'equal :key #'bin-txt) x (funcall yfun row)))))))
 
 (defmethod bins ((i num) rows enough epsilon yfun)
   (let (out
         (min 1E32)
         (xlo (make-num)) (xhi (make-num))
         (ylo (make-num)) (yhi (make-num)))
-    (dolist (row rows) (add xhi (cell i row)) (add yhi (funcall yfun row)))
-    (loop :for (row after) :on (sorted i rows) :by #'cdr :return out :do
+    (dolist (row rows) (add xhi (cell i row)) (add yhi (funcall yfun row)))   
+    (loop :for (row after) :on (sorted i rows) :by #'cdr :do
       (let ((x (cell i row)))
+        (print 200)
         (unless (eq x '?)
-          (add xlo (sub xhi x))
+           (print 2000)
+           (add xlo (sub xhi x))
+           (print 3000)
+           (print (funcall yfun row))
+           (print (sub yhi (funcall yfun row)))
+           (print 3500)
           (add ylo (sub yhi (funcall yfun row)))
+             (print 4000)
           (unless (string= x (cell i after))
             (if (not (similar xlo xhi enough epsilon))
                 (if (> min (xpect ylo yhi))
@@ -216,9 +225,11 @@
                           out (list (make-bin :txt  $txt :pos $pos :lo -1E32 :hi x
                                               :ydiv (div ylo) :ymid (mid ylo))
                                     (make-bin :txt  $txt :pos $pos :lo x :hi 1E32
-                                              :ydiv (div yhi) :ymid (mid yhi))))))))))))
+                                              :ydiv (div yhi) :ymid (mid yhi))))))))))
+    out))
 
 (defmethod sorted ((i col) rows)
+  (print 2)
   (sort rows #'< :key (lambda (row) (let ((x (cell i row))) (if (eq x '?) -1E32 x)))))
 
 ;;; Bayes
@@ -362,10 +373,14 @@
           :if  (or (eql j 1)  (zerop (mod j 30)))
           :do (format t "~6<~a~> : ~a~%" j row))))
     
-;;XXX 
-;; (defun eg--bins(file) ; --> nil
-;;   "train on some csv data"
-;;   (let* ((d (adds (make-data) (or file (? train)))))
-;;          (enough 
+(defun eg--bins(file) ; --> nil
+  "train on some csv data"
+  (let* ((d (adds (make-data) (or file (? train)))))
+    (dolist (col (o d cols x))
+      (let ((enough  (expt (length (o d rows)) (? bins enough)))
+            (epsilon (* (div col) (? bins epsilon))))
+        (format t "~%~a~%" (o col txt))
+        (mapc #'print
+              (bins col (o d rows) enough epsilon (lambda (row) (chebyshev d row))))))))
 
 (main *config*)
