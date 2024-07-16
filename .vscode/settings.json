@@ -5,5 +5,11 @@
   },
   "[commonlisp]": {
     "editor.wordSeparators": "`|;:'\",()"
-  }
+  },
+  "cSpell.words": [
+    "nump",
+    "xpect",
+    "ydiv",
+    "ymid"
+  ]
 }
