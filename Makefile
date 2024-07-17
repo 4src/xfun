@@ -63,7 +63,9 @@ HEAD='BEGIN {RS=""; FS="\n"} NR==1 { print($$0 "\n"); exit }'
 	ps2pdf $@.ps $@; rm $@.ps
 	open $@
 
-
+ezrpdf:
+	$(MAKE) ~/tmp/ezr.pdf
+	
 ~/tmp/%.pdf: %.lisp  ## .lua ==> .pdf
 	mkdir -p ~/tmp
 	echo "pdf-ing $@ ... "
