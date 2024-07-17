@@ -1,7 +1,7 @@
 #!/usr/bin/env python3.12
 # vim: set ts=2 sw=2 et :
 import re,ast,sys,random
-from math import log
+from math import log,floor
 from fileinput import FileInput as file_or_stdin
 
 class o:
@@ -41,7 +41,7 @@ class NUM(COL):
     i.lo  = min(i.lo, x)
     i.hi  = max(i.hi, x)
 
-  def bin(i,x)  : return i.norm(x) * the.bins // 1
+  def bin(i,x)  : return floor( i.norm(x) * the.bins )
   def div(i)    : return 0 if i.n < 2 else (i.m2/(i.n - 1))**.5
   def mid(i)    : return i.mu
   def norm(i,x) : return x if x=="?" else (x - i.lo)/(i.hi - i.lo + 1E-32)
@@ -88,17 +88,20 @@ class NUM(COL):
     for row in sorted(rows,key=lambda r: -1E32 if r[col.at]=="?" else r[col.at]):
        x=row[col.at]
        if x != "?":
-         b = col.bin(x) 
+         b = col.bin(x) ; print(b)
          out[b] = out.get(b,None) or BIN(col.txt,col.at,x)
          out[b].add(x, y(row)) 
-    print(len(rows), [(k,b.n) for k,b in out.items()])
+    print("generate",len(rows), 
+          sum(b.n  for  b in out.values()),
+          [(k,b.n) for k,b in out.items()]
+          )
     return BIN.mergeBins(col, sorted(out.values(), key=lambda b:b.lo))
       
   @staticmethod
   def combineBins(bins): 
     "Combine N bins into one"
     n, ymids, ydivs, lo, hi = 0, 0, 0, bins[0].lo, bins[0].hi 
-    print("combine",[b.n for b in bins])
+    
     for b in bins:
       n      = int(n + b.n)
       lo,hi  = min(lo, b.lo), max(hi, b.hi)
@@ -110,8 +113,10 @@ class NUM(COL):
   def mergeBins(col,bins):
     "return two bins that give the most reduction in overall y-diversity"
     if isinstance(col,SYM): return bins
+    print("b4 merge",[b.n for b in bins], sum(b.n for b in bins))
     most, out, b4 = -1, None, BIN.combineBins(bins) 
-    print(col.txt, b4.n)
+    print("after merge",[b.n for b in bins], sum(b.n for b in bins))
+    print("b4", col.txt, b4.n)
     for j in range(2,len(bins)):
       one, two = BIN.combineBins(bins[:j]), BIN.combineBins(bins[j:])
       diff = one.n/b4.n * (one.ydiv - b4.ydiv)**2 + two.n/b4.n * (two.ydiv - b4.ydiv)**2
