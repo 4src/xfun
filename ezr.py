@@ -98,6 +98,7 @@ class NUM(COL):
   def combineBins(bins): 
     "Combine N bins into one"
     n, ymids, ydivs, lo, hi = 0, 0, 0, bins[0].lo, bins[0].hi 
+    print("combine",[b.n for b in bins])
     for b in bins:
       n      = int(n + b.n)
       lo,hi  = min(lo, b.lo), max(hi, b.hi)
