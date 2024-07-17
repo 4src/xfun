@@ -9,9 +9,10 @@ class o:
   __repr__ = lambda i: i.__class__.__name__+str(i.__dict__)
 
 the=o(
-  seed=1234567891, 
-  train="data/misc/auto93.csv", 
-  bins=17
+  seed  = 1234567891, 
+  train = "data/misc/auto93.csv", 
+  bins  = o(max=17,
+            enough=0.5)
 )
 
 class COL(o):
@@ -41,7 +42,7 @@ class NUM(COL):
     i.lo  = min(i.lo, x)
     i.hi  = max(i.hi, x)
 
-  def bin(i,x)  : return floor( i.norm(x) * the.bins )
+  def bin(i,x)  : return floor( i.norm(x) * the.bins.max )
   def div(i)    : return 0 if i.n < 2 else (i.m2/(i.n - 1))**.5
   def mid(i)    : return i.mu
   def norm(i,x) : return x if x=="?" else (x - i.lo)/(i.hi - i.lo + 1E-32)
@@ -78,30 +79,26 @@ class NUM(COL):
         i.lo = min(i.lo,x)
         i.hi = max(i.hi,x)
       i.yhelper.add(y)
-      i.n   += 1
+      i.n    = i.yhelper.n
       i.ydiv = i.yhelper.div()
       i.ymid = i.yhelper.mid()
 
   @staticmethod
-  def generateBins(col, rows, y):
+  def generateBins(col, rows, y, enough):
     out={}
+    n=1
     for row in sorted(rows,key=lambda r: -1E32 if r[col.at]=="?" else r[col.at]):
        x=row[col.at]
        if x != "?":
-         b = col.bin(x) ; print(b)
-         out[b] = out.get(b, BIN(col.txt,col.at,x))
+         b = col.bin(x) ;   n=n+1
+         out[b] = out.get(b,None) or BIN(col.txt,col.at,x)
          out[b].add(x, y(row)) 
-    print("generate",len(rows), 
-          sum(b.n  for  b in out.values()),
-          [(k,b.n) for k,b in out.items()]
-          )
-    return BIN.mergeBins(col, sorted(out.values(), key=lambda b:b.lo))
+    return BIN.twoBins(col, enough, sorted(out.values(), key=lambda b:b.lo))
       
   @staticmethod
   def combineBins(bins): 
     "Combine N bins into one"
     n, ymids, ydivs, lo, hi = 0, 0, 0, bins[0].lo, bins[0].hi 
-    
     for b in bins:
       n      = int(n + b.n)
       lo,hi  = min(lo, b.lo), max(hi, b.hi)
@@ -110,17 +107,15 @@ class NUM(COL):
     return BIN(bins[0].txt, bins[0].at, lo=lo, hi=hi, n=n, ymid=ymids/n, ydiv=ydivs/n)
 
   @staticmethod
-  def mergeBins(col,bins):
+  def twoBins(col, enough, bins):
     "return two bins that give the most reduction in overall y-diversity"
     if isinstance(col,SYM): return bins
-    print("b4 merge",[b.n for b in bins], sum(b.n for b in bins))
+    #bins = merge(bin, enough )
     most, out, b4 = -1, None, BIN.combineBins(bins) 
-    print("after merge",[b.n for b in bins], sum(b.n for b in bins))
-    print("b4", col.txt, b4.n)
     for j in range(2,len(bins)):
       one, two = BIN.combineBins(bins[:j]), BIN.combineBins(bins[j:])
       diff = one.n/b4.n * (one.ydiv - b4.ydiv)**2 + two.n/b4.n * (two.ydiv - b4.ydiv)**2
-      if diff > most:
+      if diff > most and one.n > enough and two.n > enough:
         most, out = diff, [one, two]
         one.lo, two.hi = -1E32, 1E32
     return out
@@ -170,11 +165,12 @@ class eg:
         row[col.at] = col.bin(row[col.at]) 
 
   def bins(file):
-    d = DATA().fromFile(file or the.train)
+    d = DATA().fromFile(file or the.train) 
+    enough = len(d.rows)**the.bins.enough
     for col in d.cols.all: 
-      print("")
-      for b in BIN.generateBins(col, d.rows, d.chebyshev): 
-        print(b.txt,b.n, b.lo, b.hi)
+      print("") 
+      for b in BIN.generateBins(col, d.rows, d.chebyshev, enough): 
+        print(b.txt,b.n, b.lo, b.hi) 
 
 def main(a):
   random.seed(the.seed ) 
