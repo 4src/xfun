@@ -89,7 +89,7 @@ class NUM(COL):
        x=row[col.at]
        if x != "?":
          b = col.bin(x) ; print(b)
-         out[b] = out.get(b,None) or BIN(col.txt,col.at,x)
+         out[b] = out.get(b, BIN(col.txt,col.at,x))
          out[b].add(x, y(row)) 
     print("generate",len(rows), 
           sum(b.n  for  b in out.values()),
