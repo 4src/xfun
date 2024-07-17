@@ -44,7 +44,24 @@ HEAD='BEGIN {RS=""; FS="\n"} NR==1 { print($$0 "\n"); exit }'
 	mv _out $@; rm _in
 
 
-
+~/tmp/%.pdf: %.py  ## .lua ==> .pdf
+	mkdir -p ~/tmp
+	echo "pdf-ing $@ ... "
+	a2ps                 \
+		-Br                \
+		--file-align=fill      \
+		--line-numbers=1        \
+ 		--lines-per-page=100 \
+		--pro=color               \
+		--left-footer="$<"            \
+		--borders=no             \
+		--columns 2                  \
+		-M letter                     \
+		--footer=""                    \
+                --right-footer="%s. of %s#"               \
+	  -o	 $@.ps $<
+	ps2pdf $@.ps $@; rm $@.ps
+	open $@
 
 
 ~/tmp/%.pdf: %.lisp  ## .lua ==> .pdf
