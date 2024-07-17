@@ -135,6 +135,9 @@ class NUM(COL):
         two.lo = one.hi
     return out
 
+#class TREE(o):
+
+
 def coerce(s):
   try: return ast.literal_eval(s)
   except Exception:  return s
@@ -145,7 +148,7 @@ def csv(file="-"):
       line = re.sub(r'([\n\t\r ]|#.*)', '', line)
       if line: yield [coerce(s.strip()) for s in line.split(",")]
 
-def printm(matrix):
+def prints(matrix):
   s = [[str(e) for e in row] for row in matrix]
   lens = [max(map(len, col)) for col in zip(*s)]
   fmt = ' | '.join('{{:>{}}}'.format(x) for x in lens)
