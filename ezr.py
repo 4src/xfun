@@ -8,12 +8,11 @@ class o:
   __init__ = lambda i,**d: i.__dict__.update(d)
   __repr__ = lambda i: i.__class__.__name__+str(i.__dict__)
 
-the=o(
+the = o(
   seed  = 1234567891, 
   train = "data/misc/auto93.csv", 
-  bins  = o(max=17,
-            enough=0.5)
-)
+  bins  = o(max    = 17,
+            enough = 0.5))
 
 class COL(o):
   def __init__(i,txt=" ",at=0): i.n,i.txt, i.at = 0, txt, at
@@ -48,7 +47,7 @@ class NUM(COL):
   def norm(i,x) : return x if x=="?" else (x - i.lo)/(i.hi - i.lo + 1E-32)
 
 class DATA(o):
-  def __init__(i)      : i.rows, i.cols = [], None
+  def __init__(i)      : i.rows, i.cols = [], o(all=[],x=[],y=[],names=[])
   def add(i,row)       : (i.data if i.cols else i.head)(row)
   def clone(i,rows=[]) : return DATA().fromList([i.cols.names] + rows)
   def chebyshev(i,row) : return max(abs(c.goal - c.norm(row[c.at])) for c in i.cols.y)
@@ -61,7 +60,7 @@ class NUM(COL):
     i.rows += [row]
 
   def head(i,row): 
-    i.cols = o(all=[], x=[], y=[], names=row)
+    i.cols.names = row
     for at,txt in enumerate(row):
       col = (NUM if txt[0].isupper() else SYM)(txt=txt,at=at) 
       i.cols.all.append(col)
@@ -97,46 +96,74 @@ class NUM(COL):
     if x == "?": return True
     return i.lo == i.hi and x==i.lo or i.lo < x <= i.hi 
 
-  @staticmethod
-  def generateBins(col, rows, y, enough):
-    out={}
-    n=1
-    for row in sorted(rows,key=lambda r: -1E32 if r[col.at]=="?" else r[col.at]):
-       x=row[col.at]
-       if x != "?":
-         b = col.bin(x) ;   n=n+1
-         out[b] = out.get(b,None) or BIN(col.txt,col.at,x)
-         out[b].add(x, y(row))
-    return BIN.twoBins(col, enough, sorted(out.values(), key=lambda b:b.lo))
+def bins2bin(bins):
+  "Combine N bins into one"
+  n, ymids, ydivs, lo, hi = 0, 0, 0, bins[0].lo, bins[0].hi
+  for b in bins:
+    n      = int(n + b.n)
+    lo,hi  = min(lo, b.lo), max(hi, b.hi)
+    ymids += b.ymid * b.n
+    ydivs += b.ydiv * b.n
+  return BIN(bins[0].txt, bins[0].at, lo=lo, hi=hi, n=n, ymid=ymids/n, ydiv=ydivs/n)
 
-  @staticmethod
-  def combineBins(bins):
-    "Combine N bins into one"
-    n, ymids, ydivs, lo, hi = 0, 0, 0, bins[0].lo, bins[0].hi
-    for b in bins:
-      n      = int(n + b.n)
-      lo,hi  = min(lo, b.lo), max(hi, b.hi)
-      ymids += b.ymid * b.n
-      ydivs += b.ydiv * b.n
-    return BIN(bins[0].txt, bins[0].at, lo=lo, hi=hi, n=n, ymid=ymids/n, ydiv=ydivs/n)
+def makeBins(col, rows, y, enough):
+  out={}
+  for row in sorted(rows,key=lambda r: -1E32 if r[col.at]=="?" else r[col.at]):
+      x=row[col.at]
+      if x != "?":
+        b = col.bin(x) ;   n=n+1
+        out[b] = out.get(b,None) or BIN(col.txt,col.at,x)
+        out[b].add(x, y(row))
+  return mergeBins(col, enough, sorted(out.values(), key=lambda b:b.lo))
 
-  @staticmethod
-  def twoBins(col, enough, bins):
-    "return two bins that give the most reduction in overall y-diversity"
-    if isinstance(col,SYM): return bins
-    #bins = merge(bin, enough )
-    most, out, b4 = -1, None, BIN.combineBins(bins)
-    for j in range(2,len(bins)):
-      one, two = BIN.combineBins(bins[:j]), BIN.combineBins(bins[j:])
-      diff = one.n/b4.n * one.ydiv + two.n/b4.n * two.ydiv 
-      if diff > most and one.n > enough and two.n > enough:
-        most, out = diff, [one, two]
-        one.lo, two.hi = -1E32, 1E32
-        two.lo = one.hi
-    return out
+def mergeBins(col, enough, bins):
+  "return two bins that give the most reduction in overall y-diversity"
+  if isinstance(col,SYM): return bins
+  most, out, b4 = -1, None, bins2bin(bins)
+  for j in range(2,len(bins)):
+    one, two = bins2bin(bins[:j]), bins2bin(bins[j:])
+    here = one.n/b4.n * one.ydiv + two.n/b4.n * two.ydiv 
+    if here > most and one.n > enough and two.n > enough:
+      most, out = here, [one, two]
+      one.lo, two.hi = -1E32, 1E32
+      two.lo = one.hi
+  return out
 
-#class TREE(o):
+class TREE(o):
+  def __init__(i,here,lvl,bin):
+    i.here, i.lvl, i.bin, i.kids = here, lvl, bin, []
 
+  def __repr__(i):
+    return f"{i.mu} {len(i.here.rows)} {'|.. '*i.lvl-1} {'' if i.lvl==0 else i.bin}"
+
+  def nodes(i):
+    yield i
+    for kid in self.kids: 
+      for sub in kid.nodes():
+        yield sub 
+
+def tree(data,rows=None, stop=None)
+  def grow(rows, stop=None, lvl=0, above=None)
+    stop = stop or len(rows)**0.5
+    tree = TREE(data.clone(rows), lvl, above) 
+    for bin in bestSplitter(data,rows,enough) do
+      sub = bin:selects(rows)
+      if len(sub) < len(rows) and len(subs) > stop: 
+        tree.kids.append(grow(sub, stop=stop, lvl=lvl+1, above=bin))
+    return tree
+  return grow(rows or data.rows)
+  
+def bestSplitter(data,rows,enough)
+  out, least = [], 1E32, 
+  for col in data.cols.x:
+    bins = [b for b in makeBins(col, rows, data.chebyshev,len(data.rows)**the.bins.enough]
+    tmp  = bins2bin(bins)  
+    if tmp.ydiv < least:
+      least = tmp.ydiv
+      if tmp.ydiv < least:
+        least = tmp.ydiv
+        out   = sorted(bins, key=lambda b:b.ymid)
+  return out
 
 def coerce(s):
   try: return ast.literal_eval(s)
@@ -156,47 +183,65 @@ def prints(matrix):
 
 #-----------------------------------------------------------
 class eg:
-  def h(): print("tiny.py -[h] [ARG]")
+  def egs(_):
+    ":show all examples"
+    for s in dir(eg): 
+      if s[0] != "_":
+        a = getattr(eg,s).__doc__.split(":")
+        print(f"  -{s:5} {a[0]}\t  {a[1]} ")
+
+  def h(_): 
+    ":show help"
+    print("ezr.py -[h|seed|egs|OTHERS] [ARG]")
+    print("ezr.py -egs (to list all the OTHER actions)")
+
+  def seed(n): 
+    ":set seed"
+    random.seed(n); print(random.random())
+    the.seed = n
 
   def num(_):
+    ":test NUM class"
     n=NUM()
     [n.add(i**.5) for i in range(100)]
     assert( 6.6 < n.mid() < 6.7)
     assert( 2.4 < n.div() < 2.41)
 
   def sym(_):
+    ":test SYM class"
     s=SYM()
     [s.add(c) for c in "aaaabbc"]
     assert("a"==s.mid())
     assert(1.37 < s.div() < 1.38)
 
   def csv(file):
-     n=0
-     for row in csv(file or the.train):
+    "[FILE]:test csv file reading"
+    n=0
+    for row in csv(file or the.train):
       if  n % 30 == 0: print(n,row)
       n += 1
 
   def train(file):
+    "[FILE]:test loading DATA fromFile"
     d = DATA().fromFile(file or the.train).sort()
     [print(col) for col in d.cols.all]
     for n,row in enumerate(d.rows) :
       if  n % 30 == 0: print(n,row,d.chebyshev(row))
 
   def norm(file):
+    "[FILE]:test normalization"
     d = DATA().fromFile(file or the.train).sort()
     for j,row in enumerate(d.rows):
       for col in d.cols.x:
         row[col.at] = col.bin(row[col.at])
 
   def bins(file):
+    "[FILE]:test bin generation"
     d = DATA().fromFile(file or the.train)
-    print(sum(d.chebyshev(row) for row in d.rows)/len(d.rows))
-    enough = len(d.rows)**the.bins.enough 
-    out,least = None,1E32
+    out,least, enough = None,1E32, len(d.rows)**the.bins.enough 
     for col in d.cols.x:
-      bins = sorted([b for b in BIN.generateBins(col, d.rows, d.chebyshev, enough)], key=lambda b:b.ymid)
-      tmp= BIN.combineBins(bins) 
-      print(col.txt, tmp.ydiv) 
+      bins = sorted([b for b in makeBins(col, d.rows, d.chebyshev, enough)], key=lambda b:b.ymid)
+      tmp= bins2bin(bins)  
       if tmp.ydiv < least:
         least=tmp.ydiv
         out = bins
