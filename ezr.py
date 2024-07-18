@@ -96,6 +96,7 @@ class NUM(COL):
     if x == "?": return True
     return i.lo == i.hi and x==i.lo or i.lo < x <= i.hi 
 
+# todo: recode this as functools.reduce using a reduce defined in BIN
 def bins2bin(bins):
   "Combine N bins into one"
   n, ymids, ydivs, lo, hi = 0, 0, 0, bins[0].lo, bins[0].hi
@@ -116,6 +117,7 @@ def makeBins(col, rows, y, enough):
         out[b].add(x, y(row))
   return mergeBins(col, enough, sorted(out.values(), key=lambda b:b.lo))
 
+# recode this without b4
 def mergeBins(col, enough, bins):
   "return two bins that give the most reduction in overall y-diversity"
   if isinstance(col,SYM): return bins
@@ -124,7 +126,7 @@ def mergeBins(col, enough, bins):
     one, two = bins2bin(bins[:j]), bins2bin(bins[j:])
     here = one.n/b4.n * one.ydiv + two.n/b4.n * two.ydiv 
     if here > most and one.n > enough and two.n > enough:
-      most, out = here, [one, two]
+      most, out = here, [o, two]
       one.lo, two.hi = -1E32, 1E32
       two.lo = one.hi
   return out
@@ -138,32 +140,32 @@ def mergeBins(col, enough, bins):
 
   def nodes(i):
     yield i
-    for kid in self.kids: 
+    for kid in i.kids: 
       for sub in kid.nodes():
         yield sub 
 
-def tree(data,rows=None, stop=None)
-  def grow(rows, stop=None, lvl=0, above=None)
+def tree(data,rows=None, stop=None):
+  def grow(rows, stop=None, lvl=0, above=None):
     stop = stop or len(rows)**0.5
     tree = TREE(data.clone(rows), lvl, above) 
-    for bin in bestSplitter(data,rows,enough) do
-      sub = bin:selects(rows)
-      if len(sub) < len(rows) and len(subs) > stop: 
+    for bin in bestSplitter(data,rows):
+      sub = bin.selects(rows)
+      if len(sub) < len(rows) and len(sub) > stop: 
         tree.kids.append(grow(sub, stop=stop, lvl=lvl+1, above=bin))
     return tree
   return grow(rows or data.rows)
   
-def bestSplitter(data,rows,enough)
+def bestSplitter(data,rows):
   out, least = [], 1E32, 
   for col in data.cols.x:
-    bins = [b for b in makeBins(col, rows, data.chebyshev,len(data.rows)**the.bins.enough]
+    bins = [b for b in makeBins(col, rows, data.chebyshev,len(data.rows)**the.bins.enough)]
     tmp  = bins2bin(bins)  
     if tmp.ydiv < least:
       least = tmp.ydiv
       if tmp.ydiv < least:
         least = tmp.ydiv
-        out   = sorted(bins, key=lambda b:b.ymid)
-  return out
+        out   = bins
+  return sorted(out, key=lambda b:b.ymid)
 
 def coerce(s):
   try: return ast.literal_eval(s)
