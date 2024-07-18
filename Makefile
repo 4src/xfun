@@ -48,10 +48,10 @@ HEAD='BEGIN {RS=""; FS="\n"} NR==1 { print($$0 "\n"); exit }'
 	mkdir -p ~/tmp
 	echo "pdf-ing $@ ... "
 	a2ps                 \
-		-Br                \
+		-Br               \
 		--file-align=fill      \
 		--line-numbers=1        \
- 		--chars-per-line=100 \
+ 		--chars-per-line=90 \
 		--pro=color               \
 		--left-footer="$<"            \
 		--borders=no             \
