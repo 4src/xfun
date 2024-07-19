@@ -5,11 +5,15 @@ from math import log,floor
 from fileinput import FileInput as file_or_stdin
 
 class o:
-  __init__ = lambda i,**d: i.__dict__.update(d)
-  __repr__ = lambda i: i.__class__.__name__+str(i.__dict__)
+  def __init__(i,**d): i.__dict__.update(d)
+  def __repr__(i): 
+    rnd = lambda x: round(x,the.round) if isinstance(x,float) else x
+    return i.__class__.__name__+"("+", ".join([f"{k}={rnd(v)}" 
+                                              for k,v in i.__dict__.items()])+")"
 
 the = o(
   seed  = 1234567891, 
+  round = 2,
   train = "data/misc/auto93.csv", 
   bins  = o(max    = 17,
             enough = 0.5))
@@ -44,12 +48,13 @@ class NUM(COL):
   def bin(i,x)  : return floor( i.norm(x) * the.bins.max )
   def div(i)    : return 0 if i.n < 2 else (i.m2/(i.n - 1))**.5
   def mid(i)    : return i.mu
-  def norm(i,x) : return x if x=="?" else (x - i.lo)/(i.hi - i.lo + 1E-32)
-# ----------------------------------------------------------------------------------------
-class DATA(o):
+  def norm(i,x) : return x if x=="?" else (x - i.lo)/(i.hi - i.lo + 1E-32)
+
+class DATA(o):
   def __init__(i)      : i.rows, i.cols = [], o(all=[],x=[],y=[],names=[])
-  def add(i,row)       : (i.data if i.cols else i.head)(row)
+  def add(i,row)       : (i.data if i.cols.all else i.head)(row)
   def clone(i,rows=[]) : return DATA().fromList([i.cols.names] + rows)
+  def chebyshev(i,row) : return max(abs(c.goal - c.norm(row[c.at])) for c in i.cols.y)
   def fromFile(i,file) : [i.add(row) for row in csv(file)]; return i
   def fromList(i,lst)  : [i.add(row) for row in lst      ]; return i 
   def sort(i)          : i.rows.sort(key = i.chebyshev)   ; return i
@@ -61,12 +66,12 @@ class DATA(o):
   def head(i,row): 
     i.cols.names = row
     for at,txt in enumerate(row):
-      col = (NUM if txt[0].isupper() else SYM)(txt=txt,at=at) 
+      col = (NUM if txt[0].isupper() else SYM)(txt=txt,at=at)  
       i.cols.all.append(col)
       if txt[-1] != "X":
-        (i.cols.y if col.txt[-1] in "+-!" else i.cols.x).append(col)
-# ----------------------------------------------------------------------------------------
-class BIN(o):
+        (i.cols.y if col.txt[-1] in "+-!" else i.cols.x).append(col)
+
+class BIN(o):
   def __init__(i,txt=" ", at=0, n=0, lo=1E32, hi=-1E32,ymid=0, ydiv=0):
     i.txt,i.at,i.lo,i.hi,i.ymid,i.ydiv = txt,at,lo,hi,ymid,ydiv
     i.n, i.yhelper = n, NUM()
@@ -92,9 +97,9 @@ class BIN(o):
 
   def select(i,row):
     x=row[i.at]
-    if x == "?": return True
-    return i.lo == i.hi and x==i.lo or i.lo < x <= i.hi 
+    return x == "?" or i.lo == i.hi and x==i.lo or i.lo < x <= i.hi 
 
+# todo: recode this as functools.reduce using a reduce defined in BIN
 def bins2bin(bins):
   "Combine N bins into one"
   n, ymids, ydivs, lo, hi = 0, 0, 0, bins[0].lo, bins[0].hi
@@ -110,33 +115,36 @@ def makeBins(col, rows, y, enough):
   for row in sorted(rows,key=lambda r: -1E32 if r[col.at]=="?" else r[col.at]):
       x=row[col.at]
       if x != "?":
-        b = col.bin(x) ;   n=n+1
+        b = col.bin(x) ;   
         out[b] = out.get(b,None) or BIN(col.txt,col.at,x)
-        out[b].add(x, y(row))
-  return mergeBins(col, enough, sorted(out.values(), key=lambda b:b.lo))
+        out[b].add(x, y(row)) 
+  return  mergeBins(col, enough, sorted(out.values(), key=lambda b:b.ymid)) 
 
+# recode this without b4
 def mergeBins(col, enough, bins):
   "return two bins that give the most reduction in overall y-diversity"
   if isinstance(col,SYM): return bins
-  most, out = -1, None
-  for j in range(2,len(bins)):
-    one, two = bins2bin(bins[:j]), bins2bin(bins[j:])
-    here = one.n * one.ydiv + two.n * two.ydiv 
+  most, out = -1 , None
+  b4 = bins2bin(bins) 
+  for j in range(1,len(bins)):
+    one, two = bins2bin(bins[:j]), bins2bin(bins[j:]) 
+    here = (one.n * (one.ydiv  - b4.ydiv)**2 + two.n * (two.ydiv  - b4.ydiv)**2)/(one.n + two.n)
     if here > most and one.n > enough and two.n > enough:
-      most, out = here, [o, two]
+      most, out = here, [one, two]
       one.lo, two.hi = -1E32, 1E32
       two.lo = one.hi
-  return out
-# ----------------------------------------------------------------------------------------
-class TREE(o):
-  def __init__(i,here,lvl,bin):
-    i.here, i.lvl, i.bin, i.kids = here, lvl, bin, []
+  return out
+
+class TREE(o):
+  def __init__(i,here,lvl,bin=None,ymid=0):
+    i.here, i.lvl, i.bin, i.ymid, i.kids = here, lvl, bin,  ymid, []
 
   def __repr__(i):
-    return f"{i.mu} {len(i.here.rows)} {'|.. '*i.lvl-1} {'' if i.lvl==0 else i.bin}"
+    return f"{i.ymid} {len(i.here.rows)} {'|.. '*(i.lvl-1)} {'' if i.lvl==0 else i.bin}"
 
   def nodes(i):
     yield i
+    print(">>",len(i.kids))
     for kid in i.kids: 
       for sub in kid.nodes():
         yield sub 
@@ -147,6 +155,7 @@ def tree(data,rows=None, stop=None):
     tree = TREE(data.clone(rows), lvl, above) 
     for bin in bestSplitter(data,rows):
       sub = bin.selects(rows)
+      print(len(sub))
       if len(sub) < len(rows) and len(sub) > stop: 
         tree.kids.append(grow(sub, stop=stop, lvl=lvl+1, above=bin))
     return tree
@@ -155,17 +164,17 @@ def tree(data,rows=None, stop=None):
 def bestSplitter(data,rows):
   out, least = [], 1E32, 
   for col in data.cols.x:
-    bins= [b for b in makeBins(col, rows, data.chebyshev,
-                                          len(data.rows)**the.bins.enough)]
+    bins = [b for b in makeBins(col, rows, data.chebyshev,len(data.rows)**the.bins.enough)]
     tmp  = bins2bin(bins)  
     if tmp.ydiv < least:
       least = tmp.ydiv
       if tmp.ydiv < least:
         least = tmp.ydiv
         out   = bins
-  return sorted(out, key=lambda b:b.ymid)
-# ----------------------------------------------------------------------------------------
-def coerce(s):
+  print("bins",bins)
+  return sorted(out, key=lambda b:b.ymid)
+
+def coerce(s):
   try: return ast.literal_eval(s)
   except Exception:  return s
 
@@ -179,8 +188,9 @@ def prints(matrix):
   s = [[str(e) for e in row] for row in matrix]
   lens = [max(map(len, col)) for col in zip(*s)]
   fmt = ' | '.join('{{:>{}}}'.format(x) for x in lens)
-  for row in [fmt.format(*row) for row in s]:  print(row)
-# ----------------------------------------------------------------------------------------
+  for row in [fmt.format(*row) for row in s]:  print(row)
+
+#-----------------------------------------------------------
 class eg:
   def egs(_):
     ":show all examples"
@@ -220,12 +230,11 @@ class eg:
       if  n % 30 == 0: print(n,row)
       n += 1
 
-  def train(file):
-    "[FILE]:test loading DATA fromFile"
+  def train(file):  
+    "[FILE]:test loading DATA fromFile" 
     d = DATA().fromFile(file or the.train).sort()
-    [print(col) for col in d.cols.all]
     for n,row in enumerate(d.rows) :
-      if  n % 30 == 0: print(n,row,d.chebyshev(row))
+       if  n % 30 == 0: print(n,row,round(d.chebyshev(row),2))
 
   def norm(file):
     "[FILE]:test normalization"
@@ -237,19 +246,19 @@ class eg:
   def bins(file):
     "[FILE]:test bin generation"
     d = DATA().fromFile(file or the.train)
-    out,least, enough = None,1E32, len(d.rows)**the.bins.enough 
-    for col in d.cols.x:
-      bins= sorted([b for b in makeBins(col, d.rows, d.chebyshev, enough)], 
-                   key=lambda b:b.ymid)
-      tmp= bins2bin(bins)  
-      if tmp.ydiv < least:
-        least=tmp.ydiv
-        out = bins
-    print([b.ymid for b in out])
+    n=NUM(); [n.add(d.chebyshev(row)) for row in d.rows] 
+    enough =  len(d.rows)**the.bins.enough 
+    for col in d.cols.x: 
+      for bin in [b for b in makeBins(col, d.rows, d.chebyshev, enough)]:
+        print(bin,bin.n,bin.ymid)
+
+  def tree(file):
+    "[FILE]:test bin generation"
+    d = DATA().fromFile(file or the.train)
+    for node in tree(d,d.rows,stop=10).nodes(): print(node)
 
 def main(a):
   random.seed(the.seed )
   getattr(eg, a[1][1:],"h")(coerce(a[2]) if len(a)>2 else the.train)
 
-# ----------------------------------------------------------------------------------------
 if __name__ == "__main__" and len(sys.argv) > 1:  main(sys.argv)

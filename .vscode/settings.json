@@ -11,5 +11,17 @@
     "xpect",
     "ydiv",
     "ymid"
-  ]
+  ],
+
+   // Controls if quick suggestions should show up while typing
+   "editor.quickSuggestions": { "other": false, "comments": false, "strings": false },
+
+   // Controls if suggestions should be accepted with "Enter" - in addition to "Tab". Helps to avoid ambiguity between inserting new lines and accepting suggestions.
+   "editor.acceptSuggestionOnEnter": "off",
+
+   // Controls the delay in ms after which quick suggestions will show up.
+   "editor.quickSuggestionsDelay": 10,
+
+   // Enable word based suggestions
+   "editor.wordBasedSuggestions": "off"
 }
