@@ -186,6 +186,7 @@ def bestSplitter(data,rows):
 def loglikes(data, row, nall, nh): 
   prior = (len(data.rows) + the.bayes.k) / (nall + the.bayes.k*nh)
   likes = [like(col, row[col.at], prior) for col in data.cols.x if row[col.at] != "?"]
+  print(">>", likes, data.cols.x[-1])
   return sum(log(x) for x in likes + [prior] if x>0)
 
 def like(col, x, prior) :
@@ -202,6 +203,7 @@ def smo(data, score=lambda B,R: B-R):
     cut  = int(.5 + len(done) ** the.bayes.best)
     best = data.clone(done[:cut])
     rest = data.clone(done[cut:])
+    print(len(best.rows), len(rest.rows))
     key  = lambda r: score(loglikes(best, r, len(done), 2),
                            loglikes(rest, r, len(done), 2))
     random.shuffle(todo) # optimization: only sort a random subset of todo 
@@ -210,13 +212,15 @@ def smo(data, score=lambda B,R: B-R):
   def smo1(todo, done):
     for _ in range(the.bayes.Last - the.bayes.label):
       if len(todo) < 3: break
+      print(type(done))
       top,*todo = guess(todo, done)
       done += [top]
-      done = data.clone(done).sort() 
+      done = data.clone(done).sort().rows
     return done 
 
   random.shuffle(data.rows) # remove any  bias from older runs
-  return smo1(data.rows[the.bayes.label:], data.clone(data.rows[:the.bayes.label]).sort())
+  return smo1(data.rows[the.bayes.label:], 
+              data.clone(data.rows[:the.bayes.label]).sort().rows)
 # ---------------------------------------------------------------------------------------
 def isNum(x): return isinstance(x,NUM)
 
