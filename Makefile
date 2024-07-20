@@ -26,6 +26,9 @@ install-codespaces:
 	sudo apt -q upgrade
 	sudo apt -q install rlwrap clisp sbcl
 
+word:
+	echo -n "> "; read x ; figlet -W -f mini $$x | gawk '{ print("#    "$$0)}'  |pbcopy
+
 FILES=$(wildcard *.lisp)
 docs: $(addprefix docs/,$(FILES:.lisp=.md))
 
@@ -55,7 +58,7 @@ HEAD='BEGIN {RS=""; FS="\n"} NR==1 { print($$0 "\n"); exit }'
 		--pro=color               \
 		--left-footer="$<"            \
 		--borders=no             \
-		--columns 2                  \
+		--columns 3                  \
 		-M letter                     \
 		--footer=""                    \
                 --right-footer="%s. of %s#"               \

@@ -9,7 +9,11 @@ from fileinput import FileInput as file_or_stdin
 class o:
   __init__ = lambda i,**d: i.__dict__.update(d)
   __repr__ = lambda i    : i.__class__.__name__+"("+dict2str(i.__dict__)+")"
-    
+# -------------------------------------------------------------------
+#                     _         
+#      _   _   ._   _|_  o   _  
+#     (_  (_)  | |   |   |  (_| 
+#                            _|     
 the = o(
   seed  = 1234567891, 
   round = 2,
@@ -21,8 +25,11 @@ the = o(
             label=4,
             Last=30,
             any=100,
-            best=0.5))
-
+            best=0.5))                                                    
+# ------------------------------------------------------------------- 
+#     ._        ._ _    _      _      ._ _    _ 
+#     | |  |_|  | | |  _>     _>  \/  | | |  _> 
+#              
 class COL(o):
   def __init__(i,txt=" ",at=0): i.n,i.txt, i.at = 0, txt, at
   def add(i,x)  : pass 
@@ -53,9 +60,12 @@ class NUM(COL):
   def bin(i,x)  : return floor( i.norm(x) * the.bins.max )
   def div(i)    : return 0 if i.n < 2 else (i.m2/(i.n - 1))**.5
   def mid(i)    : return i.mu
-  def norm(i,x) : return x if x=="?" else (x - i.lo)/(i.hi - i.lo + 1E-32)
-
-class DATA(o):
+  def norm(i,x) : return x if x=="?" else (x - i.lo)/(i.hi - i.lo + 1E-32)
+# ---------------------------------------------------------------------------------------
+#      _|   _.  _|_   _.     _  _|_   _   ._   _.   _    _  
+#     (_|  (_|   |_  (_|    _>   |_  (_)  |   (_|  (_|  (/_ 
+#                                                   _|      
+class DATA(o):
   def __init__(i)      : i.rows=[];  i.cols = o(all=[],x=[],y=[],names=[])
   def add(i,row)       : (i.data if i.cols.all else i.head)(row)
   def clone(i,rows=[]) : return DATA().fromList([i.cols.names] + rows)
@@ -63,7 +73,7 @@ class NUM(COL):
   def fromFile(i,file) : [i.add(row) for row in csv(file)]; return i
   def fromList(i,lst)  : [i.add(row) for row in lst      ]; return i 
   def sort(i)          : i.rows.sort(key = i.chebyshev)   ; return i
-
+q
   def data(i,row): 
     [col.add(x) for col,x in zip(i.cols.all,row) if x != "?"]
     i.rows += [row]
@@ -74,9 +84,12 @@ class NUM(COL):
       col = (NUM if txt[0].isupper() else SYM)(txt=txt,at=at)  
       i.cols.all.append(col)
       if txt[-1] != "X":
-        (i.cols.y if col.txt[-1] in "+-!" else i.cols.x).append(col)
+        (i.cols.y if col.txt[-1] in "+-!" else i.cols.x).append(col)
+# ---------------------------------------------------------------------------------------
+#     |_   o  ._  
+#     |_)  |  | | 
 
-class BIN(o):
+class BIN(o):
   def __init__(i,txt, at,lo, hi,  n=0,  ymid=0, ydiv=0):
     i.txt,i.at,i.lo,i.hi,i.ymid,i.ydiv = txt,at,lo,hi or lo,ymid,ydiv
     i.n, i.yhelper = n, NUM()
@@ -138,9 +151,12 @@ def mergeBins(col, enough, bins):
       least, out = here, [one, two]
       one.lo, two.hi = -1E32, 1E32
       two.lo = one.hi
-  return out
+  return out
+# ---------------------------------------------------------------------------------------
+#     _|_  ._   _    _  
+#      |_  |   (/_  (/_ 
 
-class TREE(o):
+class TREE(o):
   def __init__(i,data,here,lvl,bin=None):
     i.data,i.here, i.lvl, i.bin, i.kids = data, here, lvl, bin, []
     if  bin:
@@ -179,6 +195,10 @@ def bestSplitter(data,rows):
       out   = bins 
   return sorted(out, key=lambda b:b.ymid) 
 # ---------------------------------------------------------------------------------------
+#     |_    _.       _    _ 
+#     |_)  (_|  \/  (/_  _> 
+#               /           
+
 def loglikes(data, row, nall, nh):
   prior = (len(data.rows) + the.bayes.k) / (nall + the.bayes.k*nh)
   likes = [like(col, row[col.at], prior) for col in data.cols.x if row[col.at] != "?"]
@@ -215,6 +235,158 @@ def smo(data, score=lambda B,R: B-R):
   return smo1(data.rows[the.bayes.label:],
               data.clone(data.rows[:the.bayes.label]).sort().rows)
 # ---------------------------------------------------------------------------------------
+#      _  _|_   _.  _|_   _ 
+#     _>   |_  (_|   |_  _> 
+                          
+class SOME:
+    "Non-parametric statistics using reservoir sampling."
+    def __init__(i, inits=[], txt="", max=512): 
+      "Start stats. Maybe initialized with `inits`. Keep no more than `max` numbers."
+      i.txt,i.max,i.lo, i.hi  = txt,max, 1E30, -1E30
+      i.rank,i.n,i._has,i.ok = 0,0,[],True
+      i.adds(inits)  
+
+    def __repr__(i): 
+      "Print the reservoir sampling."
+      return  'SOME('+str(dict(txt=i.txt,rank="i.rank",n=i.n,all=len(i._has),ok=i.ok))+")"
+
+    def adds(i,a):  
+      "Handle multiple nests samples."
+      for b in a:
+        if   isinstance(b,(list,tuple)): [i.adds(c) for c in b]  
+        elif isinstance(b,SOME):         [i.add(c) for c in b._has]
+        else: i.add(b) 
+
+    def add(i,x):  
+      i.n += 1
+      i.lo = min(x,i.lo)
+      i.hi = max(x,i.hi)
+      now  = len(i._has)
+      if   now < i.max   : i.ok=False; i._has += [x]
+      elif R() <= now/i.n: i.ok=False; i._has[ int(R() * now) ]
+
+    def __eq__(i,j):
+      "True if all of cohen/cliffs/bootstrap say you are the same."
+      return i.cliffs(j) and i.bootstrap(j) ## ordered slowest to fastest
+
+    def has(i) :
+      "Return the numbers, sorted."
+      if not i.ok: i._has.sort()
+      i.ok=True
+      return i._has
+
+    def mid(i):
+      "Return the middle of the distribution."
+      l = i.has(); return l[len(l)//2]
+
+    def div(i):
+       "Return the deviance from the middle." 
+       l = i.has(); return (l[9*len(l)//10] - l[len(l)//10])/2.56
+
+    def pooledSd(i,j):
+      "Return a measure of the combined standard deviation."
+      sd1, sd2 = i.div(), j.div()
+      return (((i.n - 1)*sd1 * sd1 + (j.n-1)*sd2 * sd2) / (i.n + j.n-2))**.5
+
+    def norm(i, n):
+      "Noramlize `n` to the range 0..1 for min..max"
+      return (n-i.lo)/(i.hi - i.lo + 1E-30)
+
+    def bar(i, some, fmt="%8.3f", word="%10s", width=50):
+      "Pretty print `some.has`."
+      has = some.has() 
+      out = [' '] * width
+      cap = lambda x: 1 if x > 1 else (0 if x<0 else x)
+      pos = lambda x: int(width * cap(i.norm(x)))
+      [a, b, c, d, e]  = [has[int(len(has)*x)] for x in [0.1,0.3,0.5,0.7,0.9]]
+      [na,nb,nc,nd,ne] = [pos(x) for x in [a,b,c,d,e]] 
+      for j in range(na,nb): out[j] = "-"
+      for j in range(nd,ne): out[j] = "-"
+      out[width//2] = "|"
+      out[nc] = "*" 
+      return ', '.join(["%2d" % some.rank, word % some.txt, fmt%c, fmt%(d-b),
+                        ''.join(out),fmt%has[0],fmt%has[-1]])
+
+    def delta(i,j):
+      "Report distance between two SOMEs, modulated in terms of the standard deviation."
+      return abs(i.mid() - j.mid()) / ((i.div()**2/i.n + j.div()**2/j.n)**.5 + 1E-30)
+
+    def cohen(i,j):
+      return abs( i.mid() - j.mid() ) < the.cohen * i.pooledSd(j)
+
+    def cliffs(i,j, dull=0.147):
+      """non-parametric effect size. threshold is border between small=.11 and medium=.28 
+      from Table1 of  https://doi.org/10.3102/10769986025002101"""
+      n,lt,gt = 0,0,0
+      for x1 in i.has():
+        for y1 in j.has():
+          n += 1
+          if x1 > y1: gt += 1
+          if x1 < y1: lt += 1
+      return abs(lt - gt)/n  < dull  
+
+    def  bootstrap(i,j,confidence=.05,samples=512):
+      """non-parametric significance test From Introduction to Bootstrap, 
+        Efron and Tibshirani, 1993, chapter 20. https://doi.org/10.1201/9780429246593"""
+      y0,z0  = i.has(), j.has()
+      x,y,z  = SOME(inits=y0+z0), SOME(inits=y0), SOME(inits=z0)
+      delta0 = y.delta(z)
+      yhat   = [y1 - y.mid() + x.mid() for y1 in y0]
+      zhat   = [z1 - z.mid() + x.mid() for z1 in z0] 
+      pull   = lambda l:SOME(random.choices(l, k=len(l))) 
+      n      = sum(pull(yhat).delta(pull(zhat)) > delta0 for _ in range(samples)) 
+      return n / samples >= confidence
+# ---------------------------------------------------------------------------------------
+#      _  _|_   _.  _|_   _         _|_  o  |   _ 
+#     _>   |_  (_|   |_  _>    |_|   |_  |  |  _>                                               
+
+def sk(somes):
+  "Sort nums on mid. give adjacent nums the same rank if they are statistically the same"
+  def sk1(somes, rank, cut=None):
+    most, b4 = -1, SOME(somes)
+    for j in range(1,len(somes)):
+      lhs = SOME(somes[:j])
+      rhs = SOME(somes[j:])
+      tmp = (lhs.n*abs(lhs.mid() - b4.mid()) + rhs.n*abs(rhs.mid() - b4.mid())) / b4.n
+      if tmp > most:
+         most,cut = tmp,j
+    if cut:
+      some1,some2 = SOME(somes[:cut]), SOME(somes[cut:])
+      if not some1.cohen(some2):
+        if some1 != some2:
+          rank = sk1(somes[:cut], rank) + 1
+          rank = sk1(somes[cut:], rank)
+          return rank
+    for some in somes: some.rank = rank
+    return rank
+  somes = sorted(somes, key=lambda some: some.mid()) #lambda some : some.mid())
+  sk1(somes,0)
+  return somes
+
+def file2somes(file):
+  "Reads text file into a list of `SOMEs`."
+  def asNum(s):
+    try: return float(s)
+    except Exception: return s
+  somes=[]
+  with open(file) as fp: 
+    for word in [asNum(x) for s in fp.readlines() for x in s.split()]:
+      if isinstance(word,str): some = SOME(txt=word); somes.append(some)
+      else                   : some.add(word)    
+  return somes
+
+def bars(somes, width=40):
+  "Prints multiple `somes` on the same scale."
+  all = SOME(somes)
+  last = None
+  for some in sk(some):
+    if some.rank != last: print("#")
+    last=some.rank
+    print(all.bar(some.has(), width=width, word="%20s", fmt="%5.2f"))
+# ---------------------------------------------------------------------------------------
+#          _|_  o  |   _ 
+#     |_|   |_  |  |  _>                       
+
 def isNum(col): return isinstance(col,NUM)
 
 def dict2str(d):
@@ -237,6 +409,10 @@ def prints(matrix):
   fmt = ' | '.join('{{:>{}}}'.format(x) for x in lens)
   for row in [fmt.format(*row) for row in s]:  print(row)
 # ---------------------------------------------------------------------------------------
+#      _    _    _ 
+#     (/_  (_|  _> 
+#           _|     
+
 class eg:
   def egs(_):
     ":show all examples"
@@ -317,4 +493,5 @@ def main(a):
       if fun:  
         fun( coerce(a[i+1]) if i < len(a)-1 else the.train )
 
-if __name__ == "__main__" and len(sys.argv) > 1:  main(sys.argv)
+if __name__ == "__main__" and len(sys.argv) > 1:  main(sys.argv)#11
+aa
