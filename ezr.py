@@ -1,10 +1,11 @@
 #!/usr/bin/env python3.12
 # vim: set ts=2 sw=2 et :
+from fileinput import FileInput as file_or_stdin
 import re,ast,sys,random
 from math import log,floor
 from math import e as E
 from math import pi as PI
-from fileinput import FileInput as file_or_stdin
+R=random.random
 
 class o:
   __init__ = lambda i,**d: i.__dict__.update(d)
@@ -18,6 +19,7 @@ the = o(
   seed  = 1234567891, 
   round = 2,
   train = "data/misc/auto93.csv", 
+  stats = o(cohen=0.35),
   bins  = o(max    = 17,
             enough = 0.5),
   bayes = o(m=2,
@@ -73,7 +75,7 @@ class DATA(o):
   def fromFile(i,file) : [i.add(row) for row in csv(file)]; return i
   def fromList(i,lst)  : [i.add(row) for row in lst      ]; return i 
   def sort(i)          : i.rows.sort(key = i.chebyshev)   ; return i
-q
+
   def data(i,row): 
     [col.add(x) for col,x in zip(i.cols.all,row) if x != "?"]
     i.rows += [row]
@@ -312,7 +314,7 @@ class SOME:
       return abs(i.mid() - j.mid()) / ((i.div()**2/i.n + j.div()**2/j.n)**.5 + 1E-30)
 
     def cohen(i,j):
-      return abs( i.mid() - j.mid() ) < the.cohen * i.pooledSd(j)
+      return abs( i.mid() - j.mid() ) < the.stats.cohen * i.pooledSd(j)
 
     def cliffs(i,j, dull=0.147):
       """non-parametric effect size. threshold is border between small=.11 and medium=.28 
@@ -485,6 +487,46 @@ class eg:
     d= DATA().fromFile(file or the.train)
     print(sorted([round(d.chebyshev(smo(d)[0]),2) for i in range(20)]))
 
+  def someSame(_):
+    def it(x): return "T" if x else "."
+    print("inc","\tcd","\tboot","\tcohen","==")
+    x=1
+    while x<1.5:
+      a1 = [random.gauss(10,3) for x in range(20)]
+      a2 = [y*x for y in a1]
+      s1 = SOME(a1)
+      s2 = SOME(a2)   
+      t1 = s1.cliffs(s2) 
+      t2 = s1.bootstrap(s2) 
+      t3 = s1.cohen(s2) 
+      print(round(x,3),it(t1), it(t2),  it(t3), it(s1==s2), sep="\t")
+      x *= 1.04
+ 
+  def some2(_,n=5):
+    eg0([ SOME([0.34, 0.49 ,0.51, 0.6]*n,   txt="x1"),
+          SOME([0.6  ,0.7 , 0.8 , 0.89]*n,  txt="x2"),
+          SOME([0.09 ,0.22, 0.28 , 0.5]*n, txt="x3"),
+          SOME([0.6  ,0.7,  0.8 , 0.9]*n,   txt="x4"),
+          SOME([0.1  ,0.2,  0.3 , 0.4]*n,   txt="x5")])
+    
+  def some3(_):
+    eg0([ SOME([0.32,  0.45,  0.50,  0.5,  0.55],    "one"),
+          SOME([ 0.76,  0.90,  0.95,  0.99,  0.995], "two")])
+
+  def some4(_,n=20):
+    eg0([ SOME([0.24, 0.25 ,0.26, 0.29]*n,   "x1"),
+          SOME([0.35, 0.52 ,0.63, 0.8]*n,   "x2"),
+          SOME([0.13 ,0.23, 0.38 , 0.48]*n, "x3"),
+          ])
+    
+def eg0(somes):
+  all = SOME(somes)
+  last = None
+  for some in sk(somes):
+    if some.rank != last: print("#")
+    last=some.rank
+    print(all.bar(some,width=40,word="%20s", fmt="%5.2f"))
+      
 def main(a):
   random.seed(the.seed)
   for i,arg in enumerate(a): 
@@ -493,5 +535,4 @@ def main(a):
       if fun:  
         fun( coerce(a[i+1]) if i < len(a)-1 else the.train )
 
-if __name__ == "__main__" and len(sys.argv) > 1:  main(sys.argv)#11
-aa
+if __name__ == "__main__" and len(sys.argv) > 1:  main(sys.argv)
