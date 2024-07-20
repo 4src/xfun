@@ -1,7 +1,10 @@
 #!/usr/bin/env python3.12
 # vim: set ts=2 sw=2 et :
+# ---------------------------------------------------------------------------------------
 import re,ast,sys,random
 from math import log,floor
+from math import pi as PI
+from math import e  as E
 from fileinput import FileInput as file_or_stdin
 
 class o:
@@ -15,6 +18,12 @@ the = o(
   seed  = 1234567891, 
   round = 2,
   train = "data/misc/auto93.csv", 
+  bayes = o(k     = 1,
+            m     = 2,
+            any   = 100,
+            best  = 0.5,
+            label = 4,
+            Last  = 30),
   bins  = o(max    = 17,
             enough = 0.5))
 
@@ -48,15 +57,15 @@ class NUM(COL):
   def bin(i,x)  : return floor( i.norm(x) * the.bins.max )
   def div(i)    : return 0 if i.n < 2 else (i.m2/(i.n - 1))**.5
   def mid(i)    : return i.mu
-  def norm(i,x) : return x if x=="?" else (x - i.lo)/(i.hi - i.lo + 1E-32)
-
-class DATA(o):
+  def norm(i,x) : return x if x=="?" else (x - i.lo)/(i.hi - i.lo + 1E-32)
+# ---------------------------------------------------------------------------------------
+class DATA(o):
   def __init__(i)      : i.rows, i.cols = [], o(all=[],x=[],y=[],names=[])
   def add(i,row)       : (i.data if i.cols.all else i.head)(row)
-  def clone(i,rows=[]) : return DATA().fromList([i.cols.names] + rows)
+  def clone(i,rows=[]) : return DATA().fromList([i.cols.names]).fromList(rows)
   def chebyshev(i,row) : return max(abs(c.goal - c.norm(row[c.at])) for c in i.cols.y)
   def fromFile(i,file) : [i.add(row) for row in csv(file)]; return i
-  def fromList(i,lst)  : [i.add(row) for row in lst      ]; return i 
+  def fromList(i,lst)  : [i.add(row) for row in lst      ]; return i
   def sort(i)          : i.rows.sort(key = i.chebyshev)   ; return i
 
   def data(i,row): 
@@ -69,9 +78,9 @@ class NUM(COL):
       col = (NUM if txt[0].isupper() else SYM)(txt=txt,at=at)  
       i.cols.all.append(col)
       if txt[-1] != "X":
-        (i.cols.y if col.txt[-1] in "+-!" else i.cols.x).append(col)
-
-class BIN(o):
+        (i.cols.y if col.txt[-1] in "+-!" else i.cols.x).append(col)
+# ---------------------------------------------------------------------------------------
+class BIN(o):
   def __init__(i,txt=" ", at=0, n=0, lo=1E32, hi=-1E32,ymid=0, ydiv=0):
     i.txt,i.at,i.lo,i.hi,i.ymid,i.ydiv = txt,at,lo,hi,ymid,ydiv
     i.n, i.yhelper = n, NUM()
@@ -123,7 +132,7 @@ def makeBins(col, rows, y, enough):
 # recode this without b4
 def mergeBins(col, enough, bins):
   "return two bins that give the most reduction in overall y-diversity"
-  if isinstance(col,SYM): return bins
+  if isNum(col): return bins
   most, out = -1 , None
   b4 = bins2bin(bins) 
   for j in range(1,len(bins)):
@@ -133,9 +142,9 @@ def mergeBins(col, enough, bins):
       most, out = here, [one, two]
       one.lo, two.hi = -1E32, 1E32
       two.lo = one.hi
-  return out
-
-class TREE(o):
+  return out
+# ---------------------------------------------------------------------------------------
+class TREE(o):
   def __init__(i,here,lvl,bin=None,ymid=0):
     i.here, i.lvl, i.bin, i.ymid, i.kids = here, lvl, bin,  ymid, []
 
@@ -172,9 +181,46 @@ def bestSplitter(data,rows):
         least = tmp.ydiv
         out   = bins
   print("bins",bins)
-  return sorted(out, key=lambda b:b.ymid)
+  return sorted(out, key=lambda b:b.ymid)
+# ---------------------------------------------------------------------------------------
+def loglikes(data, row, nall, nh): 
+  prior = (len(data.rows) + the.bayes.k) / (nall + the.bayes.k*nh)
+  likes = [like(col, row[col.at], prior) for col in data.cols.x if row[col.at] != "?"]
+  return sum(log(x) for x in likes + [prior] if x>0)
 
-def coerce(s):
+def like(col, x, prior) :
+  if not isNum(col):  
+    (col.has.get(x,0) + the.bayes.m*prior) / (col.n+the.bayes.m)
+  else: 
+    v     = col.div()**2 + 1E-30
+    nom   = E**(-1*(x - col.mid())**2/(2*v)) + 1E-30
+    denom = (2*PI*v) ** 0.5
+    return min(1, nom/(denom + 1E-30))
+  
+def smo(data, score=lambda B,R: B-R): 
+  def guess(todo, done):
+    cut  = int(.5 + len(done) ** the.bayes.best)
+    best = data.clone(done[:cut])
+    rest = data.clone(done[cut:])
+    key  = lambda r: score(loglikes(best, r, len(done), 2),
+                           loglikes(rest, r, len(done), 2))
+    random.shuffle(todo) # optimization: only sort a random subset of todo 
+    return sorted(todo[:the.bayes.any], key=key, reverse=True) + todo[the.bayes.any:]
+
+  def smo1(todo, done):
+    for _ in range(the.bayes.Last - the.bayes.label):
+      if len(todo) < 3: break
+      top,*todo = guess(todo, done)
+      done += [top]
+      done = data.clone(done).sort() 
+    return done 
+
+  random.shuffle(data.rows) # remove any  bias from older runs
+  return smo1(data.rows[the.bayes.label:], data.clone(data.rows[:the.bayes.label]).sort())
+# ---------------------------------------------------------------------------------------
+def isNum(x): return isinstance(x,NUM)
+
+def coerce(s):
   try: return ast.literal_eval(s)
   except Exception:  return s
 
@@ -188,9 +234,8 @@ def prints(matrix):
   s = [[str(e) for e in row] for row in matrix]
   lens = [max(map(len, col)) for col in zip(*s)]
   fmt = ' | '.join('{{:>{}}}'.format(x) for x in lens)
-  for row in [fmt.format(*row) for row in s]:  print(row)
-
-#-----------------------------------------------------------
+  for row in [fmt.format(*row) for row in s]:  print(row)
+# ---------------------------------------------------------------------------------------
 class eg:
   def egs(_):
     ":show all examples"
@@ -236,6 +281,14 @@ class eg:
     for n,row in enumerate(d.rows) :
        if  n % 30 == 0: print(n,row,round(d.chebyshev(row),2))
 
+  def clone(file):  
+    "[FILE]:test loading DATA fromFile" 
+    d1 = DATA().fromFile(file or the.train).sort()
+    d2 = d1.clone(d1.rows)
+    for col1,col2 in zip(d1.cols.all, d2.cols.all):
+      print(col1)
+      print(col2)
+
   def norm(file):
     "[FILE]:test normalization"
     d = DATA().fromFile(file or the.train).sort()
@@ -256,6 +309,11 @@ class eg:
     "[FILE]:test bin generation"
     d = DATA().fromFile(file or the.train)
     for node in tree(d,d.rows,stop=10).nodes(): print(node)
+
+  def smo(file):
+    "[FILE]:test bin generation"
+    d = DATA().fromFile(file or the.train)
+    print(d.chebyshev(smo(d).rows[0]))
 
 def main(a):
   random.seed(the.seed )
