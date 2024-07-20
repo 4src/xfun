@@ -130,3 +130,6 @@ $$(which sbcl) --noinform --script $$f  $$* \
   2> >( gawk '/^Backtrace / {exit} 1' ) 
 endef
 export ISP
+
+trees:
+	$(foreach f,$(wildcard  data/*/*.csv), printf "\n\n---- $f ----------\n\n"; ./ezr.py -tree $f; )
