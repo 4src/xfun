@@ -16,8 +16,8 @@ the = o(
   train = "data/misc/auto93.csv", 
   bins  = o(max    = 17,
             enough = 0.5),
-  bayes = o(m=1,
-            k=2,
+  bayes = o(m=2,
+            k=1,
             label=4,
             Last=30,
             any=100,
@@ -130,10 +130,10 @@ def mergeBins(col, enough, bins):
   "return two bins that give the most reduction in overall y-diversity"
   if not isNum(col): return bins
   least, out = 1E32 , None
-  b4 = bins2bin(bins) 
+  #b4 = bins2bin(bins) 
   for j in range(1,len(bins)):
     one, two = bins2bin(bins[:j]), bins2bin(bins[j:]) 
-    here = one.n * one.ydiv + two.n * two.ydiv 
+    here = one.n * one.ydiv  + two.n * two.ydiv 
     if here  < least and one.n > enough and two.n > enough:
       least, out = here, [one, two]
       one.lo, two.hi = -1E32, 1E32
@@ -242,7 +242,8 @@ class eg:
     ":show all examples"
     for s in dir(eg): 
       if s[0] != "_":
-        a = getattr(eg,s).__doc__.split(":")
+        doc = getattr(eg,s).__doc__ or f"[ARG]:set {s}"
+        a = doc.split(":")
         print(f"  -{s:5} {a[0]}\t  {a[1]} ")
 
   def h(_): 
@@ -250,10 +251,9 @@ class eg:
     print("ezr.py -[h|seed|egs|OTHERS] [ARG]")
     print("ezr.py -egs (to list all the OTHER actions)")
 
-  def seed(n): 
-    ":set seed"
-    random.seed(n); print(random.random())
-    the.seed = n
+  def k(n)   : the.bayes.k = n
+  def m(n)   : the.bayes.m = n
+  def seed(n): the.seed    = n; random.seed(n); 
 
   def num(_):
     ":test NUM class"
@@ -310,7 +310,11 @@ class eg:
     print(sorted([round(d.chebyshev(smo(d)[0]),2) for i in range(20)]))
 
 def main(a):
-  random.seed(the.seed )
-  getattr(eg, a[1][1:],"h")(coerce(a[2]) if len(a)>2 else the.train)
+  random.seed(the.seed)
+  for i,arg in enumerate(a): 
+    if len(arg) > 1: 
+      fun = getattr(eg, arg[1:] , None)
+      if fun:  
+        fun( coerce(a[i+1]) if i < len(a)-1 else the.train )
 
 if __name__ == "__main__" and len(sys.argv) > 1:  main(sys.argv)
