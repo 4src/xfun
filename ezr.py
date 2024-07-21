@@ -212,7 +212,7 @@ def bestSplitter(data,rows,enough=None):
 
 def treeSelects(tree,row,lvl=0):
   if not tree.kids : return True
-  return tree.kids[0].bin.select(row) and treeSelects(tree.kids[0],row,lvl+1)
+  return tree.kids[0].bin.select(row) and treeSelects(tree.kids[0],row,lvl+1)
 # ---------------------------------------------------------------------------------------
 #     |_    _.       _    _ 
 #     |_)  (_|  \/  (/_  _> 
@@ -253,9 +253,10 @@ def smo(data, score=lambda B,R: B-R):
   random.shuffle(data.rows) # remove any  bias from older runs
   return smo1(data.rows[the.bayes.label:],
               data.clone(data.rows[:the.bayes.label]).sort().rows)
-# ---------------------------------------------------------------------------------------                                      
-#      _|  o   _  _|_   _.  ._    _   _  
-#     (_|  |  _>   |_  (_|  | |  (_  (/_                                       
+# ---------------------------------------------------------------------------------------                                  
+#      _  |        _  _|_   _   ._ 
+#     (_  |  |_|  _>   |_  (/_  |  
+                                
 def dist(col, x, y): 
   if  x==y=="?": return 1
   if not isNum(col): return x != y
@@ -306,8 +307,7 @@ def dendogram(data,  rows=None, lvl=0, stop=None, before=None):
     cluster.cut  = dists(data,right,rights[0]) 
     cluster.kids = [dendogram(data,lefts, lvl+1, stop, left),
                     dendogram(data,rights,lvl+1, stop, right)]
-  return cluster 
-# 
+  return cluster
 # ---------------------------------------------------------------------------------------
 #      _  _|_   _.  _|_   _ 
 #     _>   |_  (_|   |_  _> 
