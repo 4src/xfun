@@ -21,9 +21,16 @@ the = o(
   seed  = 1234567891, 
   round = 2,
   train = "data/misc/auto93.csv", 
-  stats = o(cohen=0.35),
+  stats = o(cohen=0.35,
+             cliffs=0.195, #border between small=.11 and medium=.28 
+            bootstraps=512,
+            confidence=0.05),
   bins  = o(max    = 17,
             enough = 0.5),
+  dist  = o(p=2,
+            far=0.95,
+            half=512,
+            stop=0.5),
   bayes = o(m=2,
             k=1,
             label=4,
@@ -246,6 +253,61 @@ def smo(data, score=lambda B,R: B-R):
   random.shuffle(data.rows) # remove any  bias from older runs
   return smo1(data.rows[the.bayes.label:],
               data.clone(data.rows[:the.bayes.label]).sort().rows)
+# ---------------------------------------------------------------------------------------                                      
+#      _|  o   _  _|_   _.  ._    _   _  
+#     (_|  |  _>   |_  (_|  | |  (_  (/_                                       
+def dist(col, x, y): 
+  if  x==y=="?": return 1
+  if not isNum(col): return x != y
+  x, y = col.norm(x), col.norm(y)
+  x = x if x !="?" else (1 if y<0.5 else 0)
+  y = y if y !="?" else (1 if x<0.5 else 0)
+  return abs(x-y)
+
+def dists(data, row1, row2): 
+  n = sum(dist(col, row1[col.at], row2[col.at])**the.dist.p for col in data.cols.x)
+  return (n / len(data.cols.x))**(1/the.dist.p)
+
+def neighbors(data, row1, rows):
+  "Sort the `rows` (default=`i.rows`),ascending, by distance to `r1`."
+  return sorted(rows or data.rows, key=lambda row2: dists(data,row1,row2))
+
+def faraway(data, row1,  rows) :
+  "Find something far away from `rpw11` with the `rows`."
+  farEnough = int( len(rows) * the.dist.far) # to avoid outliers, don't go 100% far away
+  return neighbors(data,row1, rows)[farEnough]
+
+def twoFar(data,  rows, before=None, sortp=False):
+  "Find two distant points within the `region`. Used by `half()`." 
+  rows = random.choices(rows, k=min(the.dist.half, len(rows)))
+  x = before or faraway(i, random.choice(rows), rows)
+  y = faraway(data, x, rows)
+  if sortp and data.chebyshev(y) <  data.chebyshev(x): x,y = y,x
+  return x, y,  dists(data,x,y)
+
+def half(data, rows, sortp=False, before=None):
+  "Split the `rows` in half according to each row's distance to two distant points.`."
+  left,right,C = twoFar(data, rows, sortp=sortp, before=before)
+  cos = lambda a,b: (a**2 + C**2 - b**2)/(2*C + 1E-30)
+  tmp = sorted(rows, key= lambda r: cos(dists(data,r,left), dists(data,r,right)))
+  mid = int(len(rows) // 2)
+  return tmp[:mid], tmp[mid:], left, right
+
+class CLUSTER(o):
+  def __init__(i,here,lvl): 
+    i.here, i.lvl, i.cut,   i.kids = here, lvl, 0, [] 
+
+def dendogram(data,  rows=None, lvl=0, stop=None, before=None):
+  rows = rows or data.rows
+  stop = stop or 2*len(rows)**the.dist.stop
+  cluster = CLUSTER(data:clone(rows),lvl)
+  if len(rows) > stop:
+    lefts,rights,left,right = half(data,rows, False, before)
+    cluster.cut  = dists(data,right,rights[0]) 
+    cluster.kids = [dendogram(data,lefts, lvl+1, stop, left),
+                    dendogram(data,rights,lvl+1, stop, right)]
+  return cluster 
+# 
 # ---------------------------------------------------------------------------------------
 #      _  _|_   _.  _|_   _ 
 #     _>   |_  (_|   |_  _> 
@@ -326,7 +388,7 @@ class SOME:
     def cohen(i,j):
       return abs( i.mid() - j.mid() ) < the.stats.cohen * i.pooledSd(j)
 
-    def cliffs(i,j, dull=0.147):
+    def cliffs(i,j, dull=None):
       """non-parametric effect size. threshold is border between small=.11 and medium=.28 
       from Table1 of  https://doi.org/10.3102/10769986025002101"""
       n,lt,gt = 0,0,0
@@ -335,9 +397,9 @@ class SOME:
           n += 1
           if x1 > y1: gt += 1
           if x1 < y1: lt += 1
-      return abs(lt - gt)/n  < dull  
+      return abs(lt - gt)/n  < (dull or the.stats.cliffs or 0.147) 
 
-    def  bootstrap(i,j,confidence=.05,samples=512):
+    def  bootstrap(i,j,confidence=None,bootstraps=None):
       """non-parametric significance test From Introduction to Bootstrap, 
         Efron and Tibshirani, 1993, chapter 20. https://doi.org/10.1201/9780429246593"""
       y0,z0  = i.has(), j.has()
@@ -346,8 +408,9 @@ class SOME:
       yhat   = [y1 - y.mid() + x.mid() for y1 in y0]
       zhat   = [z1 - z.mid() + x.mid() for z1 in z0] 
       pull   = lambda l:SOME(random.choices(l, k=len(l))) 
-      n      = sum(pull(yhat).delta(pull(zhat)) > delta0 for _ in range(samples)) 
-      return n / samples >= confidence
+      samples= bootstraps or the.stats.bootstraps or 512
+      n      = sum(pull(yhat).delta(pull(zhat)) > delta0  for _ in range(samples)) 
+      return n / samples >= (confidence or the.stats.confidence or 0.05)
 # ---------------------------------------------------------------------------------------
 #      _  _|_   _.  _|_   _         _|_  o  |   _ 
 #     _>   |_  (_|   |_  _>    |_|   |_  |  |  _>                                               
@@ -439,9 +502,10 @@ class eg:
     print("ezr.py -[h|seed|egs|OTHERS] [ARG]")
     print("ezr.py -egs (to list all the OTHER actions)")
 
-  def k(n)   : the.bayes.k = n
-  def m(n)   : the.bayes.m = n
-  def seed(n): the.seed    = n; random.seed(n); 
+  def seed(n)   : the.seed         = n; random.seed(n)
+  def k(n)      : the.bayes.k      = n
+  def m(n)      : the.bayes.m      = n
+  def cliffs(n) : the.stats.cliffs = n  
 
   def num(_):
     ":test NUM class"
