@@ -3,18 +3,20 @@
 from fileinput import FileInput as file_or_stdin
 import re,ast,sys,random
 from math import log,floor
-from math import e as E
+from math import e  as E
 from math import pi as PI
 R=random.random
 
 class o:
   __init__ = lambda i,**d: i.__dict__.update(d)
   __repr__ = lambda i    : i.__class__.__name__+"("+dict2str(i.__dict__)+")"
+
 # -------------------------------------------------------------------
 #                     _         
 #      _   _   ._   _|_  o   _  
 #     (_  (_)  | |   |   |  (_| 
 #                            _|     
+
 the = o(
   seed  = 1234567891, 
   round = 2,
@@ -31,7 +33,7 @@ the = o(
 # ------------------------------------------------------------------- 
 #     ._        ._ _    _      _      ._ _    _ 
 #     | |  |_|  | | |  _>     _>  \/  | | |  _> 
-#              
+            
 class COL(o):
   def __init__(i,txt=" ",at=0): i.n,i.txt, i.at = 0, txt, at
   def add(i,x)  : pass 
@@ -67,6 +69,7 @@ class NUM(COL):
 #      _|   _.  _|_   _.     _  _|_   _   ._   _.   _    _  
 #     (_|  (_|   |_  (_|    _>   |_  (_)  |   (_|  (_|  (/_ 
 #                                                   _|      
+
 class DATA(o):
   def __init__(i)      : i.rows=[];  i.cols = o(all=[],x=[],y=[],names=[])
   def add(i,row)       : (i.data if i.cols.all else i.head)(row)
@@ -144,13 +147,13 @@ def makeBins(col, rows, y, enough):
 def mergeBins(col, enough, bins):
   "return two bins that give the most reduction in overall y-diversity"
   if not isNum(col): return bins
-  least, out = 1E32 , None
-  #b4 = bins2bin(bins) 
+  more, out = -1 , None
+  b4 = bins2bin(bins) 
   for j in range(1,len(bins)):
     one, two = bins2bin(bins[:j]), bins2bin(bins[j:]) 
-    here = one.n * one.ydiv  + two.n * two.ydiv 
-    if here  < least and one.n > enough and two.n > enough:
-      least, out = here, [one, two]
+    here = one.n * (one.ymid - b4.ymid)**2  + two.n * (two.ymid - b4.ymid)**2
+    if here > more and one.n > enough and two.n > enough:
+      more, out = here, [one, two]
       one.lo, two.hi = -1E32, 1E32
       two.lo = one.hi
   return out
@@ -163,10 +166,12 @@ class TREE(o):
     i.data,i.here, i.lvl, i.bin, i.kids = data, here, lvl, bin, []
     if  bin:
       i.ymid = bin.ymid
+      i.ydiv = bin.ydiv
     else:
       n=NUM()
       [n.add(data.chebyshev(row)) for row in i.here.rows]
       i.ymid = n.mu 
+      i.ydiv = n.div()
 
   def __repr__(i):
     return f"{i.ymid:.2f} {len(i.here.rows):5}  {'|.. '*(i.lvl-1)} {'' if i.lvl==0 else i.bin}"
@@ -180,22 +185,27 @@ def tree(data,rows=None, stop=None):
   def grow(rows, stop=None, lvl=0, above=None):
     stop = stop or len(rows)**0.5
     tree = TREE(data,data.clone(rows), lvl, above)  
-    for bin in bestSplitter(data,rows): 
+    for bin in bestSplitter(data,rows,stop): 
       sub = bin.selects(rows) 
       if len(sub) < len(rows) and len(sub) > stop: 
         tree.kids.append(grow(sub, stop=stop, lvl=lvl+1, above=bin))
     return tree
   return grow(rows or data.rows)
   
-def bestSplitter(data,rows):
+def bestSplitter(data,rows,enough=None):
+  enough=enough or len(data.rows)**the.bins.enough
   out, least = [], 1E32, 
   for col in data.cols.x:
-    bins = [b for b in makeBins(col, rows, data.chebyshev,len(data.rows)**the.bins.enough)] 
+    bins = [b for b in makeBins(col, rows, data.chebyshev,enough)] 
     tmp  = bins2bin(bins)  
     if len(bins) > 0 and tmp.ydiv < least:
       least = tmp.ydiv 
       out   = bins 
-  return sorted(out, key=lambda b:b.ymid) 
+  return sorted(out, key=lambda b:b.ymid) 
+
+def treeSelects(tree,row,lvl=0):
+  if not tree.kids : return True
+  return tree.kids[0].bin.select(row) and treeSelects(tree.kids[0],row,lvl+1)
 # ---------------------------------------------------------------------------------------
 #     |_    _.       _    _ 
 #     |_)  (_|  \/  (/_  _> 
@@ -220,8 +230,8 @@ def smo(data, score=lambda B,R: B-R):
     cut  = int(.5 + len(done) ** the.bayes.best)
     best = data.clone(done[:cut])
     rest = data.clone(done[cut:])
-    key  = lambda r: score(loglikes(best, r, len(done), 2),
-                           loglikes(rest, r, len(done), 2))
+    key  = lambda r: score(loglikes(best,r, len(done),2), 
+                           loglikes(rest,r, len(done),2))
     random.shuffle(todo) # optimization: only sort a random subset of todo
     return sorted(todo[:the.bayes.any], key=key, reverse=True) + todo[the.bayes.any:]
 
@@ -230,8 +240,8 @@ def smo(data, score=lambda B,R: B-R):
       if len(todo) < 3: break
       top,*todo = guess(todo, done)
       done += [top]
-      done = data.clone(done).sort().rows
-    return done
+      done  = data.clone(done).sort().rows
+    return done,todo
 
   random.shuffle(data.rows) # remove any  bias from older runs
   return smo1(data.rows[the.bayes.label:],
@@ -485,7 +495,8 @@ class eg:
   def smo(file):
     "[FILE]:test bin generation"
     d= DATA().fromFile(file or the.train)
-    print(sorted([round(d.chebyshev(smo(d)[0]),2) for i in range(20)]))
+    done,_ = smo(d)
+    print(sorted([round(d.chebyshev(done[0]),2) for i in range(20)]))
 
   def someSame(_):
     def it(x): return "T" if x else "."
@@ -518,7 +529,30 @@ class eg:
           SOME([0.35, 0.52 ,0.63, 0.8]*n,   "x2"),
           SOME([0.13 ,0.23, 0.38 , 0.48]*n, "x3"),
           ])
-    
+
+  def etax(file):
+    "[FILE]:test bin generation"
+    d = DATA().fromFile(file or the.train)
+    num0, num1, num2, num3, num4 = [],[],[],[],[]
+    for row in d.rows: num0 += [d.chebyshev(row)]
+    for i in range(20):
+      done,todo = smo(d) 
+      num1 += [d.chebyshev(done[0])]
+      cut  = int(.5 + len(done) ** the.bayes.best)
+      best = d.clone(done[:cut])
+      rest = d.clone(done[cut:])
+      bests = lambda r:loglikes(best,r, len(done), 2)
+      rests = lambda r:loglikes(rest,r, len(done), 2)
+      t = tree(d.clone(done),stop=4)
+      for row in todo:
+        if treeSelects(t,row)     : num2 += [d.chebyshev(row)]
+        if bests(row) > rests(row): num3 += [d.chebyshev(row)]
+    eg0([SOME(num0,txt="baseline"),
+         SOME(num1,txt="smo"),
+         SOME(num2,txt="tree"),
+         SOME(num3,txt="nb")
+         ]) 
+
 def eg0(somes):
   all = SOME(somes)
   last = None
@@ -534,5 +568,5 @@ def main(a):
       fun = getattr(eg, arg[1:] , None)
       if fun:  
         fun( coerce(a[i+1]) if i < len(a)-1 else the.train )
-
+# ---------------------------------------------------------------------------------------
 if __name__ == "__main__" and len(sys.argv) > 1:  main(sys.argv)

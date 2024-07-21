@@ -135,4 +135,7 @@ endef
 export ISP
 
 trees:
-	$(foreach f,$(wildcard  data/*/*.csv), printf "\n\n---- $f ----------\n\n"; ./ezr.py -tree $f; )
+	$(foreach f,$(wildcard  data/*/*.csv), printf "\n\n==== $f \n\n"; ./ezr.py -tree $f; )
+
+etax:
+	$(foreach f,$(wildcard  data/*/*.csv), printf "\n\n==== $f \n\n"; ./ezr.py -etax $f; )
