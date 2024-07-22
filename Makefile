@@ -73,14 +73,14 @@ ezrpdf:
 	mkdir -p ~/tmp
 	echo "pdf-ing $@ ... "
 	a2ps                 \
-		-BR                \
+		-Br                \
 		--file-align=fill      \
 		--line-numbers=1        \
  --lines-per-page=100 \
 		--pro=color               \
 		--left-footer="$<"            \
 		--borders=no             \
-		--columns 2                  \
+		--columns 3                  \
 		-M letter                     \
 		--footer=""                    \
                 --right-footer="%s. of %s#"               \

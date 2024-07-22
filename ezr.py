@@ -8,10 +8,10 @@ from math import pi as PI
 R=random.random
 
 class o:
-  __init__ = lambda i,**d: i.__dict__.update(d)
-  __repr__ = lambda i    : i.__class__.__name__+"("+dict2str(i.__dict__)+")"
+  __init__ = lambda i,**d : i.__dict__.update(d)
+  __repr__ = lambda i     : i.__class__.__name__+"("+dict2str(i.__dict__)+")"
 
-# -------------------------------------------------------------------
+# ---------------------------------------------------------------------------------------
 #                     _         
 #      _   _   ._   _|_  o   _  
 #     (_  (_)  | |   |   |  (_| 
@@ -98,6 +98,46 @@ class DATA(o):
       if txt[-1] != "X":
         (i.cols.y if col.txt[-1] in "+-!" else i.cols.x).append(col)
 # ---------------------------------------------------------------------------------------
+#     |_    _.       _    _ 
+#     |_)  (_|  \/  (/_  _> 
+#               /           
+
+def loglikes(data, row, nall, nh):
+  prior = (len(data.rows) + the.bayes.k) / (nall + the.bayes.k*nh)
+  likes = [like(col, row[col.at], prior) for col in data.cols.x if row[col.at] != "?"]
+  return sum(log(x) for x in likes + [prior] if x>0)
+
+def like(col, x, prior) :
+  if not isNum(col):
+    return (col.has.get(x,0) + the.bayes.m*prior) / (col.n+the.bayes.m)
+  else:
+    v     = col.div()**2 + 1E-30
+    nom   = E**(-1*(x - col.mid())**2/(2*v)) + 1E-30
+    denom = (2*PI*v) ** 0.5
+    return min(1, nom/(denom + 1E-30))
+
+def smo(data, score=lambda B,R: B-R):
+  def guess(todo, done):
+    cut  = int(.5 + len(done) ** the.bayes.best)
+    best = data.clone(done[:cut])
+    rest = data.clone(done[cut:])
+    key  = lambda r: score(loglikes(best,r, len(done),2), 
+                           loglikes(rest,r, len(done),2))
+    random.shuffle(todo) # optimization: only sort a random subset of todo
+    return sorted(todo[:the.bayes.any], key=key, reverse=True) + todo[the.bayes.any:]
+
+  def smo1(todo, done):
+    for _ in range(the.bayes.Last - the.bayes.label):
+      if len(todo) < 3: break
+      top,*todo = guess(todo, done)
+      done += [top]
+      done  = data.clone(done).sort().rows
+    return done,todo
+
+  random.shuffle(data.rows) # remove any  bias from older runs
+  return smo1(data.rows[the.bayes.label:],
+              data.clone(data.rows[:the.bayes.label]).sort().rows)
+# ---------------------------------------------------------------------------------------
 #     |_   o  ._  
 #     |_)  |  | | 
 
@@ -165,10 +205,17 @@ def mergeBins(col, enough, bins):
       two.lo = one.hi
   return out
 # ---------------------------------------------------------------------------------------
-#     _|_  ._   _    _  
-#      |_  |   (/_  (/_ 
+#     ._   _    _   ._   _    _   _  o   _   ._     _|_  ._   _    _
+#     |   (/_  (_|  |   (/_  _>  _>  |  (_)  | |     |_  |   (/_  (/_
+#               _|
 
 class TREE(o):
+  def nodes(i):
+    yield i 
+    for kid in i.kids: 
+      for sub in kid.nodes(): yield sub 
+
+class REGRESSION(TREE):
   def __init__(i,data,here,lvl,bin=None):
     i.data,i.here, i.lvl, i.bin, i.kids = data, here, lvl, bin, []
     if  bin:
@@ -182,11 +229,6 @@ class TREE(o):
 
   def __repr__(i):
     return f"{i.ymid:.2f} {len(i.here.rows):5}  {'|.. '*(i.lvl-1)} {'' if i.lvl==0 else i.bin}"
-
-  def nodes(i):
-    yield i 
-    for kid in i.kids: 
-      for sub in kid.nodes(): yield sub 
 
 def tree(data,rows=None, stop=None):
   def grow(rows, stop=None, lvl=0, above=None):
@@ -213,50 +255,17 @@ def bestSplitter(data,rows,enough=None):
 def treeSelects(tree,row,lvl=0):
   if not tree.kids : return True
   return tree.kids[0].bin.select(row) and treeSelects(tree.kids[0],row,lvl+1)
-# ---------------------------------------------------------------------------------------
-#     |_    _.       _    _ 
-#     |_)  (_|  \/  (/_  _> 
-#               /           
-
-def loglikes(data, row, nall, nh):
-  prior = (len(data.rows) + the.bayes.k) / (nall + the.bayes.k*nh)
-  likes = [like(col, row[col.at], prior) for col in data.cols.x if row[col.at] != "?"]
-  return sum(log(x) for x in likes + [prior] if x>0)
-
-def like(col, x, prior) :
-  if not isNum(col):
-    return (col.has.get(x,0) + the.bayes.m*prior) / (col.n+the.bayes.m)
-  else:
-    v     = col.div()**2 + 1E-30
-    nom   = E**(-1*(x - col.mid())**2/(2*v)) + 1E-30
-    denom = (2*PI*v) ** 0.5
-    return min(1, nom/(denom + 1E-30))
-
-def smo(data, score=lambda B,R: B-R):
-  def guess(todo, done):
-    cut  = int(.5 + len(done) ** the.bayes.best)
-    best = data.clone(done[:cut])
-    rest = data.clone(done[cut:])
-    key  = lambda r: score(loglikes(best,r, len(done),2), 
-                           loglikes(rest,r, len(done),2))
-    random.shuffle(todo) # optimization: only sort a random subset of todo
-    return sorted(todo[:the.bayes.any], key=key, reverse=True) + todo[the.bayes.any:]
-
-  def smo1(todo, done):
-    for _ in range(the.bayes.Last - the.bayes.label):
-      if len(todo) < 3: break
-      top,*todo = guess(todo, done)
-      done += [top]
-      done  = data.clone(done).sort().rows
-    return done,todo
-
-  random.shuffle(data.rows) # remove any  bias from older runs
-  return smo1(data.rows[the.bayes.label:],
-              data.clone(data.rows[:the.bayes.label]).sort().rows)
 # ---------------------------------------------------------------------------------------                                  
-#      _  |        _  _|_   _   ._ 
-#     (_  |  |_|  _>   |_  (/_  |  
+#      _  |        _  _|_   _   ._    _|_  ._   _    _
+#     (_  |  |_|  _>   |_  (/_  |      |_  |   (/_  (/_
                                 
+class CLUSTER(TREE):
+  def __init__(i,here,lvl): 
+    i.here, i.lvl, i.cut,   i.kids = here, lvl, 0, [] 
+
+  def __repr__(i):
+    return f"{i.ymid:.2f} {len(i.here.rows):5}  {'|.. '*(i.lvl-1)} {'' if i.lvl==0 else i.bin}"
+
 def dist(col, x, y): 
   if  x==y=="?": return 1
   if not isNum(col): return x != y
@@ -281,7 +290,7 @@ def faraway(data, row1,  rows) :
 def twoFar(data,  rows, before=None, sortp=False):
   "Find two distant points within the `region`. Used by `half()`." 
   rows = random.choices(rows, k=min(the.dist.half, len(rows)))
-  x = before or faraway(i, random.choice(rows), rows)
+  x = before or faraway(data, random.choice(rows), rows)
   y = faraway(data, x, rows)
   if sortp and data.chebyshev(y) <  data.chebyshev(x): x,y = y,x
   return x, y,  dists(data,x,y)
@@ -294,14 +303,10 @@ def half(data, rows, sortp=False, before=None):
   mid = int(len(rows) // 2)
   return tmp[:mid], tmp[mid:], left, right
 
-class CLUSTER(o):
-  def __init__(i,here,lvl): 
-    i.here, i.lvl, i.cut,   i.kids = here, lvl, 0, [] 
-
 def dendogram(data,  rows=None, lvl=0, stop=None, before=None):
   rows = rows or data.rows
   stop = stop or 2*len(rows)**the.dist.stop
-  cluster = CLUSTER(data:clone(rows),lvl)
+  cluster = CLUSTER(data.clone(rows),lvl)
   if len(rows) > stop:
     lefts,rights,left,right = half(data,rows, False, before)
     cluster.cut  = dists(data,right,rights[0]) 
@@ -496,6 +501,8 @@ class eg:
         doc = getattr(eg,s).__doc__ or f"[ARG]:set {s}"
         a = doc.split(":")
         print(f"  -{s:5} {a[0]}\t  {a[1]} ")
+
+  def h(_):  return 1
 
   def h(_): 
     ":show help"
