@@ -22,7 +22,7 @@ the = o(
   round = 2,
   train = "data/misc/auto93.csv", 
   stats = o(cohen=0.35,
-             cliffs=0.195, #border between small=.11 and medium=.28 
+            cliffs=0.195, #border between small=.11 and medium=.28 
             bootstraps=512,
             confidence=0.05),
   bins  = o(max    = 17,
@@ -102,7 +102,7 @@ class DATA(o):
 #     |_)  (_|  \/  (/_  _> 
 #               /           
 
-def loglikes(data, row, nall, nh):
+def loglikes(data, row, nall, nh): 
   prior = (len(data.rows) + the.bayes.k) / (nall + the.bayes.k*nh)
   likes = [like(col, row[col.at], prior) for col in data.cols.x if row[col.at] != "?"]
   return sum(log(x) for x in likes + [prior] if x>0)
@@ -233,7 +233,7 @@ class REGRESSION(TREE):
 def tree(data,rows=None, stop=None):
   def grow(rows, stop=None, lvl=0, above=None):
     stop = stop or len(rows)**0.5
-    tree = TREE(data,data.clone(rows), lvl, above)  
+    tree = REGRESSION(data,data.clone(rows), lvl, above)  
     for bin in bestSplitter(data,rows,stop): 
       sub = bin.selects(rows) 
       if len(sub) < len(rows) and len(sub) > stop: 
@@ -264,7 +264,7 @@ class CLUSTER(TREE):
     i.here, i.lvl, i.cut,   i.kids = here, lvl, 0, [] 
 
   def __repr__(i):
-    return f"{i.ymid:.2f} {len(i.here.rows):5}  {'|.. '*(i.lvl-1)} {'' if i.lvl==0 else i.bin}"
+    return f" {'|.. '*(i.lvl-1)} {len(i.here.rows)}"
 
 def dist(col, x, y): 
   if  x==y=="?": return 1
@@ -368,7 +368,7 @@ class SOME:
       return (((i.n - 1)*sd1 * sd1 + (j.n-1)*sd2 * sd2) / (i.n + j.n-2))**.5
 
     def norm(i, n):
-      "Noramlize `n` to the range 0..1 for min..max"
+      "Normalize `n` to the range 0..1 for min..max"
       return (n-i.lo)/(i.hi - i.lo + 1E-30)
 
     def bar(i, some, fmt="%8.3f", word="%10s", width=50):
@@ -401,8 +401,8 @@ class SOME:
         for y1 in j.has():
           n += 1
           if x1 > y1: gt += 1
-          if x1 < y1: lt += 1
-      return abs(lt - gt)/n  < (dull or the.stats.cliffs or 0.147) 
+          if x1 < y1: lt += 1 
+      return abs(lt - gt)/n  < (dull or the.stats.cliffs or 0.197)  
 
     def  bootstrap(i,j,confidence=None,bootstraps=None):
       """non-parametric significance test From Introduction to Bootstrap, 
@@ -494,6 +494,12 @@ def prints(matrix):
 #           _|     
 
 class eg:
+  def all(_):
+    for s in dir(eg):
+      if s[0] != "_" and s != "all" and getattr(eg,s).__doc__:
+        print(f"\n--- {s} ---------\n")
+        getattr(eg,s)(the.train)
+        
   def egs(_):
     ":show all examples"
     for s in dir(eg): 
@@ -564,10 +570,13 @@ class eg:
     for node in t.nodes(): print(node)
 
   def smo(file):
-    "[FILE]:test bin generation"
+    "[FILE]:test bin generation" 
     d= DATA().fromFile(file or the.train)
-    done,_ = smo(d)
-    print(sorted([round(d.chebyshev(done[0]),2) for i in range(20)]))
+    out=[]
+    for _ in range(20):
+      done,_ = smo(d)
+      out += [round(d.chebyshev(done[0]),2)]
+    print(sorted(out))
 
   def someSame(_):
     def it(x): return "T" if x else "."
@@ -585,18 +594,18 @@ class eg:
       x *= 1.04
  
   def some2(_,n=5):
-    eg0([ SOME([0.34, 0.49 ,0.51, 0.6]*n,   txt="x1"),
+    some0([ SOME([0.34, 0.49 ,0.51, 0.6]*n,   txt="x1"),
           SOME([0.6  ,0.7 , 0.8 , 0.89]*n,  txt="x2"),
           SOME([0.09 ,0.22, 0.28 , 0.5]*n, txt="x3"),
           SOME([0.6  ,0.7,  0.8 , 0.9]*n,   txt="x4"),
           SOME([0.1  ,0.2,  0.3 , 0.4]*n,   txt="x5")])
     
   def some3(_):
-    eg0([ SOME([0.32,  0.45,  0.50,  0.5,  0.55],    "one"),
+    some0([ SOME([0.32,  0.45,  0.50,  0.5,  0.55],    "one"),
           SOME([ 0.76,  0.90,  0.95,  0.99,  0.995], "two")])
 
   def some4(_,n=20):
-    eg0([ SOME([0.24, 0.25 ,0.26, 0.29]*n,   "x1"),
+    some0([ SOME([0.24, 0.25 ,0.26, 0.29]*n,   "x1"),
           SOME([0.35, 0.52 ,0.63, 0.8]*n,   "x2"),
           SOME([0.13 ,0.23, 0.38 , 0.48]*n, "x3"),
           ])
@@ -618,13 +627,32 @@ class eg:
       for row in todo:
         if treeSelects(t,row)     : num2 += [d.chebyshev(row)]
         if bests(row) > rests(row): num3 += [d.chebyshev(row)]
-    eg0([SOME(num0,txt="baseline"),
+    some0([SOME(num0,txt="baseline"),
          SOME(num1,txt="smo"),
          SOME(num2,txt="tree"),
          SOME(num3,txt="nb")
          ]) 
 
-def eg0(somes):
+  def dists(file=None):
+    "[FILE]:test distance calculations"
+    d = DATA().fromFile(file or the.train)
+    print(sorted([round(dists(d,d.rows[0],row1),2) for  row1 in d.rows]))
+    x,y,C=twoFar(d,d.rows)
+    print(C,x,y)
+
+  def halfs(file=None):
+    "[FILE]:test half calculations"
+    d = DATA().fromFile(file or the.train)
+    left,right,_,_=half(d,d.rows)
+    print(len(left),len(right))
+
+  def dendos(file=None):
+    "[FILE]:test dendogram calculations"
+    d = DATA().fromFile(file or the.train)
+    t = dendogram(d)
+    for node in t.nodes(): print(node)
+    
+def some0(somes):
   all = SOME(somes)
   last = None
   for some in sk(somes):
