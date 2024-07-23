@@ -3,6 +3,7 @@
 from fileinput import FileInput as file_or_stdin
 import re,ast,sys,random
 from math import log,floor
+any=random.chice
 
 class o:
   __init__ = lambda i,**d : i.__dict__.update(d)
@@ -15,7 +16,7 @@ the = o(
   round = 2,
   train = "data/misc/auto93.csv",  
   dist  = o(p=2,
-            sample=20,
+            fars=30,
             stop=10))                                                   
             
 class COL(o):
@@ -80,13 +81,12 @@ class DATA(o):
     n = sum(dist(col, row1[col.at], row2[col.at])**the.dist.p for col in i.cols.x)
     return (n / len(i.cols.x))**(1/the.dist.p)
 
+  def neighbors(i, row1, rows):
+    return sorted(rows or o.rows, key=lambda row2: i.dists(,row1,row2))
+
   def twoFar(i, rows) : 
-    most = 0
-    for _ in range(i.dists.sample):
-      this,that = random.choice(rows),random.choice(rows)
-      tmp = i.dists(x,y)
-      if tmp > most:  x,y,most = this,that,tmp
-    return x,y
+    return most((any(rows),any(rows)) for _ in range(the.dists.far),
+                key= lambda two: i.dists(*two))
   
   def half(i,rows):
     left,right = i.twoFar(rows) 
@@ -96,19 +96,37 @@ class DATA(o):
       (lefts if i.dists(row,left) <= toLeft else rights).append(row)
     return left, right, lefts, rights, toLeft
 
-  def cluster(i, rows, lvl=0):  
-    it = o(here=i.clone(rows), lvl=lvl)
+  def cluster(i, rows, lvl=0, gaurd=nil):  
+    node = TREE(i.clone(rows), lvl, gaurd)
     it.left, it.right, ls, rs, it.toLeft = i.half(rows)
-    no = the.dist.stop
-    if len(ls) > no and len(ls) < len(rows): it.lefts  = i.cluster(ls, lvl+1) 
-    if len(rs) > no and len(rs) < len(rows): it.rights = i.cluster(rs, lvl+1)  
-    return it
+    go   = lambda row: i.dists(row,left) <= it.toleft
+    nogo = lambda row: not go(row)
+    if node.ok2go(ls): it.lefts  = i.cluster(ls, lvl+1, gaurd = go)
+    if node.ok2go(rs): it.rights = i.cluster(rs, lvl+1, gaurd = nogo)
+    return node
+
+class TREE(o):
+  def __init__(i, here,lvl,gaurd): i.here, i.lvl, i.gaurd = here, lvl, gaurd
+  def ok2go(i,rows)  : return len(rows) > the.dist.stop and len(rows) < len(i.here.rows) 
+  def go(i,row)      : return i.gaurd(row)
+  def nogo(i,row)    : return not i.gaurd(row)
+
+  def leaf(i,row) :
+    for kid in [i.lefts,i.rights]:
+      if kid.go(row): return kid.leaf(row)
+    return i
+
+  def predict(i,row):
+    here         = i.leaf(row).here
+    row1,row2,_* = here.neighbors(row)
+    d1,d2        = here.dist(row1,row), data,dist(row2,row)
+    w1,w2        = 1/d1**2, i/d2**2
+    out={}
+    for col in data.cols.y do
+      y1, y2      = row1[col.at], row2[col.at]
+      out{col.at} = (y1 * w1) + (y2 * w2) / (w1 + w2)
+    return out
     
-def predict(data,col,tree,row):
-
-  if data.dists(tree.left,row) <= tree.toLeft:
-
-
 def coerce(s):
   try: return ast.literal_eval(s)
   except Exception:  return s
