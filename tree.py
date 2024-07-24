@@ -108,8 +108,9 @@ class DATA(o):
     leaf     = tree.leaf(row).here
     r1,r2,*_ = i.neighbors(row, leaf.rows)
     print(r1,r2,end=", ")
-    d1,d2    = i.dist(r1,row),i.dist(r2,row)
-    w1,w2    = 1/(1 if d1 ==0 else d1)**2, 1/(1 if d2==0 else d2)**2
+    d1,d2    = i.dist(r1,row) +1E-322,i.dist(r2,row)+1E-32
+    #w1,w2    = 1/(1 if d1 ==0 else d1)**2, 1/(1 if d2==0 else d2)**2
+    w1,w2    = 1/d1**2, 1/d2**2
     #return {c.at: (r1[c.at]  + r2[c.at]) / 2 for c in here.cols.y}
     return {c.at: ((r1[c.at] * w1) + (r2[c.at] * w2)) / (w1 + w2) for c in i.cols.y}
 
