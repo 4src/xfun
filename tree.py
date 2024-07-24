@@ -98,16 +98,27 @@ class DATA(o):
     return lefts, rights, left, right, toLeft
 
   def cluster(i, rows, lvl=0, guard=None):
-    it = TREE(i.clone(rows), lvl, guard)
-    ls, rs, it.left, it.right, it.toLeft = i.half(rows)
-    go = lambda row: i.dist(row,it.left) <= it.toleft
-    if it.ok2go(ls): it.lefts  = i.cluster(ls, lvl+1, guard = go)
-    if it.ok2go(rs): it.rights = i.cluster(rs, lvl+1, guard = lambda row: not go(row))
+    ls, rs, left, right, toLeft = i.half(rows)
+    it = TREE(i.clone(rows), lvl, guard,left,right,toLeft)
+    if it.ok2go(ls): it.lefts  = i.cluster(ls, lvl+1, lambda r: i.dist(r,left) <= toLeft)
+    if it.ok2go(rs): it.rights = i.cluster(rs, lvl+1, lambda r: i.dist(r,left) > toLeft)
     return it
 
+  def predict(i,tree,row):
+    leaf     = tree.leaf(row).here
+    r1,r2,*_ = i.neighbors(row, leaf.rows)
+    print(r1,r2,end=", ")
+    d1,d2    = i.dist(r1,row),i.dist(r2,row)
+    w1,w2    = 1/(1 if d1 ==0 else d1)**2, 1/(1 if d2==0 else d2)**2
+    #return {c.at: (r1[c.at]  + r2[c.at]) / 2 for c in here.cols.y}
+    return {c.at: ((r1[c.at] * w1) + (r2[c.at] * w2)) / (w1 + w2) for c in i.cols.y}
+
 class TREE(o):
-  def __init__(i, here,lvl,guard): 
-    i.here, i.lvl, i.guard,i.lefts,i.rights = here, lvl, guard,None,None
+  def __init__(i, here,lvl,guard,left,right,toLeft):
+    i.here, i.lvl,i.guard = here, lvl, guard
+    i.left, i.right, i.toLeft = left, right, toLeft
+    i.lefts, i.rights = None, None
+
   def ok2go(i,rows)  : return len(rows) > the.dist.stop and len(rows) < len(i.here.rows)
   def go(i,row)      : return i.guard(row)
   def nogo(i,row)    : return not i.guard(row)
@@ -123,16 +134,10 @@ class TREE(o):
 
   def leaf(i,row) :
     for kid in [i.lefts,i.rights]:
-      if kid.guard(row): return kid.leaf(row)
+      if kid and kid.guard(row): return kid.leaf(row)
     return i
 
-  def predict(i,row):
-    here     = i.leaf(row).here
-    r1,r2,*_ = here.neighbors(row)
-    d1,d2    = here.dist(r1,row), here.dist(r2,row)
-    w1,w2    = 1/d1**2, 1/d2**2
-    return {c.at: ((r1[c.at] * w1) + (r2[c.at] * w2) / (w1 + w2)) for c in here.cols.y}
-#----------------------------------------------------------------------------------------
+  #----------------------------------------------------------------------------------------
 def pretty(d):
   short = lambda v : round(v,the.round) if isinstance(v,float) else v
   return " ".join(f":{k} {short(v)}" for k,v in d.items())
@@ -150,19 +155,20 @@ def csv(file="-"):
 def cli(settings):
   now = settings.__dict__
   for  j,arg in enumerate(sys.argv):
-    now = cli1(settings, now, arg[2:]       if len(arg) > 2  else None,
+    now = _cli(settings, now, arg[2:]       if len(arg) > 2  else None,
                               arg[1]        if len(arg) == 2 else None,
                               sys.argv[j+1] if j < len(sys.argv) - 1 else "")
 
-def cli1(settings,now,new,flag,val):
-  if new in settings.__dict__: return settings.__dict__[new].__dict__
-  for k,v in now.items():
-    if k[0] == flag:
-      now[k] = coerce("False" if str(v)=="True" else ("True" if str(v)=="False" else val))
+def _cli(settings,now,new,flag,val):
+  if new in settings.__dict__: 
+    now = settings.__dict__[new].__dict__
+  else:
+    for k,v in now.items():
+      if k[0]==flag: now[k]= coerce("False" if v==True else ("True" if v==False else val))
   return now
 #----------------------------------------------------------------------------------------
 class eg:
-  def options(): print(the) 
+  def options(): print(the)
 
   def help()   : print("./tree.py [ARG] -g action")
 
@@ -172,23 +178,23 @@ class eg:
 
   def dist():
     d=DATA().fromFile(the.train)
-    print(sorted(round(d.dist(any(d.rows),d.rows[0]),2) for _ in range(30)))
-    random.shuffle(d.rows)
-    d.neighbors(d.rows[0], d.rows[:30])
-    for samples in [10,20,30,40,80,160,320]:
-      x,y = d.twoFar(d.rows,samples)
-      print(samples, round(d.dist(x,y),3)) 
-    print("")
-    ls,rs,l,r,c=d.half(d.rows)
-    print(len(ls), len(rs),c)
-    print(l)
-    print(r)
-    print("")
+    # print(sorted(round(d.dist(any(d.rows),d.rows[0]),2) for _ in range(30)))
+    # random.shuffle(d.rows)
+    # d.neighbors(d.rows[0], d.rows[:30])
+    # for samples in [10,20,30,40,80,160,320]:
+    #   x,y = d.twoFar(d.rows,samples)
+    #   print(samples, round(d.dist(x,y),3)) 
+    # print("")
+    # ls,rs,l,r,c=d.half(d.rows)
+    # print(len(ls), len(rs),c)
+    # print(l)
+    # print(r)
+    # print("")
     t =  d.cluster(d.rows)
-    for n in t.nodes(): print(n)
-    print("")
-    for row in d.rows: 
-      print(row, t.predict(row))
+    # for n in t.nodes(): print(n)
+    # print("")
+    for row in [any(d.rows) for _ in range(20)]: 
+      print(row, d.predict(t,row))
 
 #----------------------------------------------------------------------------------------
 cli(the)
