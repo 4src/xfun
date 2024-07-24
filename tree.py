@@ -1,4 +1,4 @@
-#!/usr/bin/env python3.12
+#!/usr/bin/env python3.13 -B
 # vim: set ts=2 sw=2 et :
 from fileinput import FileInput as file_or_stdin
 import re,ast,sys,random
@@ -7,16 +7,17 @@ any=random.choice
 
 class o:
   __init__ = lambda i,**d : i.__dict__.update(d)
-  __repr__ = lambda i     : i.__class__.__name__+"("+str(i.__dict__)+")"
+  __repr__ = lambda i     : i.__class__.__name__+"("+pretty(i.__dict__)+")"
 
 the = o(train="data/misc/config")
 
 the = o(
-  seed  = 1234567891,
+  go    = "help",
   round = 2,
+  seed  = 1234567891,
   train = "data/misc/auto93.csv",
-  dist  = o(p=2,
-            far=30,
+  dist  = o(far=30,
+            p=2,
             stop=10))
 
 class COL(o):
@@ -99,7 +100,7 @@ class DATA(o):
   def cluster(i, rows, lvl=0, guard=None):
     it = TREE(i.clone(rows), lvl, guard)
     ls, rs, it.left, it.right, it.toLeft = i.half(rows)
-    go = lambda row: i.dists(row,it.left) <= it.toleft 
+    go = lambda row: i.dists(row,it.left) <= it.toleft
     if it.ok2go(ls): it.lefts  = i.cluster(ls, lvl+1, guard = go)
     if it.ok2go(rs): it.rights = i.cluster(rs, lvl+1, guard = lambda row: not go(row))
     return it
@@ -119,8 +120,12 @@ class TREE(o):
     here     = i.leaf(row).here
     r1,r2,*_ = here.neighbors(row)
     d1,d2    = here.dists(r1,row), here.dists(r2,row)
-    w1,w2    = 1/d1**2, 1/d2**2 
-    return {c.at: ((r1[c.at] * w1) + (r2[c.at] * w2) / (w1 + w2)) for c in here.cols.y} 
+    w1,w2    = 1/d1**2, 1/d2**2
+    return {c.at: ((r1[c.at] * w1) + (r2[c.at] * w2) / (w1 + w2)) for c in here.cols.y}
+
+def pretty(d):
+  short = lambda v : round(v,the.round) if isinstance(v,float) else v
+  return " ".join(f":{k} {short(v)}" for k,v in d.items())
 
 def coerce(s):
   try: return ast.literal_eval(s)
@@ -131,3 +136,28 @@ def csv(file="-"):
     for line in src:
       line = re.sub(r'([\n\t\r ]|#.*)', '', line)
       if line: yield [coerce(s.strip()) for s in line.split(",")]
+
+def cli(settings):
+  now = settings.__dict__
+  for  j,arg in enumerate(sys.argv):
+    now= cli1(settings, now, arg[2:]       if len(arg) > 2  else None,
+                             arg[1]        if len(arg) == 2 else None,
+                             sys.argv[j+1] if j < len(sys.argv) - 1 else "")
+
+def cli1(settings, now,new,flag,val):
+  if new in settings.__dict__: return settings.__dict__[new].__dict__
+  for k,v in now.items():
+    if k[0] == flag:
+      now[k] = coerce("False" if v==True else ("True" if v==False else val))
+  return now
+
+class eg:
+  def options(): print(the) 
+  def help()   : print("./tree.py [ARG] -g action")
+  def data():
+   d=DATA().fromFile(the.train)
+   print(d.cols.y[1])
+
+cli(the)
+getattr(eg, the.go)()
+
