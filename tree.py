@@ -1,15 +1,14 @@
-#!/usr/bin/env python3.13 -B
+#!/usr/bin/env python3.12 -B
 # vim: set ts=2 sw=2 et :
 from fileinput import FileInput as file_or_stdin
 import re,ast,sys,random
 from math import log,floor
 any=random.choice
 
+#----------------------------------------------------------------------------------------
 class o:
   __init__ = lambda i,**d : i.__dict__.update(d)
   __repr__ = lambda i     : i.__class__.__name__+"("+pretty(i.__dict__)+")"
-
-the = o(train="data/misc/config")
 
 the = o(
   go    = "help",
@@ -20,6 +19,7 @@ the = o(
             p=2,
             stop=10))
 
+#----------------------------------------------------------------------------------------
 class COL(o):
   def __init__(i,txt=" ",at=0): i.n,i.txt, i.at = 0, txt, at
   def add(i,x)  : pass
@@ -57,7 +57,7 @@ class NUM(COL):
     x = x if x !="?" else (1 if y<0.5 else 0)
     y = y if y !="?" else (1 if x<0.5 else 0)
     return abs(x-y)
-
+#----------------------------------------------------------------------------------------
 class DATA(o):
   def __init__(i)      : i.rows=[];  i.cols = o(all=[],x=[],y=[],names=[])
   def add(i,row)       : (i.data if i.cols.all else i.head)(row)
@@ -78,38 +78,48 @@ class DATA(o):
       if txt[-1] != "X":
         (i.cols.y if col.txt[-1] in "+-!" else i.cols.x).append(col)
 
-  def dists(i, row1, row2):
-    n = sum(col.dict(row1[col.at], row2[col.at])**the.dist.p for col in i.cols.x)
+  def dist(i, row1, row2):
+    n = sum(col.dist(row1[col.at], row2[col.at])**the.dist.p for col in i.cols.x)
     return (n / len(i.cols.x))**(1/the.dist.p)
 
   def neighbors(i, row1, rows):
-    return sorted(rows or o.rows, key=lambda row2: i.dists(row1,row2))
+    return sorted(rows or o.rows, key=lambda row2: i.dist(row1,row2))
 
-  def twoFar(i, rows) :
-    return max(((any(rows),any(rows)) for _ in range(the.dists.far)),
-                key= lambda two: i.dists(*two))
+  def twoFar(i, rows, samples=None) :
+    return max(((any(rows),any(rows)) for _ in range(samples or the.dist.far)),
+                key= lambda two: i.dist(*two))
 
   def half(i,rows):
     left,right = i.twoFar(rows)
     toLeft = i.dist(left,right)/2
     lefts,rights = [],[]
-    for i,row in rows:
-      (lefts if i.dists(row,left) <= toLeft else rights).append(row)
+    for row in rows:
+      (lefts if i.dist(row,left) <= toLeft else rights).append(row)
     return lefts, rights, left, right, toLeft
 
   def cluster(i, rows, lvl=0, guard=None):
     it = TREE(i.clone(rows), lvl, guard)
     ls, rs, it.left, it.right, it.toLeft = i.half(rows)
-    go = lambda row: i.dists(row,it.left) <= it.toleft
+    go = lambda row: i.dist(row,it.left) <= it.toleft
     if it.ok2go(ls): it.lefts  = i.cluster(ls, lvl+1, guard = go)
     if it.ok2go(rs): it.rights = i.cluster(rs, lvl+1, guard = lambda row: not go(row))
     return it
 
 class TREE(o):
-  def __init__(i, here,lvl,guard): i.here, i.lvl, i.guard = here, lvl, guard
+  def __init__(i, here,lvl,guard): 
+    i.here, i.lvl, i.guard,i.lefts,i.rights = here, lvl, guard,None,None
   def ok2go(i,rows)  : return len(rows) > the.dist.stop and len(rows) < len(i.here.rows)
   def go(i,row)      : return i.guard(row)
   def nogo(i,row)    : return not i.guard(row)
+
+  def __repr__(i):
+     return f"{'|.. '*i.lvl}{len(i.here.rows)}"
+
+  def nodes(i):
+    yield i
+    for kid in [i.lefts,i.rights]:
+      if kid:
+        for j in kid.nodes(): yield j
 
   def leaf(i,row) :
     for kid in [i.lefts,i.rights]:
@@ -119,10 +129,10 @@ class TREE(o):
   def predict(i,row):
     here     = i.leaf(row).here
     r1,r2,*_ = here.neighbors(row)
-    d1,d2    = here.dists(r1,row), here.dists(r2,row)
+    d1,d2    = here.dist(r1,row), here.dist(r2,row)
     w1,w2    = 1/d1**2, 1/d2**2
     return {c.at: ((r1[c.at] * w1) + (r2[c.at] * w2) / (w1 + w2)) for c in here.cols.y}
-
+#----------------------------------------------------------------------------------------
 def pretty(d):
   short = lambda v : round(v,the.round) if isinstance(v,float) else v
   return " ".join(f":{k} {short(v)}" for k,v in d.items())
@@ -140,24 +150,48 @@ def csv(file="-"):
 def cli(settings):
   now = settings.__dict__
   for  j,arg in enumerate(sys.argv):
-    now= cli1(settings, now, arg[2:]       if len(arg) > 2  else None,
-                             arg[1]        if len(arg) == 2 else None,
-                             sys.argv[j+1] if j < len(sys.argv) - 1 else "")
+    now = cli1(settings, now, arg[2:]       if len(arg) > 2  else None,
+                              arg[1]        if len(arg) == 2 else None,
+                              sys.argv[j+1] if j < len(sys.argv) - 1 else "")
 
-def cli1(settings, now,new,flag,val):
+def cli1(settings,now,new,flag,val):
   if new in settings.__dict__: return settings.__dict__[new].__dict__
   for k,v in now.items():
     if k[0] == flag:
-      now[k] = coerce("False" if v==True else ("True" if v==False else val))
+      now[k] = coerce("False" if str(v)=="True" else ("True" if str(v)=="False" else val))
   return now
-
+#----------------------------------------------------------------------------------------
 class eg:
   def options(): print(the) 
-  def help()   : print("./tree.py [ARG] -g action")
-  def data():
-   d=DATA().fromFile(the.train)
-   print(d.cols.y[1])
 
+  def help()   : print("./tree.py [ARG] -g action")
+
+  def data():
+    d=DATA().fromFile(the.train)
+    print(d.cols.y[1])
+
+  def dist():
+    d=DATA().fromFile(the.train)
+    print(sorted(round(d.dist(any(d.rows),d.rows[0]),2) for _ in range(30)))
+    random.shuffle(d.rows)
+    d.neighbors(d.rows[0], d.rows[:30])
+    for samples in [10,20,30,40,80,160,320]:
+      x,y = d.twoFar(d.rows,samples)
+      print(samples, round(d.dist(x,y),3)) 
+    print("")
+    ls,rs,l,r,c=d.half(d.rows)
+    print(len(ls), len(rs),c)
+    print(l)
+    print(r)
+    print("")
+    t =  d.cluster(d.rows)
+    for n in t.nodes(): print(n)
+    print("")
+    for row in d.rows: 
+      print(row, t.predict(row))
+
+#----------------------------------------------------------------------------------------
 cli(the)
+random.seed(the.seed)
 getattr(eg, the.go)()
 
