@@ -139,3 +139,24 @@ trees:
 
 etax:
 	$(foreach f,$(wildcard  data/*/*.csv), printf "\n\n==== $f \n\n"; ./ezr.py -etax $f; )
+
+eplot:
+	gawk '{print $4+rand()*0.9,$(NF-1)}' ~/tmp/predict.txt | sort -n  | ./eplot -t "49 data sets (with jitter)" -x "#rows" -y "percent small" -P ; mv foo.png rows.png
+
+DISTS= $(subst data/config,var/out/dists,$(wildcard data/config/*.csv)) \
+      $(subst data/misc,var/out/dists,$(wildcard data/misc/*.csv)) \
+      $(subst data/process,var/out/dists,$(wildcard data/process/*.csv)) \
+      $(subst data/hpo,var/out/dists,$(wildcard data/hpo/*.csv))
+
+var/out/dists/%.csv : data/config/%.csv;  ./tree.py -g dist -t $< |tee $@
+var/out/dists/%.csv : data/process/%.csv; ./tree.py -g dist -t $< |tee $@
+var/out/dists/%.csv : data/misc/%.csv;  ./tree.py -g dist -t $< |tee $@
+var/out/dists/%.csv : data/hpo/%.csv; ./tree.py -g dist -t $< |tee $@
+
+dists:
+		mkdir -p var/out/dists
+		$(MAKE) -j $(DISTS)
+
+
+report:
+	cd var/out/dists; for i in `ls *.csv |shuf` ; do   echo "#"; grep "0.25"  $$i; done | column -t |less

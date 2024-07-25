@@ -1,5 +1,11 @@
 #!/usr/bin/env python3.12 -B
 # vim: set ts=2 sw=2 et :
+
+"""
+asdasdasasads
+
+"""
+
 from fileinput import FileInput as file_or_stdin
 import re,ast,sys,random
 from math import log,floor
@@ -108,7 +114,11 @@ class DATA(o):
     if it.ok2go(rs,stop): it.rights = i.cluster(rs, lvl+1, lambda r: i.dist(r,left) > toLeft,stop)
     return it
 
-  def predict(i,tree,row):
+  def average(i,tree,row):
+    leaf     = tree.leaf(row).here
+    return {c.at: c.mid() for  c in leaf.cols.y}
+
+  def interpolate(i,tree,row):
     leaf     = tree.leaf(row).here
     r1,r2,*_ = leaf.neighbors(row, leaf.rows)
     d1,d2    = leaf.dist(r1,row),leaf.dist(r2,row)
@@ -196,26 +206,33 @@ class eg:
     # print("")
     # for n in t.nodes(): print(n)
     # print("")
-    stats=[]
-    for stop in [0.25,0.5]:
-      for m in [100,50]:
-        the.stats.stop = stop
-        for _ in range(30):
-          random.shuffle(d.rows)
-          t =  d.cluster(random.choices(d.rows[:-30],k=int(log(len(d.rows)) * m)))
-          for row in d.rows[-20:]:
-             p= d.predict(t,row)
-             [stats.append(abs(row[c.at] - p[c.at])/(1E-32 + c.div()))  for c in d.cols.y]
-        want=[0.35,0.65]
-        out={}
-        out[0.35]=100
-        out[0.65]=100
-        for i,x in enumerate(sorted(stats)):
-          if x  >= want[0]: out[want[0]] = int(100*i/len(stats)); want.pop(0)
-          if want==[]: break
-        print(the.train,stop, m, len(d.rows), len(d.cols.x), out[0.35],out[0.65])
 
-#----------------------------------------------------------------------------------------
+    for stop in [0.25,0.5]:
+      for m in [0,100,50]:
+        for estimator,estimate  in dict(interpolate=lambda d,t,row: d.interpolate(t,row),
+                                         avearge = lambda d,t,row: d.average(t,row)).items():
+          stats=[]
+          the.stats.stop = stop
+          for _ in range(30):
+            random.shuffle(d.rows)
+            test = d.rows[-30:]
+            train = d.rows[:-30]
+            train = random.choices(train, k=int(log(len(d.rows),2) * m)) if m else train
+            t=d.cluster(train)
+            for row in test:
+               p= estimate(d,t,row)
+               [stats.append(abs(row[c.at] - p[c.at])/(1E-32 + c.div()))  for c in d.cols.y]
+          want=[0.35,0.65]
+          out={}
+          out[0.35]=100
+          out[0.65]=100
+          for i,x in enumerate(sorted(stats)):
+            if x  >= want[0]: out[want[0]] = int(100*i/len(stats)); want.pop(0)
+            if want==[]: break
+          print(the.train,"stop",stop, "m",m, "Nrows",len(d.rows), "Nxcols",len(d.cols.x), \
+                          "how", estimator, "%small", out[0.35],"%large",100-out[0.65])
+
+        #----------------------------------------------------------------------------------------
 cli(the)
 random.seed(the.seed)
 getattr(eg, the.go)()
