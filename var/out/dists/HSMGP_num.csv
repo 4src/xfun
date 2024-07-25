@@ -1,0 +1,12 @@
+data/misc/HSMGP_num.csv stop 0.25 m 0 Nrows 3456 Nxcols 14 how interpolate %small 94 %large 1
+data/misc/HSMGP_num.csv stop 0.25 m 0 Nrows 3456 Nxcols 14 how avearge %small 90 %large 4
+data/misc/HSMGP_num.csv stop 0.25 m 100 Nrows 3456 Nxcols 14 how interpolate %small 89 %large 5
+data/misc/HSMGP_num.csv stop 0.25 m 100 Nrows 3456 Nxcols 14 how avearge %small 89 %large 7
+data/misc/HSMGP_num.csv stop 0.25 m 50 Nrows 3456 Nxcols 14 how interpolate %small 89 %large 5
+data/misc/HSMGP_num.csv stop 0.25 m 50 Nrows 3456 Nxcols 14 how avearge %small 84 %large 11
+data/misc/HSMGP_num.csv stop 0.5 m 0 Nrows 3456 Nxcols 14 how interpolate %small 97 %large 1
+data/misc/HSMGP_num.csv stop 0.5 m 0 Nrows 3456 Nxcols 14 how avearge %small 90 %large 4
+data/misc/HSMGP_num.csv stop 0.5 m 100 Nrows 3456 Nxcols 14 how interpolate %small 91 %large 4
+data/misc/HSMGP_num.csv stop 0.5 m 100 Nrows 3456 Nxcols 14 how avearge %small 88 %large 8
+data/misc/HSMGP_num.csv stop 0.5 m 50 Nrows 3456 Nxcols 14 how interpolate %small 89 %large 4
+data/misc/HSMGP_num.csv stop 0.5 m 50 Nrows 3456 Nxcols 14 how avearge %small 83 %large 12

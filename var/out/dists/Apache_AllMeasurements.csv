@@ -1,0 +1,12 @@
+data/config/Apache_AllMeasurements.csv stop 0.25 m 0 Nrows 192 Nxcols 9 how interpolate %small 53 %large 29
+data/config/Apache_AllMeasurements.csv stop 0.25 m 0 Nrows 192 Nxcols 9 how avearge %small 29 %large 50
+data/config/Apache_AllMeasurements.csv stop 0.25 m 100 Nrows 192 Nxcols 9 how interpolate %small 48 %large 32
+data/config/Apache_AllMeasurements.csv stop 0.25 m 100 Nrows 192 Nxcols 9 how avearge %small 45 %large 34
+data/config/Apache_AllMeasurements.csv stop 0.25 m 50 Nrows 192 Nxcols 9 how interpolate %small 54 %large 24
+data/config/Apache_AllMeasurements.csv stop 0.25 m 50 Nrows 192 Nxcols 9 how avearge %small 42 %large 38
+data/config/Apache_AllMeasurements.csv stop 0.5 m 0 Nrows 192 Nxcols 9 how interpolate %small 56 %large 28
+data/config/Apache_AllMeasurements.csv stop 0.5 m 0 Nrows 192 Nxcols 9 how avearge %small 29 %large 48
+data/config/Apache_AllMeasurements.csv stop 0.5 m 100 Nrows 192 Nxcols 9 how interpolate %small 53 %large 28
+data/config/Apache_AllMeasurements.csv stop 0.5 m 100 Nrows 192 Nxcols 9 how avearge %small 47 %large 33
+data/config/Apache_AllMeasurements.csv stop 0.5 m 50 Nrows 192 Nxcols 9 how interpolate %small 55 %large 22
+data/config/Apache_AllMeasurements.csv stop 0.5 m 50 Nrows 192 Nxcols 9 how avearge %small 40 %large 37

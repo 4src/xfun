@@ -1,0 +1,12 @@
+data/misc/sol-6d-c2-obj1.csv stop 0.25 m 0 Nrows 2866 Nxcols 6 how interpolate %small 77 %large 13
+data/misc/sol-6d-c2-obj1.csv stop 0.25 m 0 Nrows 2866 Nxcols 6 how avearge %small 31 %large 44
+data/misc/sol-6d-c2-obj1.csv stop 0.25 m 100 Nrows 2866 Nxcols 6 how interpolate %small 55 %large 32
+data/misc/sol-6d-c2-obj1.csv stop 0.25 m 100 Nrows 2866 Nxcols 6 how avearge %small 34 %large 47
+data/misc/sol-6d-c2-obj1.csv stop 0.25 m 50 Nrows 2866 Nxcols 6 how interpolate %small 50 %large 35
+data/misc/sol-6d-c2-obj1.csv stop 0.25 m 50 Nrows 2866 Nxcols 6 how avearge %small 34 %large 47
+data/misc/sol-6d-c2-obj1.csv stop 0.5 m 0 Nrows 2866 Nxcols 6 how interpolate %small 79 %large 14
+data/misc/sol-6d-c2-obj1.csv stop 0.5 m 0 Nrows 2866 Nxcols 6 how avearge %small 33 %large 45
+data/misc/sol-6d-c2-obj1.csv stop 0.5 m 100 Nrows 2866 Nxcols 6 how interpolate %small 56 %large 32
+data/misc/sol-6d-c2-obj1.csv stop 0.5 m 100 Nrows 2866 Nxcols 6 how avearge %small 35 %large 46
+data/misc/sol-6d-c2-obj1.csv stop 0.5 m 50 Nrows 2866 Nxcols 6 how interpolate %small 49 %large 37
+data/misc/sol-6d-c2-obj1.csv stop 0.5 m 50 Nrows 2866 Nxcols 6 how avearge %small 30 %large 51

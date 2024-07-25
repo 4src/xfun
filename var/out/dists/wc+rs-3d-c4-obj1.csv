@@ -1,0 +1,12 @@
+data/misc/wc+rs-3d-c4-obj1.csv stop 0.25 m 0 Nrows 196 Nxcols 3 how interpolate %small 44 %large 45
+data/misc/wc+rs-3d-c4-obj1.csv stop 0.25 m 0 Nrows 196 Nxcols 3 how avearge %small 42 %large 34
+data/misc/wc+rs-3d-c4-obj1.csv stop 0.25 m 100 Nrows 196 Nxcols 3 how interpolate %small 40 %large 45
+data/misc/wc+rs-3d-c4-obj1.csv stop 0.25 m 100 Nrows 196 Nxcols 3 how avearge %small 38 %large 48
+data/misc/wc+rs-3d-c4-obj1.csv stop 0.25 m 50 Nrows 196 Nxcols 3 how interpolate %small 44 %large 38
+data/misc/wc+rs-3d-c4-obj1.csv stop 0.25 m 50 Nrows 196 Nxcols 3 how avearge %small 37 %large 45
+data/misc/wc+rs-3d-c4-obj1.csv stop 0.5 m 0 Nrows 196 Nxcols 3 how interpolate %small 44 %large 44
+data/misc/wc+rs-3d-c4-obj1.csv stop 0.5 m 0 Nrows 196 Nxcols 3 how avearge %small 41 %large 33
+data/misc/wc+rs-3d-c4-obj1.csv stop 0.5 m 100 Nrows 196 Nxcols 3 how interpolate %small 40 %large 44
+data/misc/wc+rs-3d-c4-obj1.csv stop 0.5 m 100 Nrows 196 Nxcols 3 how avearge %small 37 %large 48
+data/misc/wc+rs-3d-c4-obj1.csv stop 0.5 m 50 Nrows 196 Nxcols 3 how interpolate %small 43 %large 40
+data/misc/wc+rs-3d-c4-obj1.csv stop 0.5 m 50 Nrows 196 Nxcols 3 how avearge %small 35 %large 44

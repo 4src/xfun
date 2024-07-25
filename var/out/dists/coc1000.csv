@@ -1,0 +1,12 @@
+data/process/coc1000.csv stop 0.25 m 0 Nrows 1000 Nxcols 17 how interpolate %small 25 %large 55
+data/process/coc1000.csv stop 0.25 m 0 Nrows 1000 Nxcols 17 how avearge %small 26 %large 57
+data/process/coc1000.csv stop 0.25 m 100 Nrows 1000 Nxcols 17 how interpolate %small 24 %large 58
+data/process/coc1000.csv stop 0.25 m 100 Nrows 1000 Nxcols 17 how avearge %small 27 %large 55
+data/process/coc1000.csv stop 0.25 m 50 Nrows 1000 Nxcols 17 how interpolate %small 24 %large 58
+data/process/coc1000.csv stop 0.25 m 50 Nrows 1000 Nxcols 17 how avearge %small 26 %large 58
+data/process/coc1000.csv stop 0.5 m 0 Nrows 1000 Nxcols 17 how interpolate %small 24 %large 56
+data/process/coc1000.csv stop 0.5 m 0 Nrows 1000 Nxcols 17 how avearge %small 25 %large 58
+data/process/coc1000.csv stop 0.5 m 100 Nrows 1000 Nxcols 17 how interpolate %small 24 %large 58
+data/process/coc1000.csv stop 0.5 m 100 Nrows 1000 Nxcols 17 how avearge %small 26 %large 58
+data/process/coc1000.csv stop 0.5 m 50 Nrows 1000 Nxcols 17 how interpolate %small 23 %large 58
+data/process/coc1000.csv stop 0.5 m 50 Nrows 1000 Nxcols 17 how avearge %small 25 %large 59

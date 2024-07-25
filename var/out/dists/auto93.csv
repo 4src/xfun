@@ -1,0 +1,12 @@
+data/misc/auto93.csv stop 0.25 m 0 Nrows 398 Nxcols 4 how interpolate %small 53 %large 27
+data/misc/auto93.csv stop 0.25 m 0 Nrows 398 Nxcols 4 how avearge %small 48 %large 28
+data/misc/auto93.csv stop 0.25 m 100 Nrows 398 Nxcols 4 how interpolate %small 54 %large 30
+data/misc/auto93.csv stop 0.25 m 100 Nrows 398 Nxcols 4 how avearge %small 49 %large 30
+data/misc/auto93.csv stop 0.25 m 50 Nrows 398 Nxcols 4 how interpolate %small 51 %large 31
+data/misc/auto93.csv stop 0.25 m 50 Nrows 398 Nxcols 4 how avearge %small 47 %large 29
+data/misc/auto93.csv stop 0.5 m 0 Nrows 398 Nxcols 4 how interpolate %small 54 %large 28
+data/misc/auto93.csv stop 0.5 m 0 Nrows 398 Nxcols 4 how avearge %small 47 %large 30
+data/misc/auto93.csv stop 0.5 m 100 Nrows 398 Nxcols 4 how interpolate %small 53 %large 31
+data/misc/auto93.csv stop 0.5 m 100 Nrows 398 Nxcols 4 how avearge %small 53 %large 29
+data/misc/auto93.csv stop 0.5 m 50 Nrows 398 Nxcols 4 how interpolate %small 52 %large 31
+data/misc/auto93.csv stop 0.5 m 50 Nrows 398 Nxcols 4 how avearge %small 47 %large 30

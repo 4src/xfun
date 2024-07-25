@@ -1,0 +1,12 @@
+data/hpo/healthCloseIsses12mths0011-easy.csv stop 0.25 m 0 Nrows 10000 Nxcols 5 how interpolate %small 86 %large 12
+data/hpo/healthCloseIsses12mths0011-easy.csv stop 0.25 m 0 Nrows 10000 Nxcols 5 how avearge %small 82 %large 14
+data/hpo/healthCloseIsses12mths0011-easy.csv stop 0.25 m 100 Nrows 10000 Nxcols 5 how interpolate %small 87 %large 12
+data/hpo/healthCloseIsses12mths0011-easy.csv stop 0.25 m 100 Nrows 10000 Nxcols 5 how avearge %small 80 %large 15
+data/hpo/healthCloseIsses12mths0011-easy.csv stop 0.25 m 50 Nrows 10000 Nxcols 5 how interpolate %small 85 %large 13
+data/hpo/healthCloseIsses12mths0011-easy.csv stop 0.25 m 50 Nrows 10000 Nxcols 5 how avearge %small 78 %large 16
+data/hpo/healthCloseIsses12mths0011-easy.csv stop 0.5 m 0 Nrows 10000 Nxcols 5 how interpolate %small 87 %large 12
+data/hpo/healthCloseIsses12mths0011-easy.csv stop 0.5 m 0 Nrows 10000 Nxcols 5 how avearge %small 83 %large 13
+data/hpo/healthCloseIsses12mths0011-easy.csv stop 0.5 m 100 Nrows 10000 Nxcols 5 how interpolate %small 88 %large 11
+data/hpo/healthCloseIsses12mths0011-easy.csv stop 0.5 m 100 Nrows 10000 Nxcols 5 how avearge %small 80 %large 16
+data/hpo/healthCloseIsses12mths0011-easy.csv stop 0.5 m 50 Nrows 10000 Nxcols 5 how interpolate %small 87 %large 12
+data/hpo/healthCloseIsses12mths0011-easy.csv stop 0.5 m 50 Nrows 10000 Nxcols 5 how avearge %small 79 %large 16

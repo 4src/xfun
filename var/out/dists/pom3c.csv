@@ -1,0 +1,12 @@
+data/process/pom3c.csv stop 0.25 m 0 Nrows 500 Nxcols 9 how interpolate %small 31 %large 49
+data/process/pom3c.csv stop 0.25 m 0 Nrows 500 Nxcols 9 how avearge %small 27 %large 52
+data/process/pom3c.csv stop 0.25 m 100 Nrows 500 Nxcols 9 how interpolate %small 27 %large 54
+data/process/pom3c.csv stop 0.25 m 100 Nrows 500 Nxcols 9 how avearge %small 27 %large 54
+data/process/pom3c.csv stop 0.25 m 50 Nrows 500 Nxcols 9 how interpolate %small 27 %large 54
+data/process/pom3c.csv stop 0.25 m 50 Nrows 500 Nxcols 9 how avearge %small 27 %large 54
+data/process/pom3c.csv stop 0.5 m 0 Nrows 500 Nxcols 9 how interpolate %small 30 %large 50
+data/process/pom3c.csv stop 0.5 m 0 Nrows 500 Nxcols 9 how avearge %small 26 %large 52
+data/process/pom3c.csv stop 0.5 m 100 Nrows 500 Nxcols 9 how interpolate %small 27 %large 55
+data/process/pom3c.csv stop 0.5 m 100 Nrows 500 Nxcols 9 how avearge %small 26 %large 54
+data/process/pom3c.csv stop 0.5 m 50 Nrows 500 Nxcols 9 how interpolate %small 27 %large 54
+data/process/pom3c.csv stop 0.5 m 50 Nrows 500 Nxcols 9 how avearge %small 26 %large 54

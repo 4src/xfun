@@ -1,0 +1,12 @@
+data/config/X264_AllMeasurements.csv stop 0.25 m 0 Nrows 1152 Nxcols 16 how interpolate %small 74 %large 12
+data/config/X264_AllMeasurements.csv stop 0.25 m 0 Nrows 1152 Nxcols 16 how avearge %small 65 %large 17
+data/config/X264_AllMeasurements.csv stop 0.25 m 100 Nrows 1152 Nxcols 16 how interpolate %small 72 %large 13
+data/config/X264_AllMeasurements.csv stop 0.25 m 100 Nrows 1152 Nxcols 16 how avearge %small 62 %large 19
+data/config/X264_AllMeasurements.csv stop 0.25 m 50 Nrows 1152 Nxcols 16 how interpolate %small 69 %large 14
+data/config/X264_AllMeasurements.csv stop 0.25 m 50 Nrows 1152 Nxcols 16 how avearge %small 55 %large 24
+data/config/X264_AllMeasurements.csv stop 0.5 m 0 Nrows 1152 Nxcols 16 how interpolate %small 71 %large 14
+data/config/X264_AllMeasurements.csv stop 0.5 m 0 Nrows 1152 Nxcols 16 how avearge %small 66 %large 18
+data/config/X264_AllMeasurements.csv stop 0.5 m 100 Nrows 1152 Nxcols 16 how interpolate %small 71 %large 15
+data/config/X264_AllMeasurements.csv stop 0.5 m 100 Nrows 1152 Nxcols 16 how avearge %small 64 %large 19
+data/config/X264_AllMeasurements.csv stop 0.5 m 50 Nrows 1152 Nxcols 16 how interpolate %small 70 %large 14
+data/config/X264_AllMeasurements.csv stop 0.5 m 50 Nrows 1152 Nxcols 16 how avearge %small 56 %large 26

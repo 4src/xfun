@@ -1,0 +1,12 @@
+data/misc/rs-6d-c3_obj2.csv stop 0.25 m 0 Nrows 3840 Nxcols 6 how interpolate %small 84 %large 12
+data/misc/rs-6d-c3_obj2.csv stop 0.25 m 0 Nrows 3840 Nxcols 6 how avearge %small 77 %large 19
+data/misc/rs-6d-c3_obj2.csv stop 0.25 m 100 Nrows 3840 Nxcols 6 how interpolate %small 83 %large 13
+data/misc/rs-6d-c3_obj2.csv stop 0.25 m 100 Nrows 3840 Nxcols 6 how avearge %small 72 %large 21
+data/misc/rs-6d-c3_obj2.csv stop 0.25 m 50 Nrows 3840 Nxcols 6 how interpolate %small 79 %large 16
+data/misc/rs-6d-c3_obj2.csv stop 0.25 m 50 Nrows 3840 Nxcols 6 how avearge %small 67 %large 25
+data/misc/rs-6d-c3_obj2.csv stop 0.5 m 0 Nrows 3840 Nxcols 6 how interpolate %small 83 %large 14
+data/misc/rs-6d-c3_obj2.csv stop 0.5 m 0 Nrows 3840 Nxcols 6 how avearge %small 78 %large 17
+data/misc/rs-6d-c3_obj2.csv stop 0.5 m 100 Nrows 3840 Nxcols 6 how interpolate %small 79 %large 16
+data/misc/rs-6d-c3_obj2.csv stop 0.5 m 100 Nrows 3840 Nxcols 6 how avearge %small 72 %large 22
+data/misc/rs-6d-c3_obj2.csv stop 0.5 m 50 Nrows 3840 Nxcols 6 how interpolate %small 78 %large 17
+data/misc/rs-6d-c3_obj2.csv stop 0.5 m 50 Nrows 3840 Nxcols 6 how avearge %small 69 %large 24

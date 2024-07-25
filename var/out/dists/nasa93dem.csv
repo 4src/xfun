@@ -1,0 +1,12 @@
+data/process/nasa93dem.csv stop 0.25 m 0 Nrows 93 Nxcols 22 how interpolate %small 55 %large 27
+data/process/nasa93dem.csv stop 0.25 m 0 Nrows 93 Nxcols 22 how avearge %small 46 %large 29
+data/process/nasa93dem.csv stop 0.25 m 100 Nrows 93 Nxcols 22 how interpolate %small 57 %large 27
+data/process/nasa93dem.csv stop 0.25 m 100 Nrows 93 Nxcols 22 how avearge %small 57 %large 28
+data/process/nasa93dem.csv stop 0.25 m 50 Nrows 93 Nxcols 22 how interpolate %small 55 %large 28
+data/process/nasa93dem.csv stop 0.25 m 50 Nrows 93 Nxcols 22 how avearge %small 55 %large 28
+data/process/nasa93dem.csv stop 0.5 m 0 Nrows 93 Nxcols 22 how interpolate %small 55 %large 27
+data/process/nasa93dem.csv stop 0.5 m 0 Nrows 93 Nxcols 22 how avearge %small 48 %large 28
+data/process/nasa93dem.csv stop 0.5 m 100 Nrows 93 Nxcols 22 how interpolate %small 54 %large 30
+data/process/nasa93dem.csv stop 0.5 m 100 Nrows 93 Nxcols 22 how avearge %small 56 %large 28
+data/process/nasa93dem.csv stop 0.5 m 50 Nrows 93 Nxcols 22 how interpolate %small 55 %large 28
+data/process/nasa93dem.csv stop 0.5 m 50 Nrows 93 Nxcols 22 how avearge %small 53 %large 30

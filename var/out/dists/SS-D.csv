@@ -1,0 +1,12 @@
+data/config/SS-D.csv stop 0.25 m 0 Nrows 196 Nxcols 3 how interpolate %small 60 %large 32
+data/config/SS-D.csv stop 0.25 m 0 Nrows 196 Nxcols 3 how avearge %small 54 %large 27
+data/config/SS-D.csv stop 0.25 m 100 Nrows 196 Nxcols 3 how interpolate %small 58 %large 31
+data/config/SS-D.csv stop 0.25 m 100 Nrows 196 Nxcols 3 how avearge %small 57 %large 33
+data/config/SS-D.csv stop 0.25 m 50 Nrows 196 Nxcols 3 how interpolate %small 62 %large 27
+data/config/SS-D.csv stop 0.25 m 50 Nrows 196 Nxcols 3 how avearge %small 56 %large 32
+data/config/SS-D.csv stop 0.5 m 0 Nrows 196 Nxcols 3 how interpolate %small 60 %large 32
+data/config/SS-D.csv stop 0.5 m 0 Nrows 196 Nxcols 3 how avearge %small 54 %large 26
+data/config/SS-D.csv stop 0.5 m 100 Nrows 196 Nxcols 3 how interpolate %small 58 %large 31
+data/config/SS-D.csv stop 0.5 m 100 Nrows 196 Nxcols 3 how avearge %small 57 %large 33
+data/config/SS-D.csv stop 0.5 m 50 Nrows 196 Nxcols 3 how interpolate %small 61 %large 29
+data/config/SS-D.csv stop 0.5 m 50 Nrows 196 Nxcols 3 how avearge %small 55 %large 33

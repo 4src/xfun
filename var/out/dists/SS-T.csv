@@ -1,0 +1,12 @@
+data/config/SS-T.csv stop 0.25 m 0 Nrows 5184 Nxcols 12 how interpolate %small 92 %large 5
+data/config/SS-T.csv stop 0.25 m 0 Nrows 5184 Nxcols 12 how avearge %small 78 %large 13
+data/config/SS-T.csv stop 0.25 m 100 Nrows 5184 Nxcols 12 how interpolate %small 82 %large 12
+data/config/SS-T.csv stop 0.25 m 100 Nrows 5184 Nxcols 12 how avearge %small 67 %large 22
+data/config/SS-T.csv stop 0.25 m 50 Nrows 5184 Nxcols 12 how interpolate %small 77 %large 15
+data/config/SS-T.csv stop 0.25 m 50 Nrows 5184 Nxcols 12 how avearge %small 62 %large 27
+data/config/SS-T.csv stop 0.5 m 0 Nrows 5184 Nxcols 12 how interpolate %small 92 %large 5
+data/config/SS-T.csv stop 0.5 m 0 Nrows 5184 Nxcols 12 how avearge %small 78 %large 14
+data/config/SS-T.csv stop 0.5 m 100 Nrows 5184 Nxcols 12 how interpolate %small 81 %large 12
+data/config/SS-T.csv stop 0.5 m 100 Nrows 5184 Nxcols 12 how avearge %small 67 %large 22
+data/config/SS-T.csv stop 0.5 m 50 Nrows 5184 Nxcols 12 how interpolate %small 79 %large 15
+data/config/SS-T.csv stop 0.5 m 50 Nrows 5184 Nxcols 12 how avearge %small 62 %large 26

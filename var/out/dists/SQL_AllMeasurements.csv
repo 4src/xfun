@@ -1,0 +1,12 @@
+data/config/SQL_AllMeasurements.csv stop 0.25 m 0 Nrows 4653 Nxcols 38 how interpolate %small 30 %large 50
+data/config/SQL_AllMeasurements.csv stop 0.25 m 0 Nrows 4653 Nxcols 38 how avearge %small 35 %large 43
+data/config/SQL_AllMeasurements.csv stop 0.25 m 100 Nrows 4653 Nxcols 38 how interpolate %small 30 %large 48
+data/config/SQL_AllMeasurements.csv stop 0.25 m 100 Nrows 4653 Nxcols 38 how avearge %small 29 %large 50
+data/config/SQL_AllMeasurements.csv stop 0.25 m 50 Nrows 4653 Nxcols 38 how interpolate %small 31 %large 52
+data/config/SQL_AllMeasurements.csv stop 0.25 m 50 Nrows 4653 Nxcols 38 how avearge %small 26 %large 53
+data/config/SQL_AllMeasurements.csv stop 0.5 m 0 Nrows 4653 Nxcols 38 how interpolate %small 34 %large 47
+data/config/SQL_AllMeasurements.csv stop 0.5 m 0 Nrows 4653 Nxcols 38 how avearge %small 36 %large 43
+data/config/SQL_AllMeasurements.csv stop 0.5 m 100 Nrows 4653 Nxcols 38 how interpolate %small 33 %large 46
+data/config/SQL_AllMeasurements.csv stop 0.5 m 100 Nrows 4653 Nxcols 38 how avearge %small 28 %large 52
+data/config/SQL_AllMeasurements.csv stop 0.5 m 50 Nrows 4653 Nxcols 38 how interpolate %small 31 %large 48
+data/config/SQL_AllMeasurements.csv stop 0.5 m 50 Nrows 4653 Nxcols 38 how avearge %small 27 %large 52
