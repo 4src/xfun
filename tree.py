@@ -15,9 +15,10 @@ the = o(
   round = 2,
   seed  = 1234567891,
   train = "data/misc/auto93.csv",
-  dist  = o(far=30,
+  stats = o(cohen= 0.35),
+  dist  = o(far=20,
             p=2,
-            stop=10))
+            stop=0.25))
 
 #----------------------------------------------------------------------------------------
 class COL(o):
@@ -50,6 +51,7 @@ class NUM(COL):
   def div(i)    : return 0 if i.n < 2 else (i.m2/(i.n - 1))**.5
   def mid(i)    : return i.mu
   def norm(i,x) : return x if x=="?" else (x - i.lo)/(i.hi - i.lo + 1E-32)
+  def same(i,x,y) : return abs(x - y) < i.div()*the.stats.cohen
 
   def dist(i,x,y):
     if x==y=="?": return 1
@@ -86,7 +88,8 @@ class DATA(o):
     return sorted(rows or o.rows, key=lambda row2: i.dist(row1,row2))
 
   def twoFar(i, rows, samples=None) :
-    return max(((any(rows),any(rows)) for _ in range(samples or the.dist.far)),
+    samples = samples or the.dist.far
+    return max(((any(rows),any(rows)) for _ in range(samples)),
                 key= lambda two: i.dist(*two))
 
   def half(i,rows):
@@ -97,21 +100,21 @@ class DATA(o):
       (lefts if i.dist(row,left) <= toLeft else rights).append(row)
     return lefts, rights, left, right, toLeft
 
-  def cluster(i, rows, lvl=0, guard=None):
+  def cluster(i, rows, lvl=0, guard=None,stop=None):
+    stop = stop or the.dist.stop or len(rows)**.5
     ls, rs, left, right, toLeft = i.half(rows)
     it = TREE(i.clone(rows), lvl, guard,left,right,toLeft)
-    if it.ok2go(ls): it.lefts  = i.cluster(ls, lvl+1, lambda r: i.dist(r,left) <= toLeft)
-    if it.ok2go(rs): it.rights = i.cluster(rs, lvl+1, lambda r: i.dist(r,left) > toLeft)
+    if it.ok2go(ls,stop): it.lefts  = i.cluster(ls, lvl+1, lambda r: i.dist(r,left) <= toLeft,stop)
+    if it.ok2go(rs,stop): it.rights = i.cluster(rs, lvl+1, lambda r: i.dist(r,left) > toLeft,stop)
     return it
 
   def predict(i,tree,row):
     leaf     = tree.leaf(row).here
-    r1,r2,*_ = i.neighbors(row, leaf.rows)
-    print(r1,r2,end=", ")
-    d1,d2    = i.dist(r1,row) +1E-322,i.dist(r2,row)+1E-32
-    #w1,w2    = 1/(1 if d1 ==0 else d1)**2, 1/(1 if d2==0 else d2)**2
+    r1,r2,*_ = leaf.neighbors(row, leaf.rows)
+    d1,d2    = leaf.dist(r1,row),leaf.dist(r2,row)
+    if d1==0:  return {c.at: r1[c.at] for c in i.cols.y}
+    if d2==0:  return {c.at: r2[c.at] for c in i.cols.y}
     w1,w2    = 1/d1**2, 1/d2**2
-    #return {c.at: (r1[c.at]  + r2[c.at]) / 2 for c in here.cols.y}
     return {c.at: ((r1[c.at] * w1) + (r2[c.at] * w2)) / (w1 + w2) for c in i.cols.y}
 
 class TREE(o):
@@ -120,7 +123,7 @@ class TREE(o):
     i.left, i.right, i.toLeft = left, right, toLeft
     i.lefts, i.rights = None, None
 
-  def ok2go(i,rows)  : return len(rows) > the.dist.stop and len(rows) < len(i.here.rows)
+  def ok2go(i,rows,stop)  : return len(rows) > max(4,stop) and len(rows) < len(i.here.rows)
   def go(i,row)      : return i.guard(row)
   def nogo(i,row)    : return not i.guard(row)
 
@@ -191,11 +194,26 @@ class eg:
     # print(l)
     # print(r)
     # print("")
-    t =  d.cluster(d.rows)
     # for n in t.nodes(): print(n)
     # print("")
-    for row in [any(d.rows) for _ in range(20)]: 
-      print(row, d.predict(t,row))
+    stats=[]
+    for stop in [0.25,0.5]:
+      for m in [100,50]:
+        the.stats.stop = stop
+        for _ in range(30):
+          random.shuffle(d.rows)
+          t =  d.cluster(random.choices(d.rows[:-30],k=int(log(len(d.rows)) * m)))
+          for row in d.rows[-20:]:
+             p= d.predict(t,row)
+             [stats.append(abs(row[c.at] - p[c.at])/(1E-32 + c.div()))  for c in d.cols.y]
+        want=[0.35,0.65]
+        out={}
+        out[0.35]=100
+        out[0.65]=100
+        for i,x in enumerate(sorted(stats)):
+          if x  >= want[0]: out[want[0]] = int(100*i/len(stats)); want.pop(0)
+          if want==[]: break
+        print(the.train,stop, m, len(d.rows), len(d.cols.x), out[0.35],out[0.65])
 
 #----------------------------------------------------------------------------------------
 cli(the)
