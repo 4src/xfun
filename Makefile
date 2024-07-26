@@ -153,8 +153,11 @@ var/out/dists/%.csv : data/process/%.csv; ./tree.py -g dist -t $< |tee $@
 var/out/dists/%.csv : data/misc/%.csv;  ./tree.py -g dist -t $< |tee $@
 var/out/dists/%.csv : data/hpo/%.csv; ./tree.py -g dist -t $< |tee $@
 
+# conclusion: split at mean, not median
+# log2(N) * 50 is ok
+# cluster down to N^0.25
 dists:
-		mkdir -p var/out/dists
+		mkdir -p var/out/distsMean
 		$(MAKE) -j $(DISTS)
 
 

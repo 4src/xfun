@@ -4,7 +4,7 @@
 ### head 
 
 from fileinput import FileInput as file_or_stdin
-import re,ast,sys,random
+import os,re,ast,sys,random
 from math import log,floor
 import stats
 any=random.choice
@@ -102,8 +102,8 @@ class DATA(o):
     left,right = i.twoFar(rows)
     toLeft = i.dist(left,right)/2
     lefts,rights = [],[]
-    for row in rows:
-      (lefts if i.dist(row,left) <= toLeft else rights).append(row)
+    for j,row in enumerate(rows):
+      (lefts if i.dist(left,row) <= toLeft  else rights).append(row)
     return lefts, rights, left, right, toLeft
 
   def cluster(i, rows, lvl=0, guard=None,stop=None):
@@ -120,8 +120,8 @@ class DATA(o):
 
   def k2(i,tree,row):
     leaf     = tree.leaf(row).here
-    r1,r2,*_ = leaf.neighbors(row, leaf.rows)
-    d1,d2    = leaf.dist(r1,row),leaf.dist(r2,row)
+    r1,r2,*_ = i.neighbors(row, leaf.rows)
+    d1,d2    = i.dist(r1,row),i.dist(r2,row)
     if d1==0:  return {c.at: r1[c.at] for c in i.cols.y}
     if d2==0:  return {c.at: r2[c.at] for c in i.cols.y}
     w1,w2    = 1/d1**2, 1/d2**2
@@ -175,6 +175,17 @@ class TREE(o):
       if kid and kid.guard(row): return kid.leaf(row)
     return i
 
+def xval(a,m,n):
+  for _ in range(m):
+    random.shuffle(a)
+    for n1 in range (n):
+      lo = len(a)/n * n1
+      hi = len(a)/n * (n1+1)
+      train, test = [],[]
+      for i,x in enumerate(a):
+        (test if i >= lo and i < hi else train).append(x)
+      yield train,test
+
 def pretty(d):
   short = lambda v : round(v,the.round) if isinstance(v,float) else v
   return " ".join(f":{k} {short(v)}" for k,v in d.items())
@@ -214,6 +225,7 @@ class eg:
     print(d.cols.y[1])
 
   def dist():
+    "also i tried mean vs median split and found that median did much worst than mean"
     d=DATA().fromFile(the.train)
     # print(sorted(round(d.dist(any(d.rows),d.rows[0]),2) for _ in range(30)))
     # random.shuffle(d.rows)
@@ -238,10 +250,7 @@ class eg:
                                          avearge = lambda d,t,row: d.average(t,row)).items():
           tmp = []
           the.stats.stop = stop
-          for _ in range(20):
-            random.shuffle(d.rows)
-            test  = d.rows[-20:] #---  5*5 way
-            train = d.rows[:-20]
+          for train,test in xval(d.rows,5,5):
             train = random.choices(train, k=int(log(len(d.rows),2) * m)) if m else train
             t     = d.cluster(train)
             for row in test:
