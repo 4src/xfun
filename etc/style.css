@@ -1,3 +1,4 @@
+@import url('https://fonts.googleapis.com/css2?family=Delicious+Handrawn&display=swap');
 *, 
 *::before, 
 *::after {
@@ -20,6 +21,6 @@ h1::first-letter{
   color:#ff8A00;
 }
 
-h1 { font-size: 50px; font-family: "Bradley Hand"; }
+h1 { font-size: 50px; font-family: "Delicious Handrawn", cursive;}
 
 h1,h2,h3,p { margin-top: 10px;}

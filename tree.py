@@ -6,6 +6,7 @@
 from fileinput import FileInput as file_or_stdin
 import re,ast,sys,random
 from math import log,floor
+import stats
 any=random.choice
 
 ### options
@@ -117,7 +118,7 @@ class DATA(o):
     leaf     = tree.leaf(row).here
     return {c.at: c.mid() for  c in leaf.cols.y}
 
-  def interpolate(i,tree,row):
+  def k2(i,tree,row):
     leaf     = tree.leaf(row).here
     r1,r2,*_ = leaf.neighbors(row, leaf.rows)
     d1,d2    = leaf.dist(r1,row),leaf.dist(r2,row)
@@ -126,13 +127,37 @@ class DATA(o):
     w1,w2    = 1/d1**2, 1/d2**2
     return {c.at: ((r1[c.at] * w1) + (r2[c.at] * w2)) / (w1 + w2) for c in i.cols.y}
 
+
+  def k3(i,tree,row):
+    leaf     = tree.leaf(row).here
+    r1,r2,r3,*_ = leaf.neighbors(row, leaf.rows)
+    d1,d2,d3    = leaf.dist(r1,row),leaf.dist(r2,row), leaf.dist(r3,row)
+    if d1==0:  return {c.at: r1[c.at] for c in i.cols.y}
+    if d2==0:  return {c.at: r2[c.at] for c in i.cols.y}
+    if d3==0:  return {c.at: r3[c.at] for c in i.cols.y}
+    w1,w2,w3    = 1/d1**2, 1/d2**2, 1/d3**2
+    return {c.at: ((r1[c.at] * w1) + (r2[c.at] * w2) + (r3[c.at] * w3)) / (w1 + w2 + w3) for c in i.cols.y}
+
+
+  def k5(i,tree,row):
+    leaf = tree.leaf(row).here
+    r1,r2,r3,r4,r5,*_ = leaf.neighbors(row, leaf.rows)
+    d1,d2,d3,d4,d5    = leaf.dist(r1,row), leaf.dist(r2,row), leaf.dist(r3,row), leaf.dist(r4,row), leaf.dist(r5,row)
+    if d1==0:  return {c.at: r1[c.at] for c in i.cols.y}
+    if d2==0:  return {c.at: r2[c.at] for c in i.cols.y}
+    if d3==0:  return {c.at: r3[c.at] for c in i.cols.y}
+    if d4==0:  return {c.at: r4[c.at] for c in i.cols.y}
+    if d5==0:  return {c.at: r5[c.at] for c in i.cols.y}
+    w1,w2,w3,w4,w5 = 1/d1**2, 1/d2**2, 1/d3**2, 1/d4**2, 1/d5**2
+    return {c.at: ((r1[c.at] * w1) + (r2[c.at] * w2) + (r3[c.at] * w3) + (r4[c.at] * w4) + (r5[c.at] * w5)) / (w1 + w2 + w3 + w4 + w5) for c in i.cols.y}
+
 class TREE(o):
   def __init__(i, here,lvl,guard,left,right,toLeft):
     i.here, i.lvl,i.guard = here, lvl, guard
     i.left, i.right, i.toLeft = left, right, toLeft
     i.lefts, i.rights = None, None
 
-  def ok2go(i,rows,stop)  : return len(rows) > max(4,stop) and len(rows) < len(i.here.rows)
+  def ok2go(i,rows,stop)  : return len(rows) > max(6,stop) and len(rows) < len(i.here.rows)
   def go(i,row)      : return i.guard(row)
   def nogo(i,row)    : return not i.guard(row)
 
@@ -204,33 +229,29 @@ class eg:
     # print("")
     # for n in t.nodes(): print(n)
     # print("")
-
+    out = []
     for stop in [0.25,0.5]:
       for m in [0,100,50]:
-        for estimator,estimate  in dict(interpolate=lambda d,t,row: d.interpolate(t,row),
+        for estimator,estimate  in dict( k2=lambda d,t,row: d.k2(t,row),
+                                         k3=lambda d,t,row: d.k3(t,row),
+                                         k5=lambda d,t,row: d.k5(t,row),
                                          avearge = lambda d,t,row: d.average(t,row)).items():
-          stats=[]
+          tmp = []
           the.stats.stop = stop
-          for _ in range(30):
+          for _ in range(20):
             random.shuffle(d.rows)
-            test = d.rows[-30:]
-            train = d.rows[:-30]
+            test  = d.rows[-20:] #---  5*5 way
+            train = d.rows[:-20]
             train = random.choices(train, k=int(log(len(d.rows),2) * m)) if m else train
-            t=d.cluster(train)
+            t     = d.cluster(train)
             for row in test:
-               p= estimate(d,t,row)
-               [stats.append(abs(row[c.at] - p[c.at])/(1E-32 + c.div()))  for c in d.cols.y]
-          want=[0.35,0.65]
-          out={}
-          out[0.35]=100
-          out[0.65]=100
-          for i,x in enumerate(sorted(stats)):
-            if x  >= want[0]: out[want[0]] = int(100*i/len(stats)); want.pop(0)
-            if want==[]: break
-          print(the.train,"stop",stop, "m",m, "Nrows",len(d.rows), "Nxcols",len(d.cols.x), \
-                          "how", estimator, "%small", out[0.35],"%large",100-out[0.65])
-
-        #----------------------------------------------------------------------------------------
+               p = estimate(d,t,row)
+               for c in d.cols.y:
+                 tmp += [ abs(row[c.at] - p[c.at])/(1E-32 + c.div()) ]
+          out += [stats.SOME(tmp, f"st:{stop}_m:{m}_rows:{len(d.rows)}_x{len(d.cols.x)}_how:{estimator}")] 
+    print("\t\t",the.train,"\t\t")
+    stats.some0(out)
+#----------------------------------------------------------------------------------------
 cli(the)
 random.seed(the.seed)
 getattr(eg, the.go)()
