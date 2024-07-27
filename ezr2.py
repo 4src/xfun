@@ -57,12 +57,11 @@ def row2cols(cols, row):
         (num if col.nump else sym)(col,x)
   return row        
 
-#------------------------------------------------------------------------------
 def norm(col,x):
   if col.nump and x != "?":
     x = (x - col.lo) / (col.hi - col.lo + 1E-32) 
-  return x
-    
+  return x
+#------------------------------------------------------------------------------
 def dists(data,row1,row2):
   d,n = 0,1E-32
   for col in data.cols.x:
@@ -93,28 +92,55 @@ def half(data,rows):
     (lefts if dists(data,left,row) <= toLeft  else rights).append(row)
   return lefts, rights, left, right, toLeft
 
+def cluster(data,rows,stop=None):
+  k    = log(len(rows),2) * the.dist.xpand
+  print(k)
+  rows = rows if k >= len(rows) else random.choices(rows, k=int(k))
+  stop = stop or len(rows) ** the.dist.stop
+  return _cluster(data, rows, 0, stop, None, None)
 
-def cluster(data,rows,lvl=0,when=None,border=None,stop=None):
-  stop = stop or the.dist.stop
+def _cluster(data, rows, lvl, stop, when, border):
+  def ok(kids): 
+    return len(kids) > max(6,stop) and len(kids) < len(rows)
+
   ls, rs, left, right, toLeft = half(data,rows)
   node = o(rows=rows, lvl=lvl, when=when, border=border, 
            left=left, right=right, lefts=None, rights=None)
-  if ok2go(rows,ls,stop): node.lefts  = cluster(data, ls, lvl+1, le, toLeft, stop)
-  if ok2go(rows,rs,stop): node.rights = cluster(data, rs, lvl+1, gt, toLeft, stop)
+  if ok(ls): node.lefts  = _cluster(data, ls, lvl+1, stop, le, toLeft)
+  if ok(rs): node.rights = _cluster(data, rs, lvl+1, stop, gt, toLeft)
   return node
 
-def ok2go(rows,kids,stop)  : return len(kids) > max(6,stop) and len(kids) < len(rows)
+def clusters(tree):
+  if tree:
+    print(f"{'|.. '*tree.lvl}{len(tree.rows)}")
+    clusters(tree.lefts)
+    clusters(tree.rights)
 
-def clusters(clustr):
-  if clustr:
-    print(f"{'|.. '*clustr.lvl}{len(clustr.rows)}")
-    clusters(clustr.lefts)
-    clusters(clustr.rights)
+def leaf(data, clustr, row):
+  for kid in [clustr.lefts, clustr.rights]:
+    if kid and kid.when:
+      if kid.when( dists(data, kid.left, row), kid.border):
+         return leaf(data, kid, row)
+  return clustr
+
+def knn2(data,tree,row):
+  rows     = leaf(data,tree,row).rows
+  r1,r2,*_ = neighbors(data,row, rows)
+  d1,d2    = dists(data,r1,row),dists(data, r2,row)
+  if d1==0:  return {c.at: r1[c.at] for c in data.cols.y}
+  if d2==0:  return {c.at: r2[c.at] for c in data.cols.y}
+  w1,w2    = 1/d1**2, 1/d2**2
+  return {c.at: ((r1[c.at] * w1) + (r2[c.at] * w2)) / (w1 + w2) for c in data.cols.y}
 
 #----------------------------------------------------
 le = lambda x,y: x <= y
 gt = lambda x,y: x >  y
 r2 = lambda x  : round(x,2)
+
+def musd(a, fun=lambda x:x):
+  a = sorted(fun(x) for x in a if x != "?")
+  n = len(a)//10
+  return a[5*n], (a[9*n] - a[n]) / 2.56
 
 def pretty(d):
   short = lambda v : round(v,the.round) if isinstance(v,float) else v
@@ -132,18 +158,26 @@ def csv(file="-"):
 
 #----------------------------------------------------
 def main():
+  the.train = os.environ.get("TRAIN",the.train)
+  the.seed  = os.environ.get("SEED", the.seed)
   random.seed(the.seed)
-  print(DATA())
   d= rows2data(DATA(), csv(the.train))
+  print("\nycols ...")
   [print(col) for col in d.cols.y]
+  print("\ndistances ok ...")
   for r in d.rows: assert(0 <= dists(d,r,d.rows[0])  <= 1) 
-  for r in random.choices(d.rows,k=30): print(len(neighbors(d,r,d.rows)),end=" ")
+  print("\ntwoFar ...")
   for _ in range(10):
-    x,y=twoFar(d,d.rows)
+    x,y = twoFar(d,d.rows)
     print(r2(dists(d,x,y)),x,y,sep="\t")
+  print("\ndividing ...")
   for _ in range(10):
     ls,rs,l,r,c = half(d,d.rows)
-    print(len(ls), len(rs), r2(c))
-  clusters(cluster(d, d.rows)) #int(log(len(d.rows),2)*the.dist.xpand))))
+    print(r2(c), len(ls), len(rs),sep="\t")
+  print("\nclusters ...")
+  tree= cluster(d, d.rows) #int(log(len(d.rows),2)*the.dist.xpand))))
+  clusters(tree) #int(log(len(d.rows),2)*the.dist.xpand))))
+  print(knn2(d,tree,d.rows[0]))
+  print(musd(d.rows, lambda row:row[-1]))
 
 if __name__ == "__main__": main()
