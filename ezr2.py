@@ -93,17 +93,17 @@ def half(data,rows):
     (lefts if dists(data,left,row) <= toLeft  else rights).append(row)
   return lefts, rights, left, right, toLeft
 
+def cluster(data,rows,stop=None):
+  return _cluster(data, rows, 0, stop, None, None)
 
-def cluster(data,rows,lvl=0,when=None,border=None,stop=None):
-  stop = stop or the.dist.stop
+def _cluster(data, rows, lvl, stop, when, border):
+  def ok(kids): return len(kids) > max(6,stop) and len(kids) < len(rows)
   ls, rs, left, right, toLeft = half(data,rows)
   node = o(rows=rows, lvl=lvl, when=when, border=border, 
            left=left, right=right, lefts=None, rights=None)
-  if ok2go(rows,ls,stop): node.lefts  = cluster(data, ls, lvl+1, le, toLeft, stop)
-  if ok2go(rows,rs,stop): node.rights = cluster(data, rs, lvl+1, gt, toLeft, stop)
+  if ok(rows,ls,stop): node.lefts  = _cluster(data, ls, lvl+1, stop, le, toLeft)
+  if ok(rows,rs,stop): node.rights = _cluster(data, rs, lvl+1, stop, gt, toLeft)
   return node
-
-def ok2go(rows,kids,stop)  : return len(kids) > max(6,stop) and len(kids) < len(rows)
 
 def clusters(clustr):
   if clustr:
