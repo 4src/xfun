@@ -107,7 +107,7 @@ class DATA(o):
     return lefts, rights, left, right, toLeft
 
   def cluster(i, rows, lvl=0, guard=None,stop=None):
-    stop = stop or the.dist.stop or len(rows)**.5
+    stop = stop or the.dist.stop 
     ls, rs, left, right, toLeft = i.half(rows)
     it = TREE(i.clone(rows), lvl, guard,left,right,toLeft)
     if it.ok2go(ls,stop): it.lefts  = i.cluster(ls, lvl+1, lambda r: i.dist(r,left) <= toLeft,stop)
@@ -249,10 +249,9 @@ class eg:
                                          k5=lambda d,t,row: d.k5(t,row),
                                          avearge = lambda d,t,row: d.average(t,row)).items():
           tmp = []
-          the.stats.stop = stop
           for train,test in xval(d.rows,5,5):
             train = random.choices(train, k=int(log(len(d.rows),2) * m)) if m else train
-            t     = d.cluster(train)
+            t     = d.cluster(train,stop=len(train)**stop)
             for row in test:
                p = estimate(d,t,row)
                for c in d.cols.y:

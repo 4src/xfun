@@ -143,15 +143,15 @@ etax:
 eplot:
 	gawk '{print $4+rand()*0.9,$(NF-1)}' ~/tmp/predict.txt | sort -n  | ./eplot -t "49 data sets (with jitter)" -x "#rows" -y "percent small" -P ; mv foo.png rows.png
 
-DISTS= $(subst data/config,var/out/dists,$(wildcard data/config/*.csv)) \
-      $(subst data/misc,var/out/dists,$(wildcard data/misc/*.csv)) \
-      $(subst data/process,var/out/dists,$(wildcard data/process/*.csv)) \
-      $(subst data/hpo,var/out/dists,$(wildcard data/hpo/*.csv))
+DISTS= $(subst data/config,var/out/distsMean,$(wildcard data/config/*.csv)) \
+      $(subst data/misc,var/out/distsMean,$(wildcard data/misc/*.csv)) \
+      $(subst data/process,var/out/distsMean,$(wildcard data/process/*.csv)) \
+      $(subst data/hpo,var/out/distsMean,$(wildcard data/hpo/*.csv))
 
-var/out/dists/%.csv : data/config/%.csv;  ./tree.py -g dist -t $< |tee $@
-var/out/dists/%.csv : data/process/%.csv; ./tree.py -g dist -t $< |tee $@
-var/out/dists/%.csv : data/misc/%.csv;  ./tree.py -g dist -t $< |tee $@
-var/out/dists/%.csv : data/hpo/%.csv; ./tree.py -g dist -t $< |tee $@
+var/out/distsMean/%.csv : data/config/%.csv;  ./tree.py -g dist -t $< |tee $@
+var/out/distsMean/%.csv : data/process/%.csv; ./tree.py -g dist -t $< |tee $@
+var/out/distsMean/%.csv : data/misc/%.csv;  ./tree.py -g dist -t $< |tee $@
+var/out/distsMean/%.csv : data/hpo/%.csv; ./tree.py -g dist -t $< |tee $@
 
 # conclusion: split at mean, not median
 # log2(N) * 50 is ok
@@ -163,3 +163,6 @@ dists:
 
 report:
 	cd var/out/dists; for i in `ls *.csv |shuf` ; do   echo "#"; grep "0.25"  $$i; done | column -t |less
+
+fiddle:
+	cd log/out/distsMean; for i in *.csv; do  cat -n  $$i |grep -v "ave"  | grep k2  | grep "st:0\.5_m:100_" ; done | cut -f 1  | sort -n | fmt
