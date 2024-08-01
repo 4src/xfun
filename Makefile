@@ -165,4 +165,8 @@ report:
 	cd var/out/dists; for i in `ls *.csv |shuf` ; do   echo "#"; grep "0.25"  $$i; done | column -t |less
 
 fiddle:
-	cd log/out/distsMean; for i in *.csv; do  cat -n  $$i |grep -v "ave"  | grep k2  | grep "st:0\.5_m:100_" ; done | cut -f 1  | sort -n | fmt
+	cd log/out/distsMean; \
+		for i in *.csv; do  cat -n  $$i |grep -v "ave"  | grep k2  | grep "st:0\.5_m:50_" ; done | cut -f 1  | sort -n | fmt  -100; echo  "" ;\
+		for i in *.csv; do  cat -n  $$i |grep -v "ave"  | grep k2  | grep "st:0\.5_m:100_" ; done | cut -f 1  | sort -n | fmt  -60; echo  "" ;\
+		for i in *.csv; do  cat -n  $$i |grep -v "ave"  | grep k2  | grep "st:0\.5_m:0_" ; done | cut -f 1  | sort -n | fmt -60  \
+
