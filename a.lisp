@@ -79,11 +79,13 @@
      (add1 self x)))
 
 (defmethod add1 ((self num) (x number)) ; -> nil
+  (print 'aaa)
   (let ((d (- x $mu)))
     (incf $mu (/ d $n))
     (incf $m2 (* d (-  x $mu)))
     (setf $lo (min x $lo)
-          $hi (max x $hi))))
+          $hi (max x $hi)))
+          (print 'bbb))
 
 (defmethod add1 ((self sym) x) ; --> nil
   (print 100)
