@@ -1,3 +1,6 @@
+(defpackage :ezr (:use :cl))
+(in-package :ezr)
+
 ;;;; preamble ------------------------------------------------------------------
 (defstruct about 
   "struct for file meta info"
@@ -50,16 +53,16 @@
   "access settings"
   `(o *settings* ,@slots))
 
-(set-macro-character #\$  #'(lambda (s _) 
-                              "turn $x ==> (slot-value self 'x)"
-                              `(slot-value self ',(read s t nil t))))
+(set-macro-character #\$ #'(lambda (s _) 
+                             "turn $x ==> (slot-value self 'x)"
+                             `(slot-value self ',(read s t nil t))))
 
 (defmacro seen (lst x &optional (init 0))
   "increment or create a symbol count. not recommended for > 30 unique symbols"
   `(cdr (or (assoc ,x ,lst :test #'equal)
             (car (setf ,lst (cons (cons ,x ,init) ,lst))))))
 
-;;;; create ---------------------------------------------------------------------
+;;;; create ---------------------------------------------------------------------
 (defun make-num (&key (at 0)  (name " ") &aux (self (%make-num :at at :name name)))
   (setf $goal (if (eq (last-char name) #\-) 0 1))
   self)
@@ -112,14 +115,19 @@
             $most new))))
 
 ;;;; misc -----------------------------------------------------------------------
-(defmethod mid ((i num)) $mu)   
-(defmethod mid ((i sym)) $mode) 
+(defmethod mid ((self num)) 
+  "mid for NUMs is mu"   
+  $mu)   
 
-(defmethod div ((i num)) ; --> float
+(defmethod mid ((self sym)) 
+  "mid for SYMs is mode" 
+  $mode) 
+
+(defmethod div ((self num)) ; --> float
   "NUMbers have standard deviation"
   (if (< $n 2) 0 (sqrt (/ $m2 (- $n 1)))))
 
-(defmethod div ((i sym)) ; --> float
+(defmethod div ((self sym)) ; --> float
   "SYMbols have entropy"
   (* -1 (loop :for (_ . v) :in $has :sum (* (/ v $n) (log (/ v $n) 2)))))
 
@@ -145,7 +153,7 @@
 
 (defmethod like ((self num) x &key prior) ; --> float
     "return likelhood of a NUMber"
-  (let ((sd (+ (div i) 1E-30)))
+  (let ((sd (+ $sd 1E-30)))
     (/ (exp (- (/ (expt (- x $mu) 2) (* 2 (expt sd 2)))))
        (* sd (sqrt (* 2 pi))))))
 
