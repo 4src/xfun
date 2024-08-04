@@ -76,7 +76,7 @@ ezrpdf:
 		-Br                \
 		--file-align=fill      \
 		--line-numbers=1        \
- --lines-per-page=100 \
+ --chars-per-line=90 \
 		--pro=color               \
 		--left-footer="$<"            \
 		--borders=no             \
