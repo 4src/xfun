@@ -3,8 +3,8 @@
   (what      "core.lisp")
   (why       "find independent values that select for best dependent values")
   (when      2024)
-  (who       "Tim Menzies")
-  (copyright "BSD-2")
+  (who       "tim menzies")
+  (copyright "bsd-2")
   (act       '(act eg)))   ; go-x command are available on the command line as -x [arg]
 
 (defstruct bayes (m 2) (k 1))

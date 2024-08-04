@@ -1,5 +1,8 @@
 #!/usr/bin/env python3 -B
 # vim: set ts=2 sw=2 et :
+
+from dataclasses import dataclass, field
+from typing import Any, List, Dict
 from fileinput import FileInput as file_or_stdin
 import os,re,ast,sys,random
 from math import log,floor
@@ -8,7 +11,7 @@ big = 1E30
 
 class o:
   __init__ = lambda i,**d : i.__dict__.update(d)
-  __repr__ = lambda i     : i.__class__.__name__+"("+pretty(i.__dict__)+")"
+  __repr__ = lambda i     : i.__class__.__name__+"("+str(i.__dict__)+")"
 
 the = o(
   go    = "help",
@@ -19,6 +22,19 @@ the = o(
             xpand=100,
             p=2,
             stop=0.5))
+
+def DICT(): return field(default_factory=dict)
+
+@dataclass
+class FRED(o):
+    at: int=0; txt: str=" "; n: int=0; nump: bool=False; has: Dict=DICT()
+
+f1 = FRED()
+f2 = FRED()
+f1.has[100]=200
+f2.has[10]=20
+print(f1,f2)
+exit()
 
 def DATA()            : return o(cols=None, rows=[])
 def COLS(names)       : return o(names=names, all=[], x=[], y=[])
