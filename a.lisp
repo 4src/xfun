@@ -63,7 +63,7 @@
   (if $cols
     (push (add $cols row) $rows)
     (setf $cols (make-cols row)))
-  (print 500))
+  (print $cols))
 
 (defmethod add ((self cols) row)
   (dolist (lst (list $x $y) row)
@@ -85,7 +85,7 @@
     (incf $m2 (* d (-  x $mu)))
     (setf $lo (min x $lo)
           $hi (max x $hi)))
-          (print 'bbb))
+  (print 'bbb))
 
 (defmethod add1 ((self sym) x) ; --> nil
   (print 100)
