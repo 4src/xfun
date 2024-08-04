@@ -55,19 +55,23 @@
     col))
 
 (defun make-data (src &aux (self (%make-data)))
-  (labels ((fun (row) (print 10) (add self row) (print 11)))
+  (labels ((fun (row) (print 10) (add self row)))
     (if (stringp src) (slurp #'fun src) (mapcar #'fun src))
     self))
 
 (defmethod add ((self data) (row cons))
   (if $cols
     (push (add $cols row) $rows)
-    (setf $cols (make-cols row))))
+    (setf $cols (make-cols row)))
+  (print 500))
 
 (defmethod add ((self cols) row)
   (dolist (lst (list $x $y) row)
     (dolist (col lst)
-      (add col (elt row (col-at col))))))
+      (print (list '--> 666 col))
+      (add col (elt row (col-at col)))
+      (print (list '<-- (col-at col) 400)))
+    (print 999)))
 
 (defmethod add ((self col) x)
   (unless (eq x '?)
@@ -82,10 +86,12 @@
           $hi (max x $hi))))
 
 (defmethod add1 ((self sym) x) ; --> nil
+  (print 100)
   (let ((new (incf (seen $has x))))
     (if (> new $most)
       (setf $mode x
-            $most new))))
+            $most new)))
+  (print 300))
 
 ;;;
 (defun slurp (fun file)
@@ -110,11 +116,11 @@
   (* n (- 1.0d0 (/ *seed* 2147483647.0d0))))
 
 ;;;;
-(defun eg-one (x) (print (? bayes k)))
-
-(defun eg-slurp (f) (print 1) (slurp #'print f))
-
-(defun eg-data (_) (dolist (col  (o (make-data (? train)) cols y)) (print col)))
+(defun eg-one   (x) (print (? bayes k)))
+(defun eg-slurp (f) (slurp #'print f))
+(defun eg-data  (_) 
+  (dolist (col (o (make-data (? train)) cols y)) 
+    (print col)))
 
 ;;;;
 (defun main (args)
