@@ -11,7 +11,12 @@
 
 (defstruct (sym (:include col)) has)
 (defstruct (num (:include col)) (mu 0) (m2 0) (sd 0)  (hi -1E32) (lo 1E32))
-;----------------------------------------------------------------------------------------
+; ----------------------------------------------------------------------------------------
+; <i class="fa fa-camera-retro fa-lg"></i> fa-lg
+; <i class="fa fa-camera-retro fa-2x"></i> fa-2x
+; <i class="fa fa-camera-retro fa-3x"></i> fa-3x
+; <i class="fa fa-camera-retro fa-4x"></i> fa-4x
+; <i class="fa fa-camera-retro fa-5x"></i> fa-5x
 (set-macro-character #\$  #'(lambda (s _) `(slot-value self ',(read s t nil t))))
 
 (defmacro o (struct f &rest fs)
