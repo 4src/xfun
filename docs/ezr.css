@@ -1,0 +1,19 @@
+@import url('https://fonts.googleapis.com/css2?family=Delicious+Handrawn&display=swap');
+@import url('https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css');
+
+body { max-width: 700px; }
+
+body {
+  color: #555;
+  max-width: 80ch;
+  font-family: "Helvetica", "Arial", sans-serif;
+  padding: 2em 1em;
+}
+
+h1::first-letter{ color:#ff8A00; }
+
+h1 { color: #658291; font-size: 90px; font-family: "Delicious Handrawn", cursive;}
+
+pre {  padding-left: 5px; border-left: solid 2px #BBB; font-size: small; }
+
+h2 { padding: 3px; color:white; background-color:  #658291; }
