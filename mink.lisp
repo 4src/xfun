@@ -4,11 +4,14 @@
 (defpackage :ezr (:use :cl))
 (in-package :ezr)
 
+#+sbcl
+(declaim (sb-ext:muffle-conditions cl:style-warning))
+
 ; ### Settings
 (defstruct about 
   "Struct for file meta info."
   (what  "mink.lisp")
-  (why   "optimization via recursive kmeans",
+  (why   "optimization via recursive kmeans")
   (when  "(c) 2024")
   (how   "BSD-2 license")
   (who   "Tim Menzies")
@@ -18,8 +21,26 @@
   "Struct for all settings."
   (seed  1234567891)
   (buckets 2)
-  (p 2)
+  (pp 2)
   (train "data/auto93.lisp"))
+
+; ### Macros 
+(defmacro o (x f &rest fs) 
+  "Access slots in `x` via a chain of slot accessor."
+  (if fs `(o (slot-value ,x ',f) ,@fs) `(slot-value ,x ',f)))
+
+(defmacro ? (&rest slots) 
+  "Access settings."
+  `(o *settings* ,@slots))
+
+(set-macro-character #\$ #'(lambda (s _) 
+                             "Turn $x ==> (slot-value self 'x)."
+                             `(slot-value self ',(read s t nil t))))
+
+(defmacro seen (lst x &optional (init 0))
+  "Increment or create a symbol count. Not recommended for > 30 unique symbols."
+  `(cdr (or (assoc ,x ,lst :test #'equal)
+            (car (setf ,lst (cons (cons ,x ,init) ,lst))))))
 
 (defvar *settings* (make-settings))
 
@@ -44,30 +65,10 @@
   "Summarize SYMbolic columns."
   has mode (most 0))
 
-; ### Macros 
-(defmacro o (x f &rest fs) 
-  "Access slots in `x` via a chain of slot accessor."
-  (if fs `(o (slot-value ,x ',f) ,@fs) `(slot-value ,x ',f)))
-
-(defmacro ? (&rest slots) 
-  "Access settings."
-  `(o *settings* ,@slots))
-
-(set-macro-character #\$ #'(lambda (s _) 
-                             "Turn $x ==> (slot-value self 'x)."
-                             `(slot-value self ',(read s t nil t))))
-
-(defmacro seen (lst x &optional (init 0))
-  "Increment or create a symbol count. Not recommended for > 30 unique symbols."
-  `(cdr (or (assoc ,x ,lst :test #'equal)
-            (car (setf ,lst (cons (cons ,x ,init) ,lst))))))
-
 ; ## Methods 
 ; ### Create 
-(defun make-num (&key (at 0)  (name " ") &aux (self (%make-num :at at :name name)))
-  "Set goal to 0,1 for goals to minimze, maximze."
-  (setf $goal (if (eq (last-char name) #\-) 0 1))
-  self)
+(defun make-num (&key (at 0)  (name " "))
+  (%make-num :at at :name name :goal (if (eq (last-char name) #\-) 0 1)))
 
 (defun make-cols (names &aux (self (%make-cols :names names)))
   "Create one column per name, store them in `all`."
@@ -78,13 +79,15 @@
            (col  (funcall what :name name :at (length $all))))
       (push col $all)
       (unless (eql z #\X) 
-        (if (member z (list #\! #\- #\+)) (push col $y) (push col $x)))))
+        (if (member z (list #\! #\- #\+)) (push col $y) (push col $x))))))
 
 (defun make-data (&optional src &aux (self (%make-data)))
   "Load in data from either a file or a list."
   (labels ((fun (row) (add self row)))
-    (if (stringp src) (mapread #'fun src) (mapcar #'fun src))
-    self))
+    (if (stringp src)
+        (mapread #'fun src)
+        (mapcar #'fun src)))
+  self)
 
 ; ###  Add 
 (defmethod add ((self data) (row cons))
@@ -121,14 +124,11 @@
       (setf $mode x
             $most new))))
 
-; ### Misc
-(defmethod mid ((self num)) 
-  "The mid() for NUMs is mu."   
-  $mu)   
+ ; ### Misco
+(defmethod cell ((self col) row) (elt row $at))
 
-(defmethod mid ((self sym)) 
-  "Thhe mid() for SYMs is mode." 
-  $mode) 
+(defmethod mid ((self num)) $mu)   
+(defmethod mid ((self sym)) $mode) 
 
 (defmethod div ((self num)) ; --> float
   "NUMbers have standard deviation"

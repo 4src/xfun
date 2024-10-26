@@ -1,7 +1,7 @@
 (defpackage :min (:use :cl))
 (in-package :min)
 
-(defvars  *options* '(
+(defvar  *options* '(
   (k     "-k"  "kth value"        2)
   (goal  "-g"  "start-up action"  "one")
   (help  "-h"  "show help"        nil)))
@@ -33,7 +33,7 @@
 
 (defun new-sym (&optional (at 0) (s ""))
   "Factory for making SYMs."
-  (make-sym :at 0 :txt s))
+  (make-sym :at at :txt s))
 
 (defmethod add ((sym1 sym) x)
   "Update a SYM."
