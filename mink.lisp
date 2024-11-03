@@ -186,7 +186,7 @@
   (* n (- 1.0d0 (/ *seed* 2147483647.0d0))))
 
 (defun eg(s)
- (intern (format nil "EG~a" (string-upcase s))))
+  (intern (format nil "EG~a" (string-upcase s))))
 
 (defun args()
   #+clisp ext:*args* #+sbcl sb-ext:*posix-argv*)
@@ -203,5 +203,5 @@
   (dolist (col (o (make-data (or file (? train))) cols y)) 
     (format t "~a~%" col)))
 
-(loop :for (flag arg) :on (args) :by #'cdr :if  (fboundp (eg flag)) 
+(loop :for (flag arg) :on (args) :by #'cdr :if (fboundp (eg flag)) 
       :do  (funcall (eg flag) (if arg (str2thing arg))))
