@@ -199,6 +199,6 @@
 
 (let ((args #+clisp ext:*args* #+sbcl sb-ext:*posix-argv*))
   (loop :for (flag arg) :on args :by #'cdr :do
-    (let ((fun (intern (format nil "EG~:@(~a~)" flag))))
+    (let ((fun (intern (format nil "EG~a" (string-upcase flag)))))
       (if (fboundp fun)
         (funcall fun (if arg (str2thing arg)))))))
