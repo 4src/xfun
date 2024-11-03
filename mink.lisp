@@ -203,5 +203,5 @@
   (dolist (col (o (make-data (or file (? train))) cols y)) 
     (format t "~a~%" col)))
 
-(loop :for (flag arg) :on (args) :by #'cdr :if (fboundp (eg flag)) :do
-  (funcall (eg flag) (if arg (str2thing arg))))
+(loop :for (flag arg) :on (args) :by #'cdr :if  (fboundp (eg flag)) 
+      :do  (funcall (eg flag) (if arg (str2thing arg))))
