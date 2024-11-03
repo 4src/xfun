@@ -185,6 +185,12 @@
   (setf *seed* (mod (* 16807.0d0 *seed*) 2147483647.0d0))
   (* n (- 1.0d0 (/ *seed* 2147483647.0d0))))
 
+(defun eg(s)
+ (intern (format nil "EG~a" (string-upcase s))))
+
+(defun args()
+  #+clisp ext:*args* #+sbcl sb-ext:*posix-argv*)
+
 ; ##  Start-up 
 ; ###  Egs
 ; Each of these `eg-xxx` functioncs can be called from 
@@ -197,8 +203,5 @@
   (dolist (col (o (make-data (or file (? train))) cols y)) 
     (format t "~a~%" col)))
 
-(let ((args #+clisp ext:*args* #+sbcl sb-ext:*posix-argv*))
-  (loop :for (flag arg) :on args :by #'cdr :do
-    (let ((fun (intern (format nil "EG~a" (string-upcase flag)))))
-      (if (fboundp fun)
-        (funcall fun (if arg (str2thing arg)))))))
+(loop :for (flag arg) :on (args) :by #'cdr :if (fboundp (eg flag)) :do
+  (funcall (eg flag) (if arg (str2thing arg))))
