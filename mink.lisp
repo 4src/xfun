@@ -1,92 +1,83 @@
-; <!-- vim: set ts=2 sw=2 sts=2 et: -->
-; ##  Preamble 
-; ### Package
-(defpackage :ezr (:use :cl))
-(in-package :ezr)
+; <!-- vim: set ts=2 sw=2 sts=2 et showmatch: -->
+;(defpackage :ezr (:use :cl))
+;(in-package :ezr)
 
 #+sbcl
 (declaim (sb-ext:muffle-conditions cl:style-warning))
 
-; ### Settings
 (defstruct about 
   "Struct for file meta info."
   (what  "mink.lisp")
   (why   "optimization via recursive kmeans")
   (when  "(c) 2024")
-  (how   "BSD-2 license")
+  (how   "MIT license")
   (who   "Tim Menzies")
   (where "timm@ieee.org"))
 
+(defstruct bayes
+ (m 1)
+ (k 2))
+
 (defstruct settings 
   "Struct for all settings."
-  (seed  1234567891)
+  (seed    1234567891)
   (buckets 2)
-  (pp 2)
-  (train "data/auto93.lisp"))
-
-; ### Macros 
-(defmacro o (x f &rest fs) 
-  "Access slots in `x` via a chain of slot accessor."
-  (if fs `(o (slot-value ,x ',f) ,@fs) `(slot-value ,x ',f)))
-
-(defmacro ? (&rest slots) 
-  "Access settings."
-  `(o *settings* ,@slots))
-
-(set-macro-character #\$ #'(lambda (s _) 
-                             "Turn $x ==> (slot-value self 'x)."
-                             `(slot-value self ',(read s t nil t))))
-
-(defmacro seen (lst x &optional (init 0))
-  "Increment or create a symbol count. Not recommended for > 30 unique symbols."
-  `(cdr (or (assoc ,x ,lst :test #'equal)
-            (car (setf ,lst (cons (cons ,x ,init) ,lst))))))
+  (pp      2)
+  (train   "data/auto93.lisp")
+  (about  (make-about))
+  (bayes  (make-bayes)))
 
 (defvar *settings* (make-settings))
 
-; ###  Structs 
-(defstruct (data (:constructor %make-data)) 
-  "Place to store `rows`, sumamrizes in `cols`."
+;---------- ---------- ---------- ---------- ---------- ---------- ---------- ----------
+(defstruct (data (:constructor %make-data))
+  "'rows' are summazied in 'cols'."
   rows cols)
 
-(defstruct (cols (:constructor %make-cols)) 
-  "Factory that makes and stores columns from row1 names."
+(defstruct (cols (:constructor %make-cols))
+  "COLS are factories. Turns strings to NUMs or COLs (may be `x` inpits or `y` goals)."
   names all x y)
 
-(defstruct col 
-  "Super class of NUM and SYM."
+(defstruct col
+  "COLs are NUMs and SYMS have `name`; are found `at` some column index."
   (n 0) (at 0) (name " "))
 
+(defstruct (sym (:include col))
+  "SYMs track a `count` of symbols. The `mode` is most common symbol count."
+  count mode (most 0))
+
 (defstruct (num (:include col) (:constructor %make-num))
-  "Summarize NUMeric columns."
+  "NUMs track the `lo` and `hi` seen so far; as well as mean and stdev (`mu`m `sd`)."
   (goal 1) (mu 0) (m2 0) (sd 0) (lo 1E32) (hi -1E32))
 
-(defstruct (sym (:include col)) 
-  "Summarize SYMbolic columns."
-  has mode (most 0))
+;---------- ---------- ---------- ---------- ---------- ---------- ---------- ----------
+(defmacro o (x f &rest fs) 
+  (if fs `(o (slot-value ,x ',f) ,@fs) `(slot-value ,x ',f)))
 
-; ## Methods 
-; ### Create 
-(defun make-num (&key (at 0)  (name " "))
-  (%make-num :at at :name name :goal (if (eq (last-char name) #\-) 0 1)))
+(defmacro ? (&rest slots) 
+  `(o *settings* ,@slots))
+
+(set-macro-character
+   #\$ #'(lambda (s _) `(slot-value self ',(read s t nil t))))
+ 
+;---------- ---------- ---------- ---------- ---------- ---------- ---------- ----------   
+(defun make-num(&key (at 0) (name " ") &aux (self (%make-num :at at :name name)))
+  (setf $goal (if (eql #\- (last-char $name)) 0 1))
+  self)
 
 (defun make-cols (names &aux (self (%make-cols :names names)))
-  "Create one column per name, store them in `all`."
-  (dolist (name names self)
-    (let* ((a    (char name 0)) 
-           (z    (last-char name))
-           (what (if (upper-case-p a) #'make-num #'make-sym))
-           (col  (funcall what :name name :at (length $all))))
+  (dolist (name names self) ; return self
+    (let* ((a   (char name 0)) 
+           (z   (last-char name))
+           (fun (if (upper-case-p a) #'make-num #'make-sym))
+           (col (funcall fun :name name :at (length $all))))
       (push col $all)
       (unless (eql z #\X) 
         (if (member z (list #\! #\- #\+)) (push col $y) (push col $x))))))
 
 (defun make-data (&optional src &aux (self (%make-data)))
-  "Load in data from either a file or a list."
   (labels ((fun (row) (add self row)))
-    (if (stringp src)
-        (mapread #'fun src)
-        (mapcar #'fun src)))
+    (if (stringp src) (mapfile #'fun src) (mapcar #'fun src)))
   self)
 
 ; ###  Add 
@@ -119,10 +110,11 @@
 
 (defmethod add1 ((self sym) x) 
   "Update a SYM."
-  (let ((new (incf (seen $has x))))
+  (let ((new (incf (cdr (or (assoc x $count :test #'equal) 
+                            (car (setf $count (cons (cons x 0) $count))))))))
     (if (> new $most)
-      (setf $mode x
-            $most new))))
+        (setf $mode x
+              $most new))))
 
  ; ### Misco
 (defmethod cell ((self col) row) (elt row $at))
@@ -139,19 +131,14 @@
   (* -1 (loop :for (_ . v) :in $has :sum (* (/ v $n) (log (/ v $n) 2)))))
 
 ; ###  Bayes 
-(defmethod like ((self data) row &key nall nh) ; --> float
+(defmethod loglike ((self data) row &key nall nh) ; --> float
   "Return the log likelihood of a row."
-  (let* ((prior (/ (+ (length $rows) (? bayes k)) 
-                   (+ nall (* nh (? bayes k))))))
-    (+ (log prior) (loop :for col :in (o $cols x) :sum (_loglike row col prior)))))
-
-(defun _loglike (row col prior &aux (x (cell col row))) ; --> float
-  "Usually, return log of likelihood (but for dontknow and zero, return 0)."
-  (unless (eql x '?)
-    (let ((tmp (like col x :prior prior)))
-      (unless (zerop tmp) 
-        (return-from _loglike (log tmp)))))
-  0)
+  (labels ((num (n) (if (< n 0) 0 (log n))))
+    (let* ((prior (/ (+ (length $rows) (? bayes k)) 
+                     (+ nall (* nh (? bayes k))))))
+      (+ (num prior) (loop :for col :in (o $cols x) 
+                           :if (not (equal '? (cell col row)))
+                           :sum (num (like col (cell col row) :prior prior)))))))
 
 (defmethod like ((self sym) x &key prior) ; --> float
   "Return likelhood of a SYMbol."
@@ -180,7 +167,7 @@
           (t                s1))))
 
 ; ### Files
-(defun mapread (fun file)
+(defun mapfile (fun file)
   "Run `fun` for all things in a file."
   (with-open-file (s file) 
     (loop (funcall fun (or (read s nil nil) (return))))))
@@ -202,20 +189,16 @@
 ; ###  Egs
 ; Each of these `eg-xxx` functioncs can be called from 
 ; the command line with `-xxx` (with an optional arg).
-(defun eg-one (_) (format t "~a~%" (? bayes k)))
+(defun eg--one (_) (format t "~a~%" (? bayes k)))
 
-(defun eg-mapread (f) (mapread #'print (? train) ))
+(defun eg--mapread (f) (mapfile #'print (? train) ))
 
-(defun eg-data (&optional file) 
+(defun eg--data (&optional file) 
   (dolist (col (o (make-data (or file (? train))) cols y)) 
     (format t "~a~%" col)))
 
-; ###  Main 
-(defun main (args)
-  "Ask the command line if there is any EG- function to run."
+(let ((args #+clisp ext:*args* #+sbcl sb-ext:*posix-argv*))
   (loop :for (flag arg) :on args :by #'cdr :do
     (let ((fun (intern (format nil "EG~:@(~a~)" flag))))
       (if (fboundp fun)
         (funcall fun (if arg (str2thing arg)))))))
-
-(main #+clisp ext:*args* #+sbcl sb-ext:*posix-argv*)
