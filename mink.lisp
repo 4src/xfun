@@ -91,7 +91,7 @@
   "Summarise a row in the `x` and `y` columns."
   (dolist (lst (list $x $y) row)
     (dolist (col lst)
-      (add col (elt row (col-at col))))))
+      (add col (at col row)))))
 
 (defmethod add ((self col) x)
   "Summarize `x` in a column (unless it is don't know."
@@ -117,7 +117,7 @@
               $most new))))
 
  ; ### Misco
-(defmethod cell ((self col) row) (elt row $at))
+(defmethod at ((self col) row) (elt row $at))
 
 (defmethod mid ((self num)) $mu)   
 (defmethod mid ((self sym)) $mode) 
@@ -137,8 +137,8 @@
     (let* ((prior (/ (+ (length $rows) (? bayes k)) 
                      (+ nall (* nh (? bayes k))))))
       (+ (num prior) (loop :for col :in (o $cols x) 
-                           :if (not (equal '? (cell col row)))
-                           :sum (num (like col (cell col row) :prior prior)))))))
+                           :if (not (equal '? (at col row)))
+                           :sum (num (like col (at col row) :prior prior)))))))
 
 (defmethod like ((self sym) x &key prior) ; --> float
   "Return likelhood of a SYMbol."
