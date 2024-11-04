@@ -50,7 +50,7 @@
   "SYMs track a `count` of symbols. The `mode` is most common symbol count."
   count mode (most 0))
 
-(defstruct (col)
+(defstruct col
    "COLs are NUMs and SYMS have `name`; are found `at` some column index."
    (n 0) (at 0) (name " "))
 
