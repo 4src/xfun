@@ -30,42 +30,54 @@
 (defvar *settings* (make-settings))
 
 ;---------- ---------- ---------- ---------- ---------- ---------- ---------- ----------
-(defstruct (data (:constructor %make-data))
-  "'rows' are summazied in 'cols'."
-  rows cols)
-
-(defstruct (cols (:constructor %make-cols))
-  "COLS are factories. Turns strings to NUMs or COLs (may be `x` inpits or `y` goals)."
-  names all x y)
-
-(defstruct col
-  "COLs are NUMs and SYMS have `name`; are found `at` some column index."
-  (n 0) (at 0) (name " "))
-
-(defstruct (sym (:include col))
-  "SYMs track a `count` of symbols. The `mode` is most common symbol count."
-  count mode (most 0))
-
-(defstruct (num (:include col) (:constructor %make-num))
-  "NUMs track the `lo` and `hi` seen so far; as well as mean and stdev (`mu`m `sd`)."
-  (goal 1) (mu 0) (m2 0) (sd 0) (lo 1E32) (hi -1E32))
-
-;---------- ---------- ---------- ---------- ---------- ---------- ---------- ----------
 (defmacro o (x f &rest fs) 
   (if fs `(o (slot-value ,x ',f) ,@fs) `(slot-value ,x ',f)))
 
 (defmacro ? (&rest slots) 
   `(o *settings* ,@slots))
 
-(set-macro-character
-   #\$ #'(lambda (s _) `(slot-value self ',(read s t nil t))))
- 
+(set-macro-character #\$ #'(lambda (s _) `(slot-value self ',(read s t nil t))))
+
+(defun s->fn (s &key (pre "%MAKE-"))
+  (intern (string-upcase (format nil "~a~a" pre s))))
+
+(defmacro with-constructor (&rest all)
+  `(progn ,@(loop :for (_ (name . meta) . slots) :in all :collect
+                  `(defstruct (,name (:constructor ,(s->fn name)) ,@meta) ,@slots))))
+
+;---------- ---------- ---------- ---------- ---------- ---------- ---------- ----------
+(defstruct (sym (:include col))
+  "SYMs track a `count` of symbols. The `mode` is most common symbol count."
+  count mode (most 0))
+
+(defstruct (col)
+   "COLs are NUMs and SYMS have `name`; are found `at` some column index."
+   (n 0) (at 0) (name " "))
+
+(with-constructor
+   (defstruct (data)
+     "'rows' are summazied in 'cols'."
+     rows cols)
+
+   (defstruct (cols)
+     "COLS are factories turning  strings to NUMs or COLs."
+     names all x y)
+
+   (defstruct (num (:include col))
+     "NUMs tracks `lo`, `hi`,  mean `mu`, stdev `sd` seen so far"
+     (goal 1) (mu 0) (m2 0) (sd 0) (lo 1E32) (hi -1E32)))
+
 ;---------- ---------- ---------- ---------- ---------- ---------- ---------- ----------   
+(defun make-data (&optional src &aux (self (%make-data)))
+  (labels ((fun (row) (add self row)))
+    (if (stringp src) (mapfile #'fun src) (mapcar #'fun src)))
+  self)
+
 (defun make-num(&key (at 0) (name " ") &aux (self (%make-num :at at :name name)))
   (setf $goal (if (eql #\- (last-char $name)) 0 1))
   self)
 
-(defun make-cols (names &aux (self (%make-cols :names names)))
+(defun strs->cols (names &aux (self (%make-cols :names names)))
   (dolist (name names self) ; return self
     (let* ((a   (char name 0)) 
            (z   (last-char name))
@@ -75,17 +87,12 @@
       (unless (eql z #\X) 
         (if (member z (list #\! #\- #\+)) (push col $y) (push col $x))))))
 
-(defun make-data (&optional src &aux (self (%make-data)))
-  (labels ((fun (row) (add self row)))
-    (if (stringp src) (mapfile #'fun src) (mapcar #'fun src)))
-  self)
-
 ; ###  Add 
 (defmethod add ((self data) (row cons))
   "First time, create columns. Next, summarize `row` in `cols` and store in `rows`."
   (if $cols
     (push (add $cols row) $rows)
-    (setf $cols (make-cols row))))
+    (setf $cols (strs->cols row))))
 
 (defmethod add ((self cols) row)
   "Summarise a row in the `x` and `y` columns."
@@ -157,7 +164,7 @@
   "Return last character in a string."
   (char s (1- (length s)))) 
 
-(defun str2thing (s &aux (s1 (string-trim '(#\Space #\Tab) s))) 
+(defun s->thing (s &aux (s1 (string-trim '(#\Space #\Tab) s))) 
   "Coerce `s` to an atomic thing."
   (let ((it (let ((*read-eval* nil)) (read-from-string s1 ""))))
     (cond ((numberp it)     it)
@@ -165,6 +172,17 @@
           ((eq it nil)      nil)
           ((string= it "?") '?)
           (t                s1))))
+
+(defun s->things (s &optional (sep #\,) (here 0)) ; --> list
+  "split string to items, divided on some `sep` character; then coerce each item"
+  (let ((there (position sep s :start here)))
+    (cons (s->thing (subseq s here there))
+          (if there (s->things s sep (1+ there))))))
+
+(defun with-csv (&optional file (fun #'print) (filter #'s->things)) 
+  "call `fun` on all lines in `file`, after running lines through `filter`"
+  (with-open-file (s (or file *standard-input*))
+    (loop (funcall fun (funcall filter (or (read-line s nil) (return)))))))
 
 ; ### Files
 (defun mapfile (fun file)
@@ -185,11 +203,8 @@
   (setf *seed* (mod (* 16807.0d0 *seed*) 2147483647.0d0))
   (* n (- 1.0d0 (/ *seed* 2147483647.0d0))))
 
-(defun eg(s)
-  (intern (format nil "EG~a" (string-upcase s))))
-
 (defun args()
-  #+clisp ext:*args* #+sbcl sb-ext:*posix-argv*)
+  (cdr #+clisp ext:*args* #+sbcl sb-ext:*posix-argv*))
 
 ; ##  Start-up 
 ; ###  Egs
@@ -203,5 +218,7 @@
   (dolist (col (o (make-data (or file (? train))) cols y)) 
     (format t "~a~%" col)))
 
-(loop :for (flag arg) :on (args) :by #'cdr :if (fboundp (eg flag)) 
-      :do  (funcall (eg flag) (if arg (str2thing arg))))
+(loop :for (flag arg) :on (args) :by #'cdr 
+      :do  (let ((com (fun flag :pre "EG")))
+             (if (fboundp com)
+                 (funcall com (if arg (str2thing arg))))))
