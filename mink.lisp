@@ -42,12 +42,13 @@
   (intern (string-upcase (format nil "~a~a" pre s))))
 
 (defmacro with-constructor (&rest all)
-  `(progn ,@(loop :for (_ (name . meta) . slots) :in all :collect
-                  `(defstruct (,name (:constructor ,(s->fn name)) ,@meta) ,@slots))))
+  `(progn
+     ,@(loop :for (_ (name . meta) . slots) :in all :collect
+        `(defstruct (,name (:constructor ,(s->fn name)) ,@meta) ,@slots))))
 
 ;---------- ---------- ---------- ---------- ---------- ---------- ---------- ----------
 (defstruct (sym (:include col))
-  "SYMs track a `count` of symbols. The `mode` is most common symbol count."
+  "SYMs track a `count` of symbols. The `mode` is the `most` common symbol."
   count mode (most 0))
 
 (defstruct col
@@ -73,11 +74,11 @@
     (if (stringp src) (mapfile #'fun src) (mapcar #'fun src)))
   self)
 
-(defun make-num(&key (at 0) (name " ") &aux (self (%make-num :at at :name name)))
+(defun make-num (&key (at 0) (name " ") &aux (self (%make-num :at at :name name)))
   (setf $goal (if (eql #\- (last-char $name)) 0 1))
   self)
 
-(defun strs->cols (names &aux (self (%make-cols :names names)))
+(defun make-cols (names &aux (self (%make-cols :names names)))
   (dolist (name names self) ; return self
     (let* ((a   (char name 0)) 
            (z   (last-char name))
@@ -92,7 +93,7 @@
   "First time, create columns. Next, summarize `row` in `cols` and store in `rows`."
   (if $cols
     (push (add $cols row) $rows)
-    (setf $cols (strs->cols row))))
+    (setf $cols (make-cols row))))
 
 (defmethod add ((self cols) row)
   "Summarise a row in the `x` and `y` columns."
@@ -179,11 +180,14 @@
     (cons (s->thing (subseq s here there))
           (if there (s->things s sep (1+ there))))))
 
-(defun with-csv (&optional file (fun #'print) (filter #'s->things)) 
+(defun with-csv (&optional file (fun #'print) end)
   "call `fun` on all lines in `file`, after running lines through `filter`"
   (with-open-file (s (or file *standard-input*))
-    (loop (funcall fun (funcall filter (or (read-line s nil) (return)))))))
-
+    (loop (funcall fun
+                   (s->things
+                        (or (read-line s nil)
+                            (return end)))))))
+       
 ; ### Files
 (defun mapfile (fun file)
   "Run `fun` for all things in a file."
