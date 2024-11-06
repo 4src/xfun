@@ -38,7 +38,7 @@
 
 (set-macro-character #\$ #'(lambda (s _) `(slot-value self ',(read s t nil t))))
 
-(defun s->fn (s &key (pre "%MAKE-"))
+(defun s->fn (s &optional (pre "%MAKE-"))
   (intern (string-upcase (format nil "~a~a" pre s))))
 
 (defmacro with-constructor (&rest all)
