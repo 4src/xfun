@@ -38,13 +38,13 @@
 
 (set-macro-character #\$ #'(lambda (s _) `(slot-value self ',(read s t nil t))))
 
-(defun s->fn (s &optional (pre "%MAKE-"))
+(defun s->fn (s &optional (pre ""))
   (intern (string-upcase (format nil "~a~a" pre s))))
 
 (defmacro with-constructor (&rest all)
   `(progn
      ,@(loop :for (_ (name . meta) . slots) :in all :collect
-        `(defstruct (,name (:constructor ,(s->fn name)) . ,meta) . ,slots))))
+        `(defstruct (,name (:constructor ,(s->fn name "%MAKE-")) . ,meta) . ,slots))))
 
 ;---------- ---------- ---------- ---------- ---------- ---------- ---------- ----------
 
