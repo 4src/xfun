@@ -44,25 +44,26 @@
 (defmacro with-constructor (&rest all)
   `(progn
      ,@(loop :for (_ (name . meta) . slots) :in all :collect
-        `(defstruct (,name (:constructor ,(s->fn name)) ,@meta) ,@slots))))
+        `(defstruct (,name (:constructor ,(s->fn name)) . ,meta) . ,slots))))
 
 ;---------- ---------- ---------- ---------- ---------- ---------- ---------- ----------
+
+(defstruct (col)
+   "COLs are NUMs and SYMS have `name`; are found `at` some column index."
+   (n 0) (at 0) (name " "))
+
 (defstruct (sym (:include col))
   "SYMs track a `count` of symbols. The `mode` is the `most` common symbol."
   count mode (most 0))
 
-(defstruct col
-   "COLs are NUMs and SYMS have `name`; are found `at` some column index."
-   (n 0) (at 0) (name " "))
-
 (with-constructor
-   (defstruct (data)
-     "'rows' are summazied in 'cols'."
-     rows cols)
-
    (defstruct (cols)
      "COLS are factories turning  strings to NUMs or COLs."
      names all x y)
+
+   (defstruct (data)
+     "'rows' are summazied in 'cols'."
+     rows cols)
 
    (defstruct (num (:include col))
      "NUMs tracks `lo`, `hi`,  mean `mu`, stdev `sd` seen so far"
