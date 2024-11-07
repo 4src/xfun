@@ -31,10 +31,10 @@
 
 ;---------- ---------- ---------- ---------- ---------- ---------- ---------- ----------
 (defmacro o (x f &rest fs) 
-  (if fs `(o (slot-value ,x ',f) ,@fs) `(slot-value ,x ',f)))
+  (if fs `(o (slot-value ,x ',f) . ,fs) `(slot-value ,x ',f)))
 
 (defmacro ? (&rest slots) 
-  `(o *settings* ,@slots))
+  `(o *settings* . ,slots))
 
 (set-macro-character #\$ #'(lambda (s _) `(slot-value self ',(read s t nil t))))
 
@@ -42,9 +42,9 @@
   (intern (string-upcase (format nil "~a~a" pre s))))
 
 (defmacro with-constructor (&rest all)
-  `(progn
-     ,@(loop :for (_ (name . meta) . slots) :in all :collect
-        `(defstruct (,name (:constructor ,(s->fn name "%MAKE-")) . ,meta) . ,slots))))
+  `(progn .
+    ,(loop :for (_ (name . meta) . slots) :in all :collect
+      `(defstruct (,name (:constructor ,(s->fn name "%MAKE-")) . ,meta) . ,slots))))
 
 ;---------- ---------- ---------- ---------- ---------- ---------- ---------- ----------
 
