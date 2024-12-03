@@ -213,11 +213,7 @@
   (dolist (col (o (make-data (or file (? train))) cols y)) 
     (format t "~a~%" col)))
 
-(defun func (s &key (pre ""))
-  (let ((f (intern (string-upcase (format nil "~a~a" pre s)))))
-    (if (fboundp f) f)))
-
 (loop :for (flag arg) :on (args) :by #'cdr 
-      :do  (let ((com (func flag :pre "EG")))
+      :do  (let ((com (intern (format nil "EG~:@(~a~)" flag))))
              (if (fboundp com)
                  (funcall com (if arg (s->thing arg))))))
