@@ -14,9 +14,7 @@
   (who   "Tim Menzies")
   (where "timm@ieee.org"))
 
-(defstruct bayes
- (m 1)
- (k 2))
+(defstruct bayes (m 1) (k 2))
 
 (defstruct settings 
   "Struct for all settings."
@@ -24,38 +22,23 @@
   (buckets 2)
   (pp      2)
   (train   "data/auto93.lisp")
-  (about  (make-about))
-  (bayes  (make-bayes)))
+  (about  (make-about)) (bayes  (make-bayes)))
 
 (defvar *settings* (make-settings))
 
 ;---------- ---------- ---------- ---------- ---------- ---------- ---------- ----------
 (defmacro o (x f &rest fs) 
-  (if fs `(o (slot-value ,x ',f) . ,fs) `(slot-value ,x ',f)))
+  (if fs
+      `(o (slot-value ,x ',f) . ,fs)
+      `(slot-value ,x ',f)))
 
-(defmacro ? (&rest slots) 
+(defmacro ? (&rest slots)
   `(o *settings* . ,slots))
 
-(set-macro-character #\$ #'(lambda (s _) `(slot-value self ',(read s t nil t))))
-
-(defun s->fn (s &optional (pre ""))
-  (intern (string-upcase (format nil "~a~a" pre s))))
-
-(defmacro with-constructor (&rest all)
-  `(progn 
-     . ,(loop :for (_ (x . meta) . slots) :in all :collect
-          `(defstruct (,x (:constructor ,(s->fn it "%MAKE-"))
-                          (:print-function (lambda (p s _) (_print p s ',x ',slots ))) 
-                          ,meta) . ,slots))))
-
-(defun _print (self str klass slots)
-  (labels ((hdr (x) (if (consp x) (car x) x))
-           (ok  (x) (not (eql #\_ (char (symbol-name x) 0))))
-           (val (x) (if (ok x) (cons (hdr x) (slot-value self (hdr x))))))
-    (format str "(~a ~{~a~})" ',klass (remove-if #'null (mapcar #'val slots)))))
+(set-macro-character #\$
+                     #'(lambda (s _) `(slot-value self ',(read s t nil t))))
 
 ;---------- ---------- ---------- ---------- ---------- ---------- ---------- ----------
-
 (defstruct (col)
    "COLs are NUMs and SYMS have `name`; are found `at` some column index."
    (n 0) (at 0) (name " "))
@@ -64,23 +47,24 @@
   "SYMs track a `count` of symbols. The `mode` is the `most` common symbol."
   count mode (most 0))
 
-(with-constructor
-   (defstruct (cols)
-     "COLS are factories turning  strings to NUMs or COLs."
-     names all x y)
+(defstruct (cols (:constructor %make-cols))
+  "COLS are factories turning  strings to NUMs or COLs."
+  names all x y)
 
-   (defstruct (data)
-     "'rows' are summazied in 'cols'."
-     rows cols)
+(defstruct (data (:constructor %make-data))
+  "'rows' are summazied in 'cols'."
+  rows cols)
 
-   (defstruct (num (:include col))
-     "NUMs tracks `lo`, `hi`,  mean `mu`, stdev `sd` seen so far"
-     (goal 1) (mu 0) (m2 0) (sd 0) (lo 1E32) (hi -1E32)))
+(defstruct (num (:include col) (:constructor %make-num))
+  "NUMs tracks `lo`, `hi`,  mean `mu`, stdev `sd` seen so far"
+  (goal 1) (mu 0) (m2 0) (sd 0) (lo 1E32) (hi -1E32))
 
 ;---------- ---------- ---------- ---------- ---------- ---------- ---------- ----------   
 (defun make-data (&optional src &aux (self (%make-data)))
   (labels ((fun (row) (add self row)))
-    (if (stringp src) (mapfile #'fun src) (mapcar #'fun src)))
+    (if (stringp src)
+        (mapfile #'fun src)
+        (mapcar #'fun src)))
   self)
 
 (defun make-num (&key (at 0) (name " ") &aux (self (%make-num :at at :name name)))
@@ -192,10 +176,8 @@
 (defun with-csv (&optional file (fun #'print) end)
   "call `fun` on all lines in `file`, after running lines through `filter`"
   (with-open-file (s (or file *standard-input*))
-    (loop (funcall fun
-                   (s->things
-                        (or (read-line s nil)
-                            (return end)))))))
+    (loop (funcall fun (s->things (or (read-line s nil)
+                                      (return end)))))))
        
 ; ### Files
 (defun mapfile (fun file)
@@ -231,7 +213,11 @@
   (dolist (col (o (make-data (or file (? train))) cols y)) 
     (format t "~a~%" col)))
 
+(defun func (s &key (pre ""))
+  (let ((f (intern (string-upcase (format nil "~a~a" pre s)))))
+    (if (fboundp f) f)))
+
 (loop :for (flag arg) :on (args) :by #'cdr 
-      :do  (let ((com (fun flag :pre "EG")))
+      :do  (let ((com (func flag :pre "EG")))
              (if (fboundp com)
-                 (funcall com (if arg (str2thing arg))))))
+                 (funcall com (if arg (s->thing arg))))))
