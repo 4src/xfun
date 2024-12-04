@@ -213,6 +213,8 @@
   (dolist (col (o (make-data (or file (? train))) cols y)) 
     (format t "~a~%" col)))
 
+(show "mink.lisp")
+
 (loop :for (flag arg) :on (args) :by #'cdr 
       :do  (let ((com (intern (format nil "EG~:@(~a~)" flag))))
              (if (fboundp com)
