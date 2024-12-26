@@ -62,7 +62,7 @@
 ;---------- ---------- ---------- ---------- ---------- ---------- ---------- ----------   
 (defun make-data (&optional src &aux (self (%make-data)))
   (labels ((fun (row) (add self row)))
-    (if (stringp src)
+    (if (stringp src) 
         (mapfile #'fun src)
         (mapcar #'fun src)))
   self)
@@ -209,11 +209,10 @@
 
 (defun eg--mapread (f) (mapfile #'print (? train) ))
 
-(defun eg--data (&optional file) 
-  (dolist (col (o (make-data (or file (? train))) cols y)) 
-    (format t "~a~%" col)))
-
-(show "mink.lisp")
+(defun eg--data (&optional file)
+  (let ((data (make-data (or file (? train)))))
+    (dolist (col (o data cols y))
+      (format t "~a~%" col))))
 
 (loop :for (flag arg) :on (args) :by #'cdr 
       :do  (let ((com (intern (format nil "EG~:@(~a~)" flag))))
