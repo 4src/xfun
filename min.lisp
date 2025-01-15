@@ -138,7 +138,7 @@
   "Return last char in a string."
   (char s (1- (length s))))
 
-(defun goodbye (x)
+(defun bye (x)
   "Return a value to the operator system."
    #+clisp (ext:exit x) #+sbcl (sb-ext:exit :code x))
 
@@ -181,7 +181,7 @@
     (if update  (setf *options* (cli *options*)))
     (if (? help)
       (print-help)
-      (goodbye (1- (loop :for eg :in (egs) :if (ok eg) :count (not (run eg))))))))  
+      (bye (1- (loop :for eg :in (egs) :if (ok eg) :count (not (run eg))))))))  
 ;------------------------------------------------------------------------------
 (defun eg-one () (print 1))
 ;------------------------------------------------------------------------------
