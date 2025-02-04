@@ -1,17 +1,21 @@
 (defun eg-h () (format t "
-slope.lisp: cinnrecemtanl stochastic optimisation
+slope.lisp: incremental  stochastic optimisation
 (c) 2025 TIm Menzies <timm@ieee.org> MIT Liencse~%~%"))
 
 #+sbcl (declaim (sb-ext:muffle-conditions cl:style-warning))
 
-(defun reads-from-string (s &optional (sep #\,) (here 0))
-  (let ((there (position sep s :start here)))
-    (cons (read-from-string (subseq s here there))
-          (if there (reads-from-string s sep (1+ there))))))
+(defun slurp (s &optional rawp) 
+  (if rawp s (read-from-string s)))
 
-(defun with-csv (&optional file (fun #'print) end)
+(defun splits (s &optional rawp (sep #\,) (here 0))
+  (let ((there (position sep s :start here)))
+    (cons (slurp (subseq s here there) rawp)
+          (if there (splits s rawp sep (1+ there))))))
+
+(defun with-csv (&optional file (fun #'print) end (n -1))
   (with-open-file (s (or file *standard-input*))
-    (loop (funcall fun (reads-from-string (or (read-line s nil) (return end)))))))
+    (loop (funcall fun (splits (or (read-line s nil) (return end)) 
+                               (zerop (incf n)))))))
 
 (defun eg--csv()
    (with-csv "../data/auto93.csv"))
