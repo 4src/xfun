@@ -17,19 +17,23 @@ slope.lisp: incremental  stochastic optimisation
     (loop (funcall fun (splits (or (read-line s nil) (return end)) 
                                (zerop (incf n)))))))
 
+(defun charm(s n)
+  (if (symbolp s) 
+    (charm s (symbol-name s))
+    (char s (if (< n 0) (+  n (length s)) n))))
+
 (defun eg--csv()
-   (with-csv "../data/auto93.csv"))
+  (with-csv "../data/auto93.csv"))
 
 (defun args ()
   (cdr #+clisp ext:*args* #+sbcl sb-ext:*posix-argv*))
 
 (defun main ()
- (loop :for (flag arg) :on (args) :by #'cdr 
-  :do  (let ((com (intern (format nil "EG~:@(~a~)" flag))))
-         (when (fboundp com)
-           (if arg
-              (funcall com (as arg))
+  (loop :for (flag arg) :on (args) :by #'cdr :do
+        (let ((com (intern (format nil "EG~:@(~a~)" flag))))
+          (when (fboundp com)
+            (if arg
+              (funcall com (slurp arg))
               (funcall com))))))
-
 
 (main)
