@@ -17,6 +17,14 @@ slope.lisp: incremental  stochastic optimisation
     (loop (funcall fun (splits (or (read-line s nil) (return end)) 
                                (zerop (incf n)))))))
 
+(defun geometry ()
+  (let (a b c seen)
+  (labels ((project (r)
+                    (let 
+    (lambda (row)
+      (push row seen)
+
+
 (defun charm(s n)
   (if (symbolp s) 
     (charm s (symbol-name s))
