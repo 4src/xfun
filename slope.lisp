@@ -1,4 +1,4 @@
-(defun eg-h () (format t "
+(defun eg-h () (format t "~&
 slope.lisp: incremental  stochastic optimisation
 (c) 2025 TIm Menzies <timm@ieee.org> MIT Liencse~%~%"))
 
@@ -17,8 +17,10 @@ slope.lisp: incremental  stochastic optimisation
     (loop (funcall fun (splits (or (read-line s nil) (return end)) 
                                (zerop (incf n)))))))
 
+(defstruct geometry a b c seen)
+
+
 (defun geometry ()
-  (let (a b c seen)
   (labels ((project (r)
                     (let 
     (lambda (row)
@@ -38,10 +40,10 @@ slope.lisp: incremental  stochastic optimisation
 
 (defun main ()
   (loop :for (flag arg) :on (args) :by #'cdr :do
-        (let ((com (intern (format nil "EG~:@(~a~)" flag))))
-          (when (fboundp com)
-            (if arg
-              (funcall com (slurp arg))
-              (funcall com))))))
+    (let ((com (intern (format nil "EG~:@(~a~)" flag))))
+      (when (fboundp com)
+        (if arg
+          (funcall com (slurp arg))
+          (funcall com))))))
 
 (main)
