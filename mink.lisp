@@ -1,12 +1,8 @@
 ; <!-- vim: set ts=2 sw=2 sts=2 et showmatch: -->
-;(defpackage :ezr (:use :cl))
-;(in-package :ezr)
-
-#+sbcl
-(declaim (sb-ext:muffle-conditions cl:style-warning))
+(defpackage :ezr (:use :cl)) (in-package :ezr)
+#+sbcl (declaim (sb-ext:muffle-conditions cl:style-warning))
 
 (defstruct about 
-  "Struct for file meta info."
   (what  "mink.lisp")
   (why   "optimization via recursive kmeans")
   (when  "(c) 2024")
@@ -17,12 +13,12 @@
 (defstruct bayes (m 1) (k 2))
 
 (defstruct settings 
-  "Struct for all settings."
   (seed    1234567891)
   (buckets 2)
   (pp      2)
   (train   "data/auto93.lisp")
-  (about  (make-about)) (bayes  (make-bayes)))
+  (about  (make-about)) 
+  (bayes  (make-bayes)))
 
 (defvar *settings* (make-settings))
 
@@ -92,7 +88,7 @@
   "Summarise a row in the `x` and `y` columns."
   (dolist (lst (list $x $y) row)
     (dolist (col lst)
-      (add col (at col row)))))
+      (add col (of col row)))))
 
 (defmethod add ((self col) x)
   "Summarize `x` in a column (unless it is don't know."
@@ -118,7 +114,7 @@
               $most new))))
 
  ; ### Misco
-(defmethod at ((self col) row) (elt row $at))
+(defmethod of ((self col) row) (elt row $at))
 
 (defmethod mid ((self num)) $mu)   
 (defmethod mid ((self sym)) $mode) 
@@ -138,8 +134,8 @@
     (let* ((prior (/ (+ (length $rows) (? bayes k)) 
                      (+ nall (* nh (? bayes k))))))
       (+ (num prior) (loop :for col :in (o $cols x) 
-                           :if (not (equal '? (at col row)))
-                           :sum (num (like col (at col row) :prior prior)))))))
+                           :if (not (equal '? (of col row)))
+                           :sum (num (like col (of col row) :prior prior)))))))
 
 (defmethod like ((self sym) x &key prior) ; --> float
   "Return likelhood of a SYMbol."
@@ -158,26 +154,24 @@
   "Return last character in a string."
   (char s (1- (length s)))) 
 
-(defun s->thing (s &aux (s1 (string-trim '(#\Space #\Tab) s))) 
+(defun thing (s &aux (s1 (string-trim '(#\Space #\Tab) s))) 
   "Coerce `s` to an atomic thing."
   (let ((it (let ((*read-eval* nil)) (read-from-string s1 ""))))
-    (cond ((numberp it)     it)
-          ((eq it t)        t)
-          ((eq it nil)      nil)
-          ((string= it "?") '?)
-          (t                s1))))
+    (cond ((numberp it)           it)
+          ((member it '(t nil ?)) it)
+          (t                      s1))))
 
-(defun s->things (s &optional (sep #\,) (here 0)) ; --> list
+(defun things (s &optional (sep #\,) (here 0)) ; --> list
   "split string to items, divided on some `sep` character; then coerce each item"
   (let ((there (position sep s :start here)))
-    (cons (s->thing (subseq s here there))
-          (if there (s->things s sep (1+ there))))))
+    (cons (thing (subseq s here there))
+          (if there (things s sep (1+ there))))))
 
 (defun with-csv (&optional file (fun #'print) end)
-  "call `fun` on all lines in `file`, after running lines through `filter`"
+  "call `fun` on all lines in `file`. Returns when we read nil (at eof)."
   (with-open-file (s (or file *standard-input*))
-    (loop (funcall fun (s->things (or (read-line s nil)
-                                      (return end)))))))
+    (loop (funcall fun (things (or (read-line s nil)
+                                   (return end)))))))
        
 ; ### Files
 (defun mapfile (fun file)
@@ -217,4 +211,4 @@
 (loop :for (flag arg) :on (args) :by #'cdr 
       :do  (let ((com (intern (format nil "EG~:@(~a~)" flag))))
              (if (fboundp com)
-                 (funcall com (if arg (s->thing arg))))))
+                 (funcall com (if arg (thing arg))))))
