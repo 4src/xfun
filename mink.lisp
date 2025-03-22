@@ -57,25 +57,26 @@
 
 ;---------- ---------- ---------- ---------- ---------- ---------- ---------- ----------   
 (defun make-data (&optional src &aux (self (%make-data)))
-  (labels ((fun (row) (add self row)))
+  (labels ((fun (rowcsv) (add self row)))
     (if (stringp src) 
-        (mapfile #'fun src)
+        (mapcsv #'fun src)
         (mapcar #'fun src)))
   self)
 
 (defun make-num (&key (at 0) (name " ") &aux (self (%make-num :at at :name name)))
-  (setf $goal (if (eql #\- (last-char $name)) 0 1))
+  (setf $goal (if (eql #\- (chr $name -1)) 0 1))
   self)
 
 (defun make-cols (names &aux (self (%make-cols :names names)))
-  (dolist (name names self) ; return self
-    (let* ((a   (char name 0)) 
-           (z   (last-char name))
-           (fun (if (upper-case-p a) #'make-num #'make-sym))
-           (col (funcall fun :name name :at (length $all))))
-      (push col $all)
-      (unless (eql z #\X) 
-        (if (member z (list #\! #\- #\+)) (push col $y) (push col $x))))))
+  (labels ((fun (s what)
+                (let ((col (funcall what :name s :at (length $all))))
+                  (push col $all)
+                  (unless (eql (chr s -1) #\X) 
+                    (if (member (chr s -1) (list #\! #\- #\+)) 
+                      (push col $y)
+                      (push col $x))))))
+    (dolist (s names self) ; return self
+      (fun s (if (upper-case-p (chr s 0)) #'make-num #'make-sym)))))
 
 ; ###  Add 
 (defmethod add ((self data) (row cons))
@@ -85,7 +86,7 @@
     (setf $cols (make-cols row))))
 
 (defmethod add ((self cols) row)
-  "Summarise a row in the `x` and `y` columns."
+  "Summarize a row in the `x` and `y` columns."
   (dolist (lst (list $x $y) row)
     (dolist (col lst)
       (add col (of col row)))))
@@ -150,9 +151,9 @@
 
 ; ##  Utils 
 ; ### Strings
-(defun last-char (s) 
-  "Return last character in a string."
-  (char s (1- (length s)))) 
+(defun chr (s n)
+  "Return character from a string (knows how to handle negatives)."
+  (char s (+ n (if (>= n 0) 0 (length s)))))
 
 (defun thing (s &aux (s1 (string-trim '(#\Space #\Tab) s))) 
   "Coerce `s` to an atomic thing."
@@ -167,7 +168,7 @@
     (cons (thing (subseq s here there))
           (if there (things s sep (1+ there))))))
 
-(defun with-csv (&optional file (fun #'print) end)
+(defun mapcsv (&optional (fun #'print) file end)
   "call `fun` on all lines in `file`. Returns when we read nil (at eof)."
   (with-open-file (s (or file *standard-input*))
     (loop (funcall fun (things (or (read-line s nil)
