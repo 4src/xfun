@@ -24,17 +24,21 @@
 
 ;---------- ---------- ---------- ---------- ---------- ---------- ---------- ----------
 (defmacro o (x f &rest fs) 
+  "(o x slot1 slot2...) ==> (slot-value (slot-value (slot-value x 'slot1) 'slot2) ...)"
   (if fs
       `(o (slot-value ,x ',f) . ,fs)
       `(slot-value ,x ',f)))
 
 (defmacro ? (&rest slots)
+  "(? x y ...) ==> o(*settings* x y ...)"
   `(o *settings* . ,slots))
 
-(set-macro-character #\$
-                     #'(lambda (s _) `(slot-value self ',(read s t nil t))))
+(set-macro-character #\$ #'(lambda (s _) 
+                              "$x ==> (slot-value self 'x)"
+                              `(slot-value self ',(read s t nil t))))
 
 ;---------- ---------- ---------- ---------- ---------- ---------- ---------- ----------
+;; ## adasds
 (defstruct (col)
    "COLs are NUMs and SYMS have `name`; are found `at` some column index."
    (n 0) (at 0) (name " "))
@@ -59,8 +63,8 @@
 (defun make-data (&optional src &aux (self (%make-data)))
   (labels ((fun (rowcsv) (add self row)))
     (if (stringp src) 
-        (mapcsv #'fun src)
-        (mapcar #'fun src)))
+      (mapcsv #'fun src) 
+      (mapcar #'fun src)))
   self)
 
 (defun make-num (&key (at 0) (name " ") &aux (self (%make-num :at at :name name)))
@@ -68,15 +72,16 @@
   self)
 
 (defun make-cols (names &aux (self (%make-cols :names names)))
-  (labels ((fun (s what)
-                (let ((col (funcall what :name s :at (length $all))))
-                  (push col $all)
-                  (unless (eql (chr s -1) #\X) 
-                    (if (member (chr s -1) (list #\! #\- #\+)) 
-                      (push col $y)
-                      (push col $x))))))
+  (labels ((fun (s col) 
+                (push col $all)
+                (unless (eql (chr s -1) #\X) 
+                  (if (member (chr s -1) (list #\! #\- #\+)) 
+                    (push col $y)
+                    (push col $x)))))
     (dolist (s names self) ; return self
-      (fun s (if (upper-case-p (chr s 0)) #'make-num #'make-sym)))))
+      (fun s (funcall 
+               (if (upper-case-p (chr s 0)) #'make-num #'make-sym)
+               :name s :at (length $all))))
 
 ; ###  Add 
 (defmethod add ((self data) (row cons))
