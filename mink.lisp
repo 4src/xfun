@@ -72,16 +72,14 @@
   self)
 
 (defun make-cols (names &aux (self (%make-cols :names names)))
-  (labels ((fun (s col) 
-                (push col $all)
-                (unless (eql (chr s -1) #\X) 
-                  (if (member (chr s -1) (list #\! #\- #\+)) 
-                    (push col $y)
-                    (push col $x)))))
-    (dolist (s names self) ; return self
-      (fun s (funcall 
-               (if (upper-case-p (chr s 0)) #'make-num #'make-sym)
-               :name s :at (length $all))))
+  (dolist (name names self) 
+    (let* ((what (if (upper-case-p (chr name 0)) #'make-num #'make-sym))
+           (col  (funcall what :name name :at (length $all))))
+      (push col $all)
+      (unless (eql (chr name -1) #\X) 
+        (if (member (chr name -1) (list #\! #\- #\+)) 
+          (push col $y)
+          (push col $x))))))
 
 ; ###  Add 
 (defmethod add ((self data) (row cons))
