@@ -55,7 +55,11 @@ HEAD='BEGIN {RS=""; FS="\n"} NR==1 { print($$0 "\n"); exit }'
 	gawk -f etc/snips.awk PASS=1 *.lisp  PASS=2 _in > _out
 	mv _out $@; rm _in    
 
-~/tmp/%.pdf: %.py  ## .lua ==> .pdf
+~/tmp/%.html : %.lisp
+	pycco -l scheme -d ~/tmp $^ 
+	open $@
+
+)mp/%.pdf: %.py  ## .lua ==> .pdf
 	mkdir -p ~/tmp
 	echo "pdf-ing $@ ... "
 	a2ps                 \

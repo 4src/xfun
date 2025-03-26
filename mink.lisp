@@ -1,6 +1,26 @@
 ; <!-- vim: set ts=2 sw=2 sts=2 et showmatch: -->
 (defpackage :ezr (:use :cl)) (in-package :ezr)
 #+sbcl (declaim (sb-ext:muffle-conditions cl:style-warning))
+#|
+todo: got to hashtables for symbols
+
+(loop for v being the hash-values of table
+      sum (let ((p (/ v total))) (* p (log p 2))))
+
+(defmethod add1 ((self sym) x)
+  (let* ((table ($count self))
+         (new (incf (gethash x table 0))))
+    (when (> new ($most self))
+      (setf ($most self) new
+            ($mode self) x))))
+
+(defclass sym ()
+  ((count :initform (make-hash-table :test #'equal) :accessor $count)
+   (mode  :initform nil :accessor $mode)
+   (most  :initform 0   :accessor $most)))
+
+
+|#
 
 (defstruct about 
   (what  "mink.lisp")
