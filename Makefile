@@ -57,6 +57,8 @@ HEAD='BEGIN {RS=""; FS="\n"} NR==1 { print($$0 "\n"); exit }'
 
 ~/tmp/%.html : %.lisp
 	pycco -l scheme -d ~/tmp $^ 
+	#echo "p {text-align: right;}" >> ~/tmp/pycco.css
+	mv etc/img/head.png ~/tmp
 	open $@
 
 )mp/%.pdf: %.py  ## .lua ==> .pdf

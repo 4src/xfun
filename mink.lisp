@@ -1,26 +1,10 @@
-; <!-- vim: set ts=2 sw=2 sts=2 et showmatch: -->
-(defpackage :ezr (:use :cl)) (in-package :ezr)
+;; [asdas](asdas) | [asdas](asdas) | [asdas](asdsa) 
+;; <img align="right" width=100 src="head.png">
+(defpackage :mink (:use :cl)) (in-package :mink)
 #+sbcl (declaim (sb-ext:muffle-conditions cl:style-warning))
-#|
-todo: got to hashtables for symbols
 
-(loop for v being the hash-values of table
-      sum (let ((p (/ v total))) (* p (log p 2))))
-
-(defmethod add1 ((self sym) x)
-  (let* ((table ($count self))
-         (new (incf (gethash x table 0))))
-    (when (> new ($most self))
-      (setf ($most self) new
-            ($mode self) x))))
-
-(defclass sym ()
-  ((count :initform (make-hash-table :test #'equal) :accessor $count)
-   (mode  :initform nil :accessor $mode)
-   (most  :initform 0   :accessor $most)))
-
-
-|#
+;; --------- ---------- ---------- ---------- ---------- ---------- ---------- ----------
+;; ## Settings
 
 (defstruct about 
   (what  "mink.lisp")
@@ -42,44 +26,51 @@ todo: got to hashtables for symbols
 
 (defvar *settings* (make-settings))
 
-;---------- ---------- ---------- ---------- ---------- ---------- ---------- ----------
+;; --------- ---------- ---------- ---------- ---------- ---------- ---------- ----------
+;; ## Macros
+
+;; (o x slot1 slot2...) ==>    
+;; (slot-value (slot-value (slot-value x 'slot1) 'slot2) ...)
 (defmacro o (x f &rest fs) 
-  "(o x slot1 slot2...) ==> (slot-value (slot-value (slot-value x 'slot1) 'slot2) ...)"
   (if fs
       `(o (slot-value ,x ',f) . ,fs)
       `(slot-value ,x ',f)))
 
+;; (? x y ...) ==> o(*settings* x y ...)
 (defmacro ? (&rest slots)
-  "(? x y ...) ==> o(*settings* x y ...)"
   `(o *settings* . ,slots))
 
-(set-macro-character #\$ #'(lambda (s _) 
-                              "$x ==> (slot-value self 'x)"
-                              `(slot-value self ',(read s t nil t))))
+;; $x ==> (slot-value self 'x)
+;;(set-macro-character #\$ #'(lambda (s _) `(slot-value self ',(read s t nil t))))
+(set-macro-character #\$ #'(lambda (s _) `(slot-value self ',(read s))))
 
-;---------- ---------- ---------- ---------- ---------- ---------- ---------- ----------
-;; ## adasds
+;;---------- ---------- ---------- ---------- ---------- ---------- ---------- ----------
+;; ## Structs
+
+;; COLs are NUMs and SYMS have `name`; are found `at` some column index.
 (defstruct (col)
-   "COLs are NUMs and SYMS have `name`; are found `at` some column index."
    (n 0) (at 0) (name " "))
 
+;; SYMs track a `count` of symbols. The `mode` is the `most` common symbol.
 (defstruct (sym (:include col))
-  "SYMs track a `count` of symbols. The `mode` is the `most` common symbol."
-  count mode (most 0))
+  mode (most 0) (count (make-hash-table :test #'equal)))
 
+;; COLS are factories turning  strings to NUMs or COLs.
 (defstruct (cols (:constructor %make-cols))
-  "COLS are factories turning  strings to NUMs or COLs."
   names all x y)
 
+;; 'rows' are summazied in 'cols'.
 (defstruct (data (:constructor %make-data))
-  "'rows' are summazied in 'cols'."
   rows cols)
 
+;; NUMs tracks `lo`, `hi`,  mean `mu`, stdev `sd` seen so far.
 (defstruct (num (:include col) (:constructor %make-num))
-  "NUMs tracks `lo`, `hi`,  mean `mu`, stdev `sd` seen so far"
   (goal 1) (mu 0) (m2 0) (sd 0) (lo 1E32) (hi -1E32))
 
-;---------- ---------- ---------- ---------- ---------- ---------- ---------- ----------   
+;;---------- ---------- ---------- ---------- ---------- ---------- ---------- ----------
+;; ## Create
+
+;; Create a data from either a list or a file or rows.
 (defun make-data (&optional src &aux (self (%make-data)))
   (labels ((fun (rowcsv) (add self row)))
     (if (stringp src) 
@@ -87,10 +78,12 @@ todo: got to hashtables for symbols
       (mapcar #'fun src)))
   self)
 
+;; Create number, and set the `goal` from the `name`.
 (defun make-num (&key (at 0) (name " ") &aux (self (%make-num :at at :name name)))
   (setf $goal (if (eql #\- (chr $name -1)) 0 1))
   self)
 
+;; Create `num`eric or `sym`bolic columns from a list of `name` strings.
 (defun make-cols (names &aux (self (%make-cols :names names)))
   (dolist (name names self) 
     (let* ((what (if (upper-case-p (chr name 0)) #'make-num #'make-sym))
@@ -101,27 +94,29 @@ todo: got to hashtables for symbols
           (push col $y)
           (push col $x))))))
 
-; ###  Add 
+;; --------- ---------- ---------- ---------- ---------- ---------- ---------- ----------
+;; ## Add 
+
+;; First time, create columns. Next, summarize `row` in `cols` and store in `rows`.
 (defmethod add ((self data) (row cons))
-  "First time, create columns. Next, summarize `row` in `cols` and store in `rows`."
   (if $cols
     (push (add $cols row) $rows)
     (setf $cols (make-cols row))))
 
+;; Summarize a row in the `x` and `y` columns.
 (defmethod add ((self cols) row)
-  "Summarize a row in the `x` and `y` columns."
   (dolist (lst (list $x $y) row)
     (dolist (col lst)
       (add col (of col row)))))
 
+;; Summarize `x` in a column (unless it is don't know.
 (defmethod add ((self col) x)
-  "Summarize `x` in a column (unless it is don't know."
   (unless (eq x '?)
      (incf $n)
      (add1 self x)))
 
+;; Update a NUM.
 (defmethod add1 ((self num) (x number)) 
-  "Update a NUM."
   (let ((d (- x $mu)))
     (incf $mu (/ d $n))
     (incf $m2 (* d (-  x $mu)))
@@ -129,100 +124,114 @@ todo: got to hashtables for symbols
           $hi (max x $hi)
           $sd (if (< $n 2) 0 (sqrt (/ $m2 (- $n 1)))))))
 
+;; Update a SYM.
 (defmethod add1 ((self sym) x) 
-  "Update a SYM."
-  (let ((new (incf (cdr (or (assoc x $count :test #'equal) 
-                            (car (setf $count (cons (cons x 0) $count))))))))
+  (let ((new (incf (gethash x $count 0))))
     (if (> new $most)
-        (setf $mode x
-              $most new))))
+      (setf $mode x
+            $most new))))
 
- ; ### Misco
+;; --------- ---------- ---------- ---------- ---------- ---------- ---------- ----------
+;; ## Misc
+
+;; Cell access.
 (defmethod of ((self col) row) (elt row $at))
 
+;; Middle of a distribution.
 (defmethod mid ((self num)) $mu)   
 (defmethod mid ((self sym)) $mode) 
 
-(defmethod div ((self num)) ; --> float
-  "NUMbers have standard deviation"
+;; NUMbers have standard deviation.
+(defmethod div ((self num)) 
   (if (< $n 2) 0 (sqrt (/ $m2 (- $n 1)))))
 
-(defmethod div ((self sym)) ; --> float
-  "SYMbols have entropy"
-  (* -1 (loop :for (_ . v) :in $has :sum (* (/ v $n) (log (/ v $n) 2)))))
+;; SYMbols have entropy.
+(defmethod div ((self sym)) 
+  (-  (loop :for v :being the hash-values of $count 
+            :sum (* (/ v $n) (log (/ v $n) 2)))))
 
-; ###  Bayes 
-(defmethod loglike ((self data) row &key nall nh) ; --> float
-  "Return the log likelihood of a row."
+;; --------- ---------- ---------- ---------- ---------- ---------- ---------- ----------
+;; ## Bayes 
+
+;; Return the log likelihood of a row.
+(defmethod loglike ((self data) row &key nall nh) 
   (labels ((num (n) (if (< n 0) 0 (log n))))
     (let* ((prior (/ (+ (length $rows) (? bayes k)) 
-                     (+ nall (* nh (? bayes k))))))
-      (+ (num prior) (loop :for col :in (o $cols x) 
-                           :if (not (equal '? (of col row)))
-                           :sum (num (like col (of col row) :prior prior)))))))
+		     (+ nall (* nh (? bayes k))))))
+      (+ (num prior) 
+	 (loop :for col :in (o $cols x) 
+	       :if (not (equal '? (of col row)))
+	       :sum (num (like col (of col row) :prior prior)))))))
 
-(defmethod like ((self sym) x &key prior) ; --> float
-  "Return likelhood of a SYMbol."
+;; Return likelhood of a SYMbol.
+(defmethod like ((self sym) x &key prior) 
   (/ (+ (count $seen x) (* (? bayes m) prior)) 
      (+ $n (? bayes m))))
 
-(defmethod like ((self num) x &key prior) ; --> float
-  "Return likelhood of a NUMber."
+;; Return likelhood of a NUMber.
+(defmethod like ((self num) x &key prior) 
   (let ((sd (+ $sd 1E-30)))
     (/ (exp (- (/ (expt (- x $mu) 2) (* 2 (expt sd 2)))))
        (* sd (sqrt (* 2 pi))))))
 
-; ##  Utils 
-; ### Strings
+;; --------- ---------- ---------- ---------- ---------- ---------- ---------- ----------
+;; ##  Utils 
+;; ### Strings
+
+;; Return character from a string (knows how to handle negatives).
 (defun chr (s n)
-  "Return character from a string (knows how to handle negatives)."
   (char s (+ n (if (>= n 0) 0 (length s)))))
 
+;; Coerce `s` to an atomic thing.
 (defun thing (s &aux (s1 (string-trim '(#\Space #\Tab) s))) 
-  "Coerce `s` to an atomic thing."
   (let ((it (let ((*read-eval* nil)) (read-from-string s1 ""))))
     (cond ((numberp it)           it)
           ((member it '(t nil ?)) it)
           (t                      s1))))
 
+;; Split string to items, divided on some `sep` character; then coerce each item.
 (defun things (s &optional (sep #\,) (here 0)) ; --> list
-  "split string to items, divided on some `sep` character; then coerce each item"
   (let ((there (position sep s :start here)))
     (cons (thing (subseq s here there))
           (if there (things s sep (1+ there))))))
 
+;; ### Files
+
+;; Call `fun` on all lines in `file`. Returns when we read nil (at eof).
 (defun mapcsv (&optional (fun #'print) file end)
-  "call `fun` on all lines in `file`. Returns when we read nil (at eof)."
   (with-open-file (s (or file *standard-input*))
     (loop (funcall fun (things (or (read-line s nil)
                                    (return end)))))))
        
-; ### Files
+;; Run `fun` for all things in a file.
 (defun mapfile (fun file)
-  "Run `fun` for all things in a file."
   (with-open-file (s file) 
     (loop (funcall fun (or (read s nil nil) (return))))))
 
-; ### Random numbers
-; Enables platform-independent seeding for random nums in LISP."
+;; ### Random numbers
+
+;; Enables platform-independent seeding for random nums in LISP."
 (defvar *seed* (? seed))
 
+;; Return a random integer.
 (defun rint (&optional (n 100) &aux (base 1E10)) 
-  "Return a random integer."
   (floor (* n (/ (rand base) base))))
 
+;; Return a random float. 
 (defun rand (&optional (n 1)) 
-  "Return a random float."
   (setf *seed* (mod (* 16807.0d0 *seed*) 2147483647.0d0))
   (* n (- 1.0d0 (/ *seed* 2147483647.0d0))))
 
+;; List a list of command-line options.
 (defun args()
   (cdr #+clisp ext:*args* #+sbcl sb-ext:*posix-argv*))
 
-; ##  Start-up 
-; ###  Egs
-; Each of these `eg-xxx` functioncs can be called from 
-; the command line with `-xxx` (with an optional arg).
+;; --------- ---------- ---------- ---------- ---------- ---------- ---------- ----------
+;; ##  Start-up 
+;; ###  Egs
+
+;; Each of these `eg-xxx` functioncs can be called from 
+;; the command line with `-xxx` (with an optional arg).
 (defun eg--one (_) (format t "~a~%" (? bayes k)))
 
 (defun eg--mapread (f) (mapfile #'print (? train) ))
@@ -232,6 +241,7 @@ todo: got to hashtables for symbols
     (dolist (col (o data cols y))
       (format t "~a~%" col))))
 
+;; ###  Main
 (loop :for (flag arg) :on (args) :by #'cdr 
       :do  (let ((com (intern (format nil "EG~:@(~a~)" flag))))
              (if (fboundp com)
