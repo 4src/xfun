@@ -40,9 +40,9 @@
 (defmacro ? (&rest slots)
   `(o *settings* . ,slots))
 
-;; $x ==> (slot-value self 'x)
-;;(set-macro-character #\$ #'(lambda (s _) `(slot-value self ',(read s t nil t))))
-(set-macro-character #\$ #'(lambda (s _) `(slot-value self ',(read s))))
+;; $x ==> (slot-value it 'x)
+;;(set-macro-character #\$ #'(lambda (s _) `(slot-value it ',(read s t nil t))))
+(set-macro-character #\$ #'(lambda (s _) `(slot-value it ',(read s))))
 
 ;;---------- ---------- ---------- ---------- ---------- ---------- ---------- ----------
 ;; ## Structs
@@ -65,67 +65,67 @@
 
 ;; NUMs tracks `lo`, `hi`,  mean `mu`, stdev `sd` seen so far.
 (defstruct (num (:include col) (:constructor %make-num))
-  (goal 1) (mu 0) (m2 0) (sd 0) (lo 1E32) (hi -1E32))
+  (goal 1) (mu 0) (m2 0) (lo 1E32) (hi -1E32))
 
 ;;---------- ---------- ---------- ---------- ---------- ---------- ---------- ----------
 ;; ## Create
 
 ;; Create a data from either a list or a file or rows.
-(defun make-data (&optional src &aux (self (%make-data)))
-  (labels ((fun (rowcsv) (add self row)))
+(defun make-data (&optional src &aux (it (%make-data)))
+  (labels ((fun (rowcsv) (add it row)))
     (if (stringp src) 
       (mapcsv #'fun src) 
       (mapcar #'fun src)))
-  self)
+  it)
 
 ;; Create number, and set the `goal` from the `name`.
-(defun make-num (&key (at 0) (name " ") &aux (self (%make-num :at at :name name)))
+(defun make-num (&key (at 0) (name " ") &aux (it (%make-num :at at :name name)))
   (setf $goal (if (eql #\- (chr $name -1)) 0 1))
-  self)
+  it)
 
 ;; Create `num`eric or `sym`bolic columns from a list of `name` strings.
-(defun make-cols (names &aux (self (%make-cols :names names)))
-  (dolist (name names self) 
-    (let* ((what (if (upper-case-p (chr name 0)) #'make-num #'make-sym))
-           (col  (funcall what :name name :at (length $all))))
-      (push col $all)
-      (unless (eql (chr name -1) #\X) 
-        (if (member (chr name -1) (list #\! #\- #\+)) 
-          (push col $y)
-          (push col $x))))))
+(defun make-cols (names &aux (it (%make-cols :names names)))
+  (dolist (name names it)
+    (labels ((what  ()   (if (upper-case-p (chr name 0)) #'make-num #'make-sym))
+             (make (fun) (funcall fun :name name :at (length $all)))
+             (keep (col) 
+                   (push col $all)
+                   (unless (eql (chr name -1) #\X) 
+                     (if (member (chr name -1) (list #\! #\- #\+)) 
+                       (push col $y)
+                       (push col $x)))))
+      (keep (make (what))))))
 
 ;; --------- ---------- ---------- ---------- ---------- ---------- ---------- ----------
 ;; ## Add 
 
 ;; First time, create columns. Next, summarize `row` in `cols` and store in `rows`.
-(defmethod add ((self data) (row cons))
+(defmethod add ((it data) (row cons))
   (if $cols
     (push (add $cols row) $rows)
     (setf $cols (make-cols row))))
 
 ;; Summarize a row in the `x` and `y` columns.
-(defmethod add ((self cols) row)
-  (dolist (lst (list $x $y) row)
-    (dolist (col lst)
-      (add col (of col row)))))
+(defmethod add ((it cols) row)
+  (dolist (col $x) (add col (of col row)))
+  (dolist (col $y) (add col (of col row))))
 
 ;; Summarize `x` in a column (unless it is don't know.
-(defmethod add ((self col) x)
+(defmethod add ((it col) x)
   (unless (eq x '?)
      (incf $n)
-     (add1 self x)))
+     (add1 it x)))
 
 ;; Update a NUM.
-(defmethod add1 ((self num) (x number)) 
+(defmethod add1 ((it num) (x number)) 
   (let ((d (- x $mu)))
     (incf $mu (/ d $n))
     (incf $m2 (* d (-  x $mu)))
     (setf $lo (min x $lo)
-          $hi (max x $hi)
-          $sd (if (< $n 2) 0 (sqrt (/ $m2 (- $n 1)))))))
+          $hi (max x $hi))))
 
 ;; Update a SYM.
-(defmethod add1 ((self sym) x) 
+(defmethod add1 ((it sym) x) 
   (let ((new (incf (gethash x $count 0))))
     (if (> new $most)
       (setf $mode x
@@ -135,42 +135,39 @@
 ;; ## Misc
 
 ;; Cell access.
-(defmethod of ((self col) row) (elt row $at))
+(defmethod of ((it col) row) (elt row $at))
 
 ;; Middle of a distribution.
-(defmethod mid ((self num)) $mu)   
-(defmethod mid ((self sym)) $mode) 
+(defmethod mid ((it num)) $mu)   
+(defmethod mid ((it sym)) $mode) 
 
 ;; NUMbers have standard deviation.
-(defmethod div ((self num)) 
+(defmethod div ((it num)) 
   (if (< $n 2) 0 (sqrt (/ $m2 (- $n 1)))))
 
 ;; SYMbols have entropy.
-(defmethod div ((self sym)) 
-  (-  (loop :for v :being the hash-values of $count 
-            :sum (* (/ v $n) (log (/ v $n) 2)))))
+(defmethod div ((it sym)) 
+  (- (loop :for v :being the hash-values of $count :sum (* (/ v $n) (log (/ v $n) 2)))))
 
 ;; --------- ---------- ---------- ---------- ---------- ---------- ---------- ----------
 ;; ## Bayes 
 
 ;; Return the log likelihood of a row.
-(defmethod loglike ((self data) row &key nall nh) 
+(defmethod loglike ((it data) row &key nall nh) 
   (labels ((num (n) (if (< n 0) 0 (log n))))
     (let* ((prior (/ (+ (length $rows) (? bayes k)) 
-		     (+ nall (* nh (? bayes k))))))
-      (+ (num prior) 
-	 (loop :for col :in (o $cols x) 
-	       :if (not (equal '? (of col row)))
-	       :sum (num (like col (of col row) :prior prior)))))))
+                     (+ nall (* nh (? bayes k))))))
+      (+ (num prior) (loop :for col :in (o $cols x) :if (not (equal '? (of col row)))
+                           :sum (num (like col (of col row) :prior prior)))))))
 
 ;; Return likelhood of a SYMbol.
-(defmethod like ((self sym) x &key prior) 
+(defmethod like ((it sym) x &key prior) 
   (/ (+ (count $seen x) (* (? bayes m) prior)) 
      (+ $n (? bayes m))))
 
 ;; Return likelhood of a NUMber.
-(defmethod like ((self num) x &key prior) 
-  (let ((sd (+ $sd 1E-30)))
+(defmethod like ((it num) x &key prior) 
+  (let ((sd (+ (div it)  1E-30)))
     (/ (exp (- (/ (expt (- x $mu) 2) (* 2 (expt sd 2)))))
        (* sd (sqrt (* 2 pi))))))
 
@@ -184,10 +181,10 @@
 
 ;; Coerce `s` to an atomic thing.
 (defun thing (s &aux (s1 (string-trim '(#\Space #\Tab) s))) 
-  (let ((it (let ((*read-eval* nil)) (read-from-string s1 ""))))
-    (cond ((numberp it)           it)
-          ((member it '(t nil ?)) it)
-          (t                      s1))))
+  (let ((x (let ((*read-eval* nil)) (read-from-string s1 ""))))
+    (if (or (numberp x) (member x '(t nil ?)))
+      x
+      s1)))
 
 ;; Split string to items, divided on some `sep` character; then coerce each item.
 (defun things (s &optional (sep #\,) (here 0)) ; --> list
@@ -230,7 +227,7 @@
 ;; ##  Start-up 
 ;; ###  Egs
 
-;; Each of these `eg-xxx` functioncs can be called from 
+;; Each of these `eg-xxx` functions can be called from 
 ;; the command line with `-xxx` (with an optional arg).
 (defun eg--one (_) (format t "~a~%" (? bayes k)))
 
@@ -244,5 +241,6 @@
 ;; ###  Main
 (loop :for (flag arg) :on (args) :by #'cdr 
       :do  (let ((com (intern (format nil "EG~:@(~a~)" flag))))
-             (if (fboundp com)
-                 (funcall com (if arg (thing arg))))))
+             (when (fboundp com)
+                (setf *seed* (? seed))
+                (funcall com (if arg (thing arg))))))
