@@ -41,7 +41,6 @@
   `(o *settings* . ,slots))
 
 ;; $x ==> (slot-value it 'x)
-;;(set-macro-character #\$ #'(lambda (s _) `(slot-value it ',(read s t nil t))))
 (set-macro-character #\$ #'(lambda (s _) `(slot-value it ',(read s))))
 
 ;;---------- ---------- ---------- ---------- ---------- ---------- ---------- ----------
@@ -86,17 +85,16 @@
 ;; Create `num`eric or `sym`bolic columns from a list of `name` strings.
 (defun make-cols (names &aux (it (%make-cols :names names)))
   (dolist (name names it)
-    (labels ((what  ()   (if (upper-case-p (chr name 0)) #'make-num #'make-sym))
-             (make (fun) (funcall fun :name name :at (length $all)))
-             (keep (col) 
+    (labels ((keep (col)
                    (push col $all)
                    (unless (eql (chr name -1) #\X) 
                      (if (member (chr name -1) (list #\! #\- #\+)) 
                        (push col $y)
                        (push col $x)))))
-      (keep (make (what))))))
+      (keep (funcall (if (upper-case-p (chr name 0)) #'make-num #'make-sym)
+                     :name name :at (length $all))))))
 
-;; --------- ---------- ---------- ---------- ---------- ---------- ---------- ----------
+    ;; --------- ---------- ---------- ---------- ---------- ---------- ---------- ----------
 ;; ## Add 
 
 ;; First time, create columns. Next, summarize `row` in `cols` and store in `rows`.
