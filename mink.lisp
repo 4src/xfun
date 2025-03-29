@@ -52,9 +52,9 @@
 (defstruct (col)
    (n 0) (at 0) (name " "))
 
-;; SYMs track a `count` of symbols. The `mode` is the `most` common symbol.
+;; SYMs track a `count` of symbols.
 (defstruct (sym (:include col))
-  mode (most 0) (count (make-hash-table :test #'equal)))
+  (count (make-hash-table :test #'equal)))
 
 ;; COLS are factories turning  strings to NUMs or COLs.
 (defstruct (cols (:constructor %make-cols))
@@ -100,53 +100,50 @@
 ;; ## Add 
 
 ;; First time, create columns. Next, summarize `row` in `cols` and store in `rows`.
-(defmethod add ((i data) (row cons) &key)
+(defmethod add ((i data) (row cons))
   (if $cols
     (push (add $cols row) $rows)
     (setf $cols (make-cols row))))
 
 ;; Summarize a row in the `x` and `y` columns.
-(defmethod add ((i cols) row &key)
+(defmethod add ((i cols) row)
   (dolist (cols (list $x $y))
     (dolist (col cols) 
       (add col (of col row)))))
 
 ;; Summarize `x` in a `num` (unless it is don't know.
-(defmethod add ((i num) x &key)
+(defmethod add ((i num) x)
   (unless (eq x '?)
     (incf $n 1)
     (let ((d (- x $mu)))
       (incf $mu (/ d $n))
       (incf $m2 (* d (-  x $mu)))
       (setf $lo (min x $lo)
-	    $hi (max x $hi))))
+	    $hi (max x $hi)))))
 
 ;; Summarize `x` in a `sym` (unless it is don't know.
-(defmethod add ((i sym) x &key (n 1)) 
+(defmethod add ((i sym) x) 
   (unless (eq x '?)
-    (incf $n n)
-    (let ((new (incf (gethash x $count 0) n)))
-      (if (> new $most)
-	(setf $mode x
-	      $most new))))
+    (incf $n)
+    (let ((new (incf (gethash x $count 0)))))))
 
 ;; --------- ---------- ---------- ---------- ---------- ---------- ---------- ----------
 ;; ## Merge
-(defmethod merge((i sym) (j sym))
+(defmethod fuse ((i sym) (j sym))
   (let ((out (make-sym :name $name :at $at)))
-    (dolist (k (list i j) out)
-      (loop :for key :being the hash-keys :of (o k count) :do
-	    (add out key (gethash key (o k count) 0))))))
+    (dolist (one (list i j) out)
+      (loop for (k v) being the hash-entries of one
+	    do (incf (gethash k out 0) v)))))
 
-(defmethod merge((i num) (j num))
+(defmethod fuse ((i num) (j num))
   (let ((out (make-num :name $name :at $at)))
     (with-slots     (n  mu  m2  lo  hi) out
       (with-slots   (n1 mu1 m21 lo1 hi1) i
 	(with-slots (n2 mu2 m22 lo2 hi2) j
 	  (setf lo (min lo1 lo2)
 		hi (max hi1 hi2)
-		n  (+ n1 n1)
-		mu (/  (+ (* n1 mu1) (* n2 mu2)) (+ n1 n2)) 
+		n  (+ n1 n2)
+		mu (/ (+ (* n1 mu1) (* n2 mu2)) (+ n1 n2)) 
 		m2 (+ m21 m22 (* n1 (/ n2 (+ n1 n2)) (- mu1 mu2) (- mu1 mu2)))))))
     out))
 
@@ -158,7 +155,8 @@
 
 ;; Middle of a distribution.
 (defmethod mid ((i num)) $mu)   
-(defmethod mid ((i sym)) $mode) 
+(defmethod mid ((i sym))  
+  (loop :for (k . v) :being the hash-elements :of $count maximizing v :collect k))
 
 ;; NUMbers have standard deviation.
 (defmethod div ((i num)) 
@@ -216,7 +214,7 @@
 
 (defmethod keys ((i hashtable))
   (sort (loop :for k :being the hash-keys :of i :collect k) 
-	#'string< :key #'princ-to-string))))
+	#'string< :key #'princ-to-string))
 
 ;; ### Files
 
