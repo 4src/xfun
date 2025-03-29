@@ -20,7 +20,7 @@
   (seed    1234567891)
   (buckets 2)
   (pp      2)
-  (train   "data/auto93.lisp")
+  (train   "data/auto93.csv")
   (about  (make-about)) 
   (bayes  (make-bayes)))
 
@@ -40,8 +40,9 @@
 (defmacro ? (&rest slots)
   `(o *settings* . ,slots))
 
-;; $x ==> (slot-value it 'x)
-(set-macro-character #\$ #'(lambda (s _) `(slot-value it ',(read s))))
+;; $x ==> (slot-value i 'x)
+(set-macro-character 
+  #\$ #'(lambda (s _) `(slot-value i ',(read s))))
 
 ;;---------- ---------- ---------- ---------- ---------- ---------- ---------- ----------
 ;; ## Structs
@@ -70,21 +71,21 @@
 ;; ## Create
 
 ;; Create a data from either a list or a file or rows.
-(defun make-data (&optional src &aux (it (%make-data)))
-  (labels ((fun (rowcsv) (add it row)))
-    (if (stringp src) 
-      (mapcsv #'fun src) 
-      (mapcar #'fun src)))
-  it)
+(defun make-data (&optional src &aux (i (%make-data)))
+  (labels ((fun (row) (add i row)))
+    (if (consp src)
+      (mapcar #'fun src)
+      (mapcsv #'fun src))
+    i))
 
 ;; Create number, and set the `goal` from the `name`.
-(defun make-num (&key (at 0) (name " ") &aux (it (%make-num :at at :name name)))
+(defun make-num (&key (at 0) (name " ") &aux (i (%make-num :at at :name name)))
   (setf $goal (if (eql #\- (chr $name -1)) 0 1))
-  it)
+  i)
 
 ;; Create `num`eric or `sym`bolic columns from a list of `name` strings.
-(defun make-cols (names &aux (it (%make-cols :names names)))
-  (dolist (name names it)
+(defun make-cols (names &aux (i (%make-cols :names names)))
+  (dolist (name names i)
     (labels ((keep (col)
                    (push col $all)
                    (unless (eql (chr name -1) #\X) 
@@ -98,24 +99,25 @@
 ;; ## Add 
 
 ;; First time, create columns. Next, summarize `row` in `cols` and store in `rows`.
-(defmethod add ((it data) (row cons))
+(defmethod add ((i data) (row cons))
   (if $cols
     (push (add $cols row) $rows)
     (setf $cols (make-cols row))))
 
 ;; Summarize a row in the `x` and `y` columns.
-(defmethod add ((it cols) row)
-  (dolist (col $x) (add col (of col row)))
-  (dolist (col $y) (add col (of col row))))
+(defmethod add ((i cols) row)
+  (dolist (cols (list $x $y))
+    (dolist (col cols) 
+      (add col (of col row)))))
 
 ;; Summarize `x` in a column (unless it is don't know.
-(defmethod add ((it col) x)
+(defmethod add ((i col) x)
   (unless (eq x '?)
      (incf $n)
-     (add1 it x)))
+     (add1 i x)))
 
 ;; Update a NUM.
-(defmethod add1 ((it num) (x number)) 
+(defmethod add1 ((i num) (x number)) 
   (let ((d (- x $mu)))
     (incf $mu (/ d $n))
     (incf $m2 (* d (-  x $mu)))
@@ -123,7 +125,7 @@
           $hi (max x $hi))))
 
 ;; Update a SYM.
-(defmethod add1 ((it sym) x) 
+(defmethod add1 ((i sym) x) 
   (let ((new (incf (gethash x $count 0))))
     (if (> new $most)
       (setf $mode x
@@ -133,25 +135,25 @@
 ;; ## Misc
 
 ;; Cell access.
-(defmethod of ((it col) row) (elt row $at))
+(defmethod of ((i col) row) (elt row $at))
 
 ;; Middle of a distribution.
-(defmethod mid ((it num)) $mu)   
-(defmethod mid ((it sym)) $mode) 
+(defmethod mid ((i num)) $mu)   
+(defmethod mid ((i sym)) $mode) 
 
 ;; NUMbers have standard deviation.
-(defmethod div ((it num)) 
+(defmethod div ((i num)) 
   (if (< $n 2) 0 (sqrt (/ $m2 (- $n 1)))))
 
 ;; SYMbols have entropy.
-(defmethod div ((it sym)) 
+(defmethod div ((i sym)) 
   (- (loop :for v :being the hash-values of $count :sum (* (/ v $n) (log (/ v $n) 2)))))
 
 ;; --------- ---------- ---------- ---------- ---------- ---------- ---------- ----------
 ;; ## Bayes 
 
 ;; Return the log likelihood of a row.
-(defmethod loglike ((it data) row &key nall nh) 
+(defmethod loglike ((i data) row &key nall nh) 
   (labels ((num (n) (if (< n 0) 0 (log n))))
     (let* ((prior (/ (+ (length $rows) (? bayes k)) 
                      (+ nall (* nh (? bayes k))))))
@@ -159,13 +161,13 @@
                            :sum (num (like col (of col row) :prior prior)))))))
 
 ;; Return likelhood of a SYMbol.
-(defmethod like ((it sym) x &key prior) 
+(defmethod like ((i sym) x &key prior) 
   (/ (+ (count $seen x) (* (? bayes m) prior)) 
      (+ $n (? bayes m))))
 
 ;; Return likelhood of a NUMber.
-(defmethod like ((it num) x &key prior) 
-  (let ((sd (+ (div it)  1E-30)))
+(defmethod like ((i num) x &key prior) 
+  (let ((sd (+ (div i)  1E-30)))
     (/ (exp (- (/ (expt (- x $mu) 2) (* 2 (expt sd 2)))))
        (* sd (sqrt (* 2 pi))))))
 
@@ -190,6 +192,11 @@
     (cons (thing (subseq s here there))
           (if there (things s sep (1+ there))))))
 
+(defmethod print-object ((i hash-table) stream)
+  (format stream "{~{~A~^, ~}}" 
+    (mapcar (lambda (k) (format nil "~a => ~a"  k (gethash k i)))
+      (sort (loop :for k :being the hash-keys :of i :collect k) #'<))))
+
 ;; ### Files
 
 ;; Call `fun` on all lines in `file`. Returns when we read nil (at eof).
@@ -198,11 +205,6 @@
     (loop (funcall fun (things (or (read-line s nil)
                                    (return end)))))))
        
-;; Run `fun` for all things in a file.
-(defun mapfile (fun file)
-  (with-open-file (s file) 
-    (loop (funcall fun (or (read s nil nil) (return))))))
-
 ;; ### Random numbers
 
 ;; Enables platform-independent seeding for random nums in LISP."
@@ -229,7 +231,7 @@
 ;; the command line with `-xxx` (with an optional arg).
 (defun eg--one (_) (format t "~a~%" (? bayes k)))
 
-(defun eg--mapread (f) (mapfile #'print (? train) ))
+(defun eg--csv (f) (mapcsv #'print (? train) ))
 
 (defun eg--data (&optional file)
   (let ((data (make-data (or file (? train)))))
