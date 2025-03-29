@@ -1,5 +1,6 @@
-;; [asdas](asdas) | [asdas](asdas) | [asdas](asdsa) 
+;; [asdas](asdas) | [asdas](asdas) | [asdas](asdsa)    
 ;; <img align="right" width=100 src="head.png">
+;; Note: in this code `i` is reserced to denote `self`.
 (defpackage :mink (:use :cl)) (in-package :mink)
 #+sbcl (declaim (sb-ext:muffle-conditions cl:style-warning))
 
@@ -99,37 +100,55 @@
 ;; ## Add 
 
 ;; First time, create columns. Next, summarize `row` in `cols` and store in `rows`.
-(defmethod add ((i data) (row cons))
+(defmethod add ((i data) (row cons) &key)
   (if $cols
     (push (add $cols row) $rows)
     (setf $cols (make-cols row))))
 
 ;; Summarize a row in the `x` and `y` columns.
-(defmethod add ((i cols) row)
+(defmethod add ((i cols) row &key)
   (dolist (cols (list $x $y))
     (dolist (col cols) 
       (add col (of col row)))))
 
-;; Summarize `x` in a column (unless it is don't know.
-(defmethod add ((i col) x)
+;; Summarize `x` in a `num` (unless it is don't know.
+(defmethod add ((i num) x &key)
   (unless (eq x '?)
-     (incf $n)
-     (add1 i x)))
+    (incf $n 1)
+    (let ((d (- x $mu)))
+      (incf $mu (/ d $n))
+      (incf $m2 (* d (-  x $mu)))
+      (setf $lo (min x $lo)
+	    $hi (max x $hi))))
 
-;; Update a NUM.
-(defmethod add1 ((i num) (x number)) 
-  (let ((d (- x $mu)))
-    (incf $mu (/ d $n))
-    (incf $m2 (* d (-  x $mu)))
-    (setf $lo (min x $lo)
-          $hi (max x $hi))))
+;; Summarize `x` in a `sym` (unless it is don't know.
+(defmethod add ((i sym) x &key (n 1)) 
+  (unless (eq x '?)
+    (incf $n n)
+    (let ((new (incf (gethash x $count 0) n)))
+      (if (> new $most)
+	(setf $mode x
+	      $most new))))
 
-;; Update a SYM.
-(defmethod add1 ((i sym) x) 
-  (let ((new (incf (gethash x $count 0))))
-    (if (> new $most)
-      (setf $mode x
-            $most new))))
+;; --------- ---------- ---------- ---------- ---------- ---------- ---------- ----------
+;; ## Merge
+(defmethod merge((i sym) (j sym))
+  (let ((out (make-sym :name $name :at $at)))
+    (dolist (k (list i j) out)
+      (loop :for key :being the hash-keys :of (o k count) :do
+	    (add out key (gethash key (o k count) 0))))))
+
+(defmethod merge((i num) (j num))
+  (let ((out (make-num :name $name :at $at)))
+    (with-slots     (n  mu  m2  lo  hi) out
+      (with-slots   (n1 mu1 m21 lo1 hi1) i
+	(with-slots (n2 mu2 m22 lo2 hi2) j
+	  (setf lo (min lo1 lo2)
+		hi (max hi1 hi2)
+		n  (+ n1 n1)
+		mu (/  (+ (* n1 mu1) (* n2 mu2)) (+ n1 n2)) 
+		m2 (+ m21 m22 (* n1 (/ n2 (+ n1 n2)) (- mu1 mu2) (- mu1 mu2)))))))
+    out))
 
 ;; --------- ---------- ---------- ---------- ---------- ---------- ---------- ----------
 ;; ## Misc
@@ -167,8 +186,7 @@
 
 ;; Return likelhood of a NUMber.
 (defmethod like ((i num) x &key prior) 
-  (let ((sd (+ (div i)  1E-30)))
-    (/ (exp (- (/ (expt (- x $mu) 2) (* 2 (expt sd 2)))))
+  (let ((sd (+ (div i)  1E-30))) (/ (exp (- (/ (expt (- x $mu) 2) (* 2 (expt sd 2)))))
        (* sd (sqrt (* 2 pi))))))
 
 ;; --------- ---------- ---------- ---------- ---------- ---------- ---------- ----------
@@ -193,9 +211,12 @@
           (if there (things s sep (1+ there))))))
 
 (defmethod print-object ((i hash-table) stream)
-  (format stream "{~{~A~^, ~}}" 
-    (mapcar (lambda (k) (format nil "~a => ~a"  k (gethash k i)))
-      (sort (loop :for k :being the hash-keys :of i :collect k) #'<))))
+  (labels ((pair (k) (format nil "~a => ~a"  k (gethash k i))))
+    (format stream "{~{~A~^, ~}}" (mapcar #'pair (keys i)))))
+
+(defmethod keys ((i hashtable))
+  (sort (loop :for k :being the hash-keys :of i :collect k) 
+	#'string< :key #'princ-to-string))))
 
 ;; ### Files
 
