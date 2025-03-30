@@ -106,7 +106,7 @@
     (setf $cols (make-cols row))))
 
 ;; Summarize a row in the `x` and `y` columns.
-(defmethod add ((i cols) row)
+(defmethod add ((i cols) (row cons))
   (dolist (cols (list $x $y))
     (dolist (col cols) 
       (add col (of col row)))))
@@ -114,7 +114,7 @@
 ;; Summarize `x` in a `num` (unless it is don't know.
 (defmethod add ((i num) x)
   (unless (eq x '?)
-    (incf $n 1)
+    (incf $n)
     (let ((d (- x $mu)))
       (incf $mu (/ d $n))
       (incf $m2 (* d (-  x $mu)))
@@ -129,11 +129,18 @@
 
 ;; --------- ---------- ---------- ---------- ---------- ---------- ---------- ----------
 ;; ## Merge
+;(defmethod fuse ((i sym) (j sym))
+;  (let ((n 0)
+;        (out (make-sym :name $name :at $at)))  
+;    (dolist (one (list i j) out)  
+;      (loop :for (k  v) being the hash-elements :of one  
+;            :do (incf (gethash k out 0) v)))))
+;
 (defmethod fuse ((i sym) (j sym))
-  (let ((out (make-sym :name $name :at $at)))
-    (dolist (one (list i j) out)
-      (loop for (k v) being the hash-entries of one
-	    do (incf (gethash k out 0) v)))))
+  (let ((out (make-sym :name (name i) :at (at i))))
+    (maphash (lambda (k v) (incf (o out n) v) (incf (gethash k out 0) v)) i)
+    (maphash (lambda (k v) (incf (o out n) v) (incf (gethash k out 0) v)) j)
+    out))
 
 (defmethod fuse ((i num) (j num))
   (let ((out (make-num :name $name :at $at)))
