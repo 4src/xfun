@@ -45,6 +45,10 @@
 (set-macro-character 
   #\$ #'(lambda (s _) `(slot-value i ',(read s))))
 
+;; Anaphoric if. Binds the result of TEST to IT in THEN."
+(defmacro aif (test then &optional else)
+  `(let ((it ,test)) (if it ,then ,else)))
+
 ;;---------- ---------- ---------- ---------- ---------- ---------- ---------- ----------
 ;; ## Structs
 
@@ -54,7 +58,7 @@
 
 ;; SYMs track a `count` of symbols.
 (defstruct (sym (:include col))
-  (count (make-hash-table :test #'equal)))
+  count mode (most 0))
 
 ;; COLS are factories turning  strings to NUMs or COLs.
 (defstruct (cols (:constructor %make-cols))
@@ -125,22 +129,24 @@
 (defmethod add ((i sym) x) 
   (unless (eq x '?)
     (incf $n)
-    (let ((new (incf (gethash x $count 0)))))))
+    (let ((new (inc-alist $count x)) )
+       (if (> new $most)
+	 (setf $most new
+	       $mode x)))))
+
+;; Incremement an alist, return the new value
+(defun inc-alist (alist  x &optional (n 1))
+  (incf (cdr (or (assoc x alist :test #'equal) 
+		 (car (setf alist (cons (cons x 0) alist))))) n))
 
 ;; --------- ---------- ---------- ---------- ---------- ---------- ---------- ----------
 ;; ## Merge
-;(defmethod fuse ((i sym) (j sym))
-;  (let ((n 0)
-;        (out (make-sym :name $name :at $at)))  
-;    (dolist (one (list i j) out)  
-;      (loop :for (k  v) being the hash-elements :of one  
-;            :do (incf (gethash k out 0) v)))))
-;
-(defmethod fuse ((i sym) (j sym))
-  (let ((out (make-sym :name (name i) :at (at i))))
-    (maphash (lambda (k v) (incf (o out n) v) (incf (gethash k out 0) v)) i)
-    (maphash (lambda (k v) (incf (o out n) v) (incf (gethash k out 0) v)) j)
-    out))
+(defmethod fuse ((s1 sum) (s2 sym))
+  (let ((it (copy-sym s2)))
+    (loop for (k . v) in (o 2 counts) do (inc-alist $count v))
+    (let ((two (car (sort $count $> :key #'cdr))))
+      (set $most (car two)
+	   $mode (cdr two)))))
 
 (defmethod fuse ((i num) (j num))
   (let ((out (make-num :name $name :at $at)))
@@ -162,8 +168,7 @@
 
 ;; Middle of a distribution.
 (defmethod mid ((i num)) $mu)   
-(defmethod mid ((i sym))  
-  (loop :for (k . v) :being the hash-elements :of $count maximizing v :collect k))
+(defmethod mid ((i sym)) $mode)
 
 ;; NUMbers have standard deviation.
 (defmethod div ((i num)) 
@@ -198,6 +203,7 @@
 ;; ##  Utils 
 ;; ### Strings
 
+
 ;; Return character from a string (knows how to handle negatives).
 (defun chr (s n)
   (char s (+ n (if (>= n 0) 0 (length s)))))
@@ -219,7 +225,7 @@
   (labels ((pair (k) (format nil "~a => ~a"  k (gethash k i))))
     (format stream "{~{~A~^, ~}}" (mapcar #'pair (keys i)))))
 
-(defmethod keys ((i hashtable))
+(defmethod keys ((i hash-table))
   (sort (loop :for k :being the hash-keys :of i :collect k) 
 	#'string< :key #'princ-to-string))
 
