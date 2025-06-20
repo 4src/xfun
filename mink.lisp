@@ -100,7 +100,7 @@
       (keep (funcall (if (upper-case-p (chr name 0)) #'make-num #'make-sym)
                      :name name :at (length $all))))))
 
-    ;; --------- ---------- ---------- ---------- ---------- ---------- ---------- ----------
+;; --------- ---------- ---------- ---------- ---------- ---------- ---------- ----------
 ;; ## Add 
 
 ;; First time, create columns. Next, summarize `row` in `cols` and store in `rows`.
