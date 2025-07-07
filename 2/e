@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+nvim --clean \
+  -c 'let g:netrw_browse_split=4'                       \
+  -c 'let g:netrw_liststyle=3 | let g:netrw_banner=0'    \
+  -c 'autocmd VimEnter * Vex | vertical resize 25'        \
+  -c 'set expandtab shiftwidth=2 tabstop=2 '               \
+  -c 'set scrolloff=3 | set cursorline | set hidden'        \
+  -c 'set ignorecase | set smartcase | set noshowmode'       \
+  -c 'set number relativenumber | set clipboard=unnamedplus'  \
+  -c 'syntax enable | set background=dark'  \
+  -c 'colorscheme sorbet'                    \
+  -c 'set lispwords+=defthing' \
+  "$@"
