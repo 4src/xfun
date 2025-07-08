@@ -139,6 +139,11 @@
   (incf (cdr (or (assoc x alist :test #'equal) 
 		 (car (setf alist (cons (cons x 0) alist))))) n))
 
+;(defmacro has (x lst); then inc using (incf (has 'x list))
+; `(cdr (or (assoc ,x ,lst :test #'equal)
+;           (car (push (cons ,x 0) ,lst)))))
+
+
 ;; --------- ---------- ---------- ---------- ---------- ---------- ---------- ----------
 ;; ## Merge
 (defmethod fuse ((s1 sum) (s2 sym))
