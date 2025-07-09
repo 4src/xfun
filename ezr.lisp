@@ -8,20 +8,12 @@
 
 (defstruct data name header rows)
 (defstruct col (n 0) (at 0) (txt ""))
-
 (defstruct (sym (:include col)) has)
 (defstruct (num (:include col)) (mu 0) (m2 0) (sd 0)  (hi -1E32) (lo 1E32))
-; ----------------------------------------------------------------------------------------
-; <i class="fa fa-camera-retro fa-lg"></i> fa-lg
-; <i class="fa fa-camera-retro fa-2x"></i> fa-2x
-; <i class="fa fa-camera-retro fa-3x"></i> fa-3x
-; <i class="fa fa-camera-retro fa-4x"></i> fa-4x
-; <i class="fa fa-camera-retro fa-5x"></i> fa-5x
 (set-macro-character #\$  #'(lambda (s _) `(slot-value self ',(read s t nil t))))
 
-(defmacro o (struct f &rest fs)
-  (if fs `(o (slot-value ,struct ',f) ,@fs) `(slot-value ,struct ',f)))
-
+(defmacro o (s f &rest fs) (if fs `(o (slot-value ,s ',f) ,@fs) `(slot-value ,s ',f)))
+(defmacro is (&rest lst) (o *config* ,@lst))
 (defmacro ? (&rest fs) `(o *config* ,@fs))
 
 (defun reads (&key file fun)
@@ -30,7 +22,8 @@
 
 (defmethod from-file ((self data) file)
   (reads :file file :fun #'(lambda (r) (push r (slot-value self 'rows))))
-  self)
+  self):q
+:
 
 (defmethod add ((col self) x)
   (unless (eq x '?) 
